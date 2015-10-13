@@ -16,7 +16,8 @@ object LogRequestsFilter extends Filter {
     def logTime(result: Result) {
       if(!rh.path.contains("/healthcheck")) {
         val time = System.currentTimeMillis - start
-        logger.info(s"REQUEST ${rh.realRemoteAddr} ${rh.method} ${rh.uri} took $time ms and returned ${result.header.status}")
+        val activity = s"${rh.method} ${rh.path}?${rh.queryString}"
+        logger.info(s"$activity completed in $time ms with status ${result.header.status}")
       }
     }
 
