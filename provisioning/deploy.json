@@ -1,0 +1,31 @@
+{
+  "defaultStacks": [ "identity" ],
+  "packages": {
+    "gu-identity-admin-api-dist": {
+      "type": "aws-s3",
+      "data": {
+        "bucket": "gu-identity-admin-api-dist",
+        "prefixPackage": false,
+        "prefixStage": false,
+        "prefixStack": false,
+        "publicReadAcl": false,
+        "cacheControl": "max-age=600"
+      }
+    }
+  },
+
+  "recipes": {
+    "default": {
+      "depends": [
+        "deployGuIdentityAdminApiDist"
+      ]
+    },
+
+    "deployGuIdentityAdminApiDist": {
+      "actionsBeforeApp": [
+        "gu-identity-admin-api-dist.uploadStaticFiles"
+      ]
+    }
+
+  }
+}
