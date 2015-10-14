@@ -17,11 +17,12 @@ object Dependencies {
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
+  val reactiveMongo = "org.reactivemongo" %% "play2-reactivemongo" % "0.11.7.play24"
 
   //projects
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth,
-    playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz,
+    playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz, reactiveMongo,
     specs2, scalaTest)
 
 }
