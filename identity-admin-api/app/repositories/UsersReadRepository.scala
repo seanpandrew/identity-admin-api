@@ -2,11 +2,12 @@ package repositories
 
 import javax.inject.Inject
 
-import models.{MongoJsFormats, User}
+import models.User
 import models.User._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
-import reactivemongo.bson.BSONObjectID
+import reactivemongo.api.collections.bson.BSONCollection
+import reactivemongo.bson.{BSONDocument, BSONObjectID}
 
 import scala.concurrent.Future
 
@@ -17,18 +18,18 @@ import play.modules.reactivemongo.json._
 import play.modules.reactivemongo.json.collection._
 
 
-class UsersRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends ReactiveMongoComponents {
-  
-  private def collection = reactiveMongoApi.db.collection[JSONCollection]("users")
-  
-  def createUser(user: User): Future[User] = {
+class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends ReactiveMongoComponents {
+
+  def jsonCollection = reactiveMongoApi.db.collection[JSONCollection]("users")
+  def bsonCollection = reactiveMongoApi.db.collection[BSONCollection]("users")
+
+  def createUser(email: String): Future[String] = {
     val id = BSONObjectID.generate.toString()
-    val userWithId = user.copy(id)
-      collection.insert[User](userWithId).map(_ => userWithId)
+    reactiveMongoApi.db("users").insert(BSONDocument("_id" -> id, "primaryEmailAddress" -> email)).map(_ => id)
   }
 
   def findByEmail(email: String): Future[Option[User]] =  {
-    collection
+    jsonCollection
       .find(Json.obj("primaryEmailAddress" -> email))
       .cursor[User](ReadPreference.primaryPreferred)
       .headOption

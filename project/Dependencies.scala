@@ -18,11 +18,12 @@ object Dependencies {
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
   val scalaz = "org.scalaz" %% "scalaz-core" % "7.1.1"
   val reactiveMongo = "org.reactivemongo" %% "play2-reactivemongo" % "0.11.7.play24"
+  val salat = "com.novus" %% "salat" % "1.9.9"
 
   //projects
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth,
-    playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz, reactiveMongo,
+    playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz, reactiveMongo, salat,
     specs2, scalaTest)
 
 }

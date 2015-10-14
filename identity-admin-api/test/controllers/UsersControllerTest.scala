@@ -6,14 +6,14 @@ import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
-import repositories.UsersRepository
+import repositories.UsersReadRepository
 import play.api.test.Helpers._
 
 import scala.concurrent.Future
 
 class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
-  val userRepo = mock[UsersRepository]
+  val userRepo = mock[UsersReadRepository]
   val controller = new UsersController(userRepo)
   
   "findUserByEmail" should {
