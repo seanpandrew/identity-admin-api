@@ -20,12 +20,12 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
         val email = s"${UUID.randomUUID().toString}@test.com"
         val user = User(email, Some(BSONObjectID.generate.toString()))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.findByEmail(email), 1.second).flatMap(_._id) mustEqual createdUser
+        Await.result(repo.findByEmail(email), 1.second).headOption.flatMap(_._id) mustEqual createdUser
       }
       
-      "return None when email is not found" in {
+      "return Nul when email is not found" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        Await.result(repo.findByEmail("invalid@invalid.com"), 1.second) mustEqual None
+        Await.result(repo.findByEmail("invalid@invalid.com"), 1.second) mustEqual Nil
       }
 
   }

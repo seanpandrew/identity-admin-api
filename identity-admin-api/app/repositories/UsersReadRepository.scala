@@ -28,11 +28,11 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
     reactiveMongoApi.db("users").insert(BSONDocument("_id" -> id, "primaryEmailAddress" -> email)).map(_ => id)
   }
 
-  def findByEmail(email: String): Future[Option[User]] =  {
+  def findByEmail(email: String): Future[Seq[User]] =  {
     jsonCollection
       .find(Json.obj("primaryEmailAddress" -> email))
       .cursor[User](ReadPreference.primaryPreferred)
-      .headOption
+      .collect[List]()
   }
 
 }

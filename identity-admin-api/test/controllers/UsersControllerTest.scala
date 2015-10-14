@@ -1,6 +1,6 @@
 package controllers
 
-import models.{User, ApiErrors}
+import models.{UserSummary, SearchResponse, User, ApiErrors}
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
@@ -17,21 +17,21 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   val controller = new UsersController(userRepo)
   
   "findUserByEmail" should {
-    "return 404 when user not found" in {
+    "return 200 and empty list when user not found" in {
       val email = "test@test.com"
-      when(userRepo.findByEmail(email)).thenReturn(Future.successful(None))
-      val result = controller.findUserByEmail(email)(FakeRequest())
-      status(result) shouldEqual NOT_FOUND
-      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.notFound)
-    }
-    
-    "return 200 with user as json when found" in {
-      val email = "test@test.com"
-      val user = User(email)
-      when(userRepo.findByEmail(email)).thenReturn(Future.successful(Some(user)))
+      when(userRepo.findByEmail(email)).thenReturn(Future.successful(Nil))
       val result = controller.findUserByEmail(email)(FakeRequest())
       status(result) shouldEqual OK
-      contentAsJson(result) shouldEqual Json.toJson(user)
+      contentAsJson(result) shouldEqual Json.toJson(SearchResponse())
+    }
+    
+    "return 200 with user list as json when found" in {
+      val email = "test@test.com"
+      val user = User(email)
+      when(userRepo.findByEmail(email)).thenReturn(Future.successful(Seq(user)))
+      val result = controller.findUserByEmail(email)(FakeRequest())
+      status(result) shouldEqual OK
+      contentAsJson(result) shouldEqual Json.toJson(SearchResponse(Seq(UserSummary.fromUser(user))))
     }
     
   }

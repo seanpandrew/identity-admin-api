@@ -5,7 +5,6 @@ import org.joda.time.DateTime
 import play.api.libs.json.Json
 import play.api.mvc.{Results, Result}
 import MongoJsFormats._
-import reactivemongo.bson.BSONObjectID
 
 import scala.language.implicitConversions
 
