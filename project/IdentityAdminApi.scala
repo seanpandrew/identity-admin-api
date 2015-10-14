@@ -34,6 +34,7 @@ trait IdentityAdminApi {
       "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
       "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
       "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
+      Resolver.typesafeRepo("releases"),
       Resolver.bintrayRepo("dwhjames", "maven"),
       Resolver.sonatypeRepo("releases")),
     sources in (Compile,doc) := Seq.empty,
