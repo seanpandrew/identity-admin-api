@@ -10,7 +10,7 @@ import scala.language.implicitConversions
 
 case class SocialLink(socialId: String, 
                       network: String, 
-                      profileData: Map[String, String] = Map.empty)
+                      profileData: Map[String, Any] = Map.empty)
 
 object SocialLink {
   implicit val format = Json.format[SocialLink]
@@ -98,7 +98,7 @@ case class User(primaryEmailAddress: String,
                 password: Option[String] = None,
                 userGroups: Option[Set[GroupMembership]] = None,
                 socialLinks: Option[Set[SocialLink]] = None,
-                adData: Option[Map[String, String]] = None
+                adData: Option[Map[String, Any]] = None
                  )
 
 object User {
