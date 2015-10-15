@@ -20,6 +20,8 @@ import play.modules.reactivemongo.json.collection._
 
 class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends ReactiveMongoComponents {
 
+  private val MaximumResults = 20
+
   def jsonCollection = reactiveMongoApi.db.collection[JSONCollection]("users")
   def bsonCollection = reactiveMongoApi.db.collection[BSONCollection]("users")
 
@@ -32,7 +34,7 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
     jsonCollection
       .find(Json.obj("primaryEmailAddress" -> Json.obj("$regex" -> s".*$email.*")))
       .cursor[User](ReadPreference.primaryPreferred)
-      .collect[List]()
+      .collect[List](MaximumResults)
   }
 
 }
