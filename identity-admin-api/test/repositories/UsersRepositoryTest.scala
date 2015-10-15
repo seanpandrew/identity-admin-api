@@ -23,13 +23,32 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
   override def afterAll() { mongoStop(mongoProps) }
 
     "findUserByEmail" must {
-      "return a user when email is found" in {
+      "return a user when email matches exactly" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
         val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
         val email = s"${UUID.randomUUID().toString}@test.com"
         val user = User(email, Some(BSONObjectID.generate.toString()))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.findByEmail(email), 1.second).headOption.flatMap(_._id) mustEqual createdUser
+        Await.result(repo.findByEmail(email), 1.second).flatMap(_._id) must contain(createdUser.get)
+      }
+
+      "return a user when email partially matches end" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val email = s"${UUID.randomUUID().toString}@test.com"
+        val user = User(email, Some(BSONObjectID.generate.toString()))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.findByEmail("test.com"), 1.second).flatMap(_._id) must contain(createdUser.get)
+      }
+
+      "return a user when email partially matches start" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val id = UUID.randomUUID().toString
+        val email = s"$id@test.com"
+        val user = User(email, Some(BSONObjectID.generate.toString()))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.findByEmail(id), 1.second).flatMap(_._id) must contain(createdUser.get)
       }
       
       "return Nil when email is not found" in {

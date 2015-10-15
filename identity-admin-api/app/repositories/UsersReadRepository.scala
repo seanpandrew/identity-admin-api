@@ -30,7 +30,7 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
 
   def findByEmail(email: String): Future[Seq[User]] =  {
     jsonCollection
-      .find(Json.obj("primaryEmailAddress" -> email))
+      .find(Json.obj("primaryEmailAddress" -> Json.obj("$regex" -> s".*$email.*")))
       .cursor[User](ReadPreference.primaryPreferred)
       .collect[List]()
   }
