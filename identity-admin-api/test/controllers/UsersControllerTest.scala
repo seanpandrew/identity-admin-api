@@ -16,20 +16,21 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   val userRepo = mock[UsersReadRepository]
   val controller = new UsersController(userRepo)
   
-  "findUserByEmail" should {
+  "search" should {
     "return 200 and empty list when user not found" in {
-      val email = "test@test.com"
-      when(userRepo.findByEmail(email)).thenReturn(Future.successful(Nil))
-      val result = controller.findUserByEmail(email)(FakeRequest())
+      val query = "test@test.com"
+      when(userRepo.findByEmail(query)).thenReturn(Future.successful(Nil))
+      val result = controller.search(query)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(SearchResponse())
     }
     
     "return 200 with user list as json when found" in {
       val email = "test@test.com"
+      val query = email
       val user = User(email)
-      when(userRepo.findByEmail(email)).thenReturn(Future.successful(Seq(user)))
-      val result = controller.findUserByEmail(email)(FakeRequest())
+      when(userRepo.findByEmail(query)).thenReturn(Future.successful(Seq(user)))
+      val result = controller.search(query)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(SearchResponse(Seq(UserSummary.fromUser(user))))
     }
