@@ -52,4 +52,9 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
       )
     )
 
+  def findById(id: String): Future[Option[User]] =
+    jsonCollection
+    .find(Json.obj("_id" -> id))
+    .cursor[User](ReadPreference.primaryPreferred)
+    .headOption
 }

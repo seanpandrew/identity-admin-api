@@ -27,4 +27,11 @@ class UsersController @Inject() (usersRepository: UsersReadRepository) extends C
       usersRepository.search(query, limit, offset).map(SearchResponse.searchResponseToResult)
     }
   }
+
+  def findById(id: String) = Action.async { request =>
+    usersRepository.findById(id) map {
+      case None => ApiErrors.notFound
+      case Some(user) => user
+    }
+  }
 }
