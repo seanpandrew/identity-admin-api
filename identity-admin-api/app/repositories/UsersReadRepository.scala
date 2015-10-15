@@ -32,9 +32,9 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
   private def buildSearchQuery(query: String): JsObject =
     Json.obj(
       "$or" -> Json.arr(
-        Json.obj("primaryEmailAddress" -> Json.obj("$regex" -> s".*$query.*", "$options" -> "i")),
-        Json.obj("publicFields.username" -> Json.obj("$regex" -> s".*$query.*", "$options" -> "i")),
-        Json.obj("privateFields.postcode" -> Json.obj("$regex" -> s".*$query.*", "$options" -> "i"))
+        Json.obj("primaryEmailAddress" -> Json.obj("$regex" -> s".*$query.*")),
+        Json.obj("publicFields.username" -> Json.obj("$regex" -> s".*$query.*")),
+        Json.obj("privateFields.postcode" -> Json.obj("$regex" -> s".*$query.*"))
       )
     )
 
