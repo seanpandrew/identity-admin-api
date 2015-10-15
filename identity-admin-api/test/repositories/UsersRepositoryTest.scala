@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.github.simplyscala.{MongoEmbedDatabase, MongodProps}
 import de.flapdoodle.embed.mongo.distribution.Version
-import models.{PrivateFields, PublicFields, User}
+import models.{SearchResponse, PrivateFields, PublicFields, User}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
@@ -23,38 +23,90 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
   override def afterAll() { mongoStop(mongoProps) }
 
     "search" must {
+
+      def createUser(username: Option[String] = None, postcode: Option[String] = None): User = {
+        val email = s"${UUID.randomUUID().toString}@test.com"
+        User(email,
+          Some(BSONObjectID.generate.toString()),
+          publicFields = Some(PublicFields(username = username)),
+          privateFields = Some(PrivateFields(postcode = postcode)))
+      }
+
       "return a user when email matches exactly" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
         val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
-        val email = s"${UUID.randomUUID().toString}@test.com"
-        val user = User(email, Some(BSONObjectID.generate.toString()))
+        val user = createUser()
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(email), 1.second).flatMap(_._id) must contain(createdUser.get)
+        Await.result(repo.search(user.primaryEmailAddress), 1.second).results.map(_.id) must contain(createdUser.get)
       }
 
       "return a user when username matches exactly" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
         val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
-        val email = s"${UUID.randomUUID().toString}@test.com"
         val username = UUID.randomUUID().toString
-        val user = User(email, Some(BSONObjectID.generate.toString()), publicFields = Some(PublicFields(username = Some(username))))
+        val user = createUser(username = Some(username))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(username), 1.second).flatMap(_._id) must contain(createdUser.get)
+        Await.result(repo.search(username), 1.second).results.map(_.id) must contain(createdUser.get)
       }
 
       "return a user when postcode matches exactly" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
         val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
-        val email = s"${UUID.randomUUID().toString}@test.com"
         val postcode = "N1 9GU"
-        val user = User(email, Some(BSONObjectID.generate.toString()), privateFields = Some(PrivateFields(postcode = Some(postcode))))
+        val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(postcode), 1.second).flatMap(_._id) must contain(createdUser.get)
+        Await.result(repo.search(postcode), 1.second).results.map(_.id) must contain(createdUser.get)
       }
       
       "return Nil when no results are found" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        Await.result(repo.search("invalid@invalid.com"), 1.second) mustEqual Nil
+        Await.result(repo.search("invalid@invalid.com"), 1.second) mustEqual SearchResponse(0, hasMore = false, Nil)
+      }
+
+      "use offset when provided" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val postcode = UUID.randomUUID().toString
+        val user1 = createUser(postcode = Some(postcode))
+        val user2 = createUser(postcode = Some(postcode))
+        val user3 = createUser(postcode = Some(postcode))
+        val user4 = createUser(postcode = Some(postcode))
+        val user5 = createUser(postcode = Some(postcode))
+
+        val createdUser1 = writeRepo.createUser(user1)
+        val createdUser2 = writeRepo.createUser(user2)
+        val createdUser3 = writeRepo.createUser(user3)
+        val createdUser4 = writeRepo.createUser(user4)
+        val createdUser5 = writeRepo.createUser(user5)
+
+        val ids = Await.result(repo.search(postcode, offset = Some(1)), 1.second).results.map(_.id)
+        ids must not contain createdUser1.get
+        ids must contain(createdUser2.get)
+        ids must contain(createdUser3.get)
+        ids must contain(createdUser4.get)
+        ids must contain(createdUser5.get)
+      }
+
+      "use limit when provided" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val postcode = UUID.randomUUID().toString
+        val user1 = createUser(postcode = Some(postcode))
+        val user2 = createUser(postcode = Some(postcode))
+        val user3 = createUser(postcode = Some(postcode))
+        val user4 = createUser(postcode = Some(postcode))
+        val user5 = createUser(postcode = Some(postcode))
+
+        val createdUser1 = writeRepo.createUser(user1)
+        val createdUser2 = writeRepo.createUser(user2)
+        val createdUser3 = writeRepo.createUser(user3)
+        val createdUser4 = writeRepo.createUser(user4)
+        val createdUser5 = writeRepo.createUser(user5)
+
+        val ids = Await.result(repo.search(postcode, offset = Some(1), limit = Some(2)), 1.second).results.map(_.id)
+        ids.size mustEqual 2
+        ids must contain(createdUser2.get)
+        ids must contain(createdUser3.get)
       }
 
   }

@@ -4,4 +4,4 @@ GET        /badRequest         @controllers.LoggingTestController.badRequest
 GET        /internalError      @controllers.LoggingTestController.internalError
 GET        /unauthorized       @controllers.LoggingTestController.unauthorized
 
-GET        /v1/user/search     @controllers.UsersController.search(query: String)
+GET        /v1/user/search     @controllers.UsersController.search(query: String, limit: Option[Int], offset: Option[Int])
