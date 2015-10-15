@@ -23,7 +23,25 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val offset = Some(0)
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual BAD_REQUEST
-      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.badRequest("The query string must be a minimum of 3 characters"))
+      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.badRequest("query must be a minimum of 3 characters"))
+    }
+
+    "return 400 when offset is negative" in {
+      val query = "ab"
+      val limit = Some(10)
+      val offset = Some(-1)
+      val result = controller.search(query, limit, offset)(FakeRequest())
+      status(result) shouldEqual BAD_REQUEST
+      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.badRequest("offset must be a positive integer"))
+    }
+
+    "return 400 when limit is negative" in {
+      val query = "ab"
+      val limit = Some(-10)
+      val offset = Some(0)
+      val result = controller.search(query, limit, offset)(FakeRequest())
+      status(result) shouldEqual BAD_REQUEST
+      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.badRequest("limit must be a positive integer"))
     }
 
     "return 200 and empty list when user not found" in {
