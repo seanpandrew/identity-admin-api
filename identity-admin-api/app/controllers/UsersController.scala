@@ -17,7 +17,7 @@ class UsersController @Inject() (usersRepository: UsersReadRepository) extends C
     if (query.length < MinimumQueryLength) {
       Future.successful(ApiErrors.badRequest(s"The query string must be a minimum of $MinimumQueryLength characters"))
     } else {
-      usersRepository.findByEmail(query) map { results =>
+      usersRepository.search(query) map { results =>
         SearchResponse(results.map(UserSummary.fromUser))
       }
     }
