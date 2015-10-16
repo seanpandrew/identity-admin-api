@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.github.simplyscala.{MongoEmbedDatabase, MongodProps}
 import de.flapdoodle.embed.mongo.distribution.Version
-import models.{SearchResponse, PrivateFields, PublicFields, User}
+import models.SearchResponse
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
@@ -118,7 +118,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
 
-      Await.result(repo.findById(createdUser1.get), 1.second).flatMap(_._id) mustEqual createdUser1
+      Await.result(repo.findById(createdUser1.get), 1.second).map(_.id) mustEqual createdUser1
     }
 
     "return None when user not found" in {

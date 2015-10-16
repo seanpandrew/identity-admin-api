@@ -2,8 +2,8 @@ package repositories
 
 import javax.inject.Inject
 
-import models.{SearchResponse, User}
-import models.User._
+import models.{UserResponse, SearchResponse}
+import User._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 
@@ -52,9 +52,9 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
       )
     )
 
-  def findById(id: String): Future[Option[User]] =
+  def findById(id: String): Future[Option[UserResponse]] =
     jsonCollection
     .find(Json.obj("_id" -> id))
     .cursor[User](ReadPreference.primaryPreferred)
-    .headOption
+    .headOption.map(_.map(UserResponse.fromUser))
 }

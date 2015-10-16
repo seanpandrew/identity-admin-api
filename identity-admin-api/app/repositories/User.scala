@@ -1,9 +1,9 @@
-package models
+package repositories
 
-
+import models.MongoJsFormats
 import org.joda.time.DateTime
 import play.api.libs.json.Json
-import play.api.mvc.{Results, Result}
+import play.api.mvc.{Result, Results}
 import MongoJsFormats._
 
 import scala.language.implicitConversions

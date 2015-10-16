@@ -6,7 +6,7 @@ import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
-import repositories.UsersReadRepository
+import repositories.{User, UsersReadRepository}
 import play.api.test.Helpers._
 
 import scala.concurrent.Future
@@ -81,7 +81,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 200 when user found" in {
       val id = "abc"
-      val user = User(id)
+      val user = UserResponse(id, "test@test.com")
       when(userRepo.findById(id)).thenReturn(Future.successful(Some(user)))
       val result = controller.findById(id)(FakeRequest())
       status(result) shouldEqual OK
