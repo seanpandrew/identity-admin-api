@@ -6,3 +6,4 @@ GET        /unauthorized       @controllers.LoggingTestController.unauthorized
 
 GET        /v1/user/search     @controllers.UsersController.search(query: String, limit: Option[Int], offset: Option[Int])
 GET        /v1/user/:id        @controllers.UsersController.findById(id: String)
+POST       /v1/user/:id        @controllers.UsersController.update(id: String)
