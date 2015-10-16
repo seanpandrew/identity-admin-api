@@ -105,13 +105,30 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       status(result) shouldEqual NOT_FOUND
     }
 
-    "return 200 when json is valid" in {
+    "return 204 when json is valid" in {
       val id = "abc"
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com")
       val user = mock[UserResponse]
       when(userRepo.findById(id)).thenReturn(Future.successful(Some(user)))
       val result = controller.update(id)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
-      status(result) shouldEqual OK
+      status(result) shouldEqual NO_CONTENT
+    }
+  }
+
+  "delete" should {
+    "return 404 when user is not found" in {
+      val id = "abc"
+      when(userRepo.findById(id)).thenReturn(Future.successful(None))
+      val result = controller.delete(id)(FakeRequest())
+      status(result) shouldEqual NOT_FOUND
+    }
+
+    "return 204 when user is found" in {
+      val id = "abc"
+      val user = mock[UserResponse]
+      when(userRepo.findById(id)).thenReturn(Future.successful(Some(user)))
+      val result = controller.delete(id)(FakeRequest())
+      status(result) shouldEqual NO_CONTENT
     }
   }
 }
