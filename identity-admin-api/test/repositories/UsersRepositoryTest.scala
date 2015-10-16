@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.github.simplyscala.{MongoEmbedDatabase, MongodProps}
 import de.flapdoodle.embed.mongo.distribution.Version
-import models.{SearchResponse, PrivateFields, PublicFields, User}
+import models.SearchResponse
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
@@ -22,15 +22,15 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
 
   override def afterAll() { mongoStop(mongoProps) }
 
-    "search" must {
+  def createUser(username: Option[String] = None, postcode: Option[String] = None): User = {
+    val email = s"${UUID.randomUUID().toString}@test.com"
+    User(email,
+      Some(BSONObjectID.generate.toString()),
+      publicFields = Some(PublicFields(username = username)),
+      privateFields = Some(PrivateFields(postcode = postcode)))
+  }
 
-      def createUser(username: Option[String] = None, postcode: Option[String] = None): User = {
-        val email = s"${UUID.randomUUID().toString}@test.com"
-        User(email,
-          Some(BSONObjectID.generate.toString()),
-          publicFields = Some(PublicFields(username = username)),
-          privateFields = Some(PrivateFields(postcode = postcode)))
-      }
+    "search" must {
 
       "return a user when email matches exactly" in {
         val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
@@ -109,6 +109,23 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
         ids must contain(createdUser3.get)
       }
 
+  }
+
+  "findById" should {
+    "return Some user when user found" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser()
+      val createdUser1 = writeRepo.createUser(user1)
+
+      Await.result(repo.findById(createdUser1.get), 1.second).map(_.id) mustEqual createdUser1
+    }
+
+    "return None when user not found" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+
+      Await.result(repo.findById(UUID.randomUUID().toString), 1.second) mustEqual None
+    }
   }
 
 }

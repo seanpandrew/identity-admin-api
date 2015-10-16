@@ -1,12 +1,12 @@
 package controllers
 
-import models.{UserSummary, SearchResponse, User, ApiErrors}
+import models._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json
 import play.api.test.FakeRequest
-import repositories.UsersReadRepository
+import repositories.{User, UsersReadRepository}
 import play.api.test.Helpers._
 
 import scala.concurrent.Future
@@ -68,5 +68,24 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       contentAsJson(result) shouldEqual Json.toJson(response)
     }
     
+  }
+
+  "findById" should {
+    "return 404 when user not found" in {
+      val id = "abc"
+      when(userRepo.findById(id)).thenReturn(Future.successful(None))
+      val result = controller.findById(id)(FakeRequest())
+      status(result) shouldEqual NOT_FOUND
+      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.notFound)
+    }
+
+    "return 200 when user found" in {
+      val id = "abc"
+      val user = UserResponse(id, "test@test.com")
+      when(userRepo.findById(id)).thenReturn(Future.successful(Some(user)))
+      val result = controller.findById(id)(FakeRequest())
+      status(result) shouldEqual OK
+      contentAsJson(result) shouldEqual Json.toJson(user)
+    }
   }
 }

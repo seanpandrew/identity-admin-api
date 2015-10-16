@@ -5,6 +5,7 @@ import java.util.UUID
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
+import repositories.User
 
 class SearchResponseTest extends WordSpec with MockitoSugar with Matchers {
 
