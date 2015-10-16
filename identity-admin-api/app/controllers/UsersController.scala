@@ -45,10 +45,19 @@ class UsersController @Inject() (usersRepository: UsersReadRepository) extends C
           case None => ApiErrors.notFound
           case Some(user) =>
             // TODO validate update for fields and use write repo to perform it
-            Ok
+            NoContent
         }
       case JsError(e) => Future.successful(ApiErrors.badRequest(e.toString()))
     }
 
+  }
+
+  def delete(id: String) = Action.async { request =>
+    usersRepository.findById(id) map {
+      case None => ApiErrors.notFound
+      case Some(user) =>
+        logger.info(s"Deleting user with id: $id")
+        NoContent
+    }
   }
 }
