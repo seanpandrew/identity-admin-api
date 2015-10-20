@@ -1,15 +1,16 @@
 package controllers
 
 import javax.inject.Inject
-
 import com.gu.identity.util.Logging
-import models.{UserUpdateRequest, ApiErrors, SearchResponse}
+import models.{UserResponse, UserUpdateRequest, ApiErrors, SearchResponse}
 import play.api.libs.json.{JsError, JsSuccess}
-import play.api.mvc.{Action, Controller}
+import play.api.mvc._
 import repositories.UsersReadRepository
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
+
+class UserRequest[A](val user: UserResponse, request: Request[A]) extends WrappedRequest[A](request)
 
 class UsersController @Inject() (usersRepository: UsersReadRepository) extends Controller with Logging {
 
@@ -30,34 +31,29 @@ class UsersController @Inject() (usersRepository: UsersReadRepository) extends C
     }
   }
 
-  def findById(id: String) = Action.async { request =>
-    usersRepository.findById(id) map {
-      case None => ApiErrors.notFound
-      case Some(user) => user
-    }
+  def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
+    override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] =
+      usersRepository.findById(userId) map {
+        case Some(user) => Right(new UserRequest(user, input))
+        case None => Left(ApiErrors.notFound)
+      }
   }
 
-  def update(id: String) = Action.async(parse.json) { request =>
+  def findById(id: String) = (Action andThen UserAction(id)) { request =>
+    request.user
+  }
+
+  def update(id: String) = (Action andThen UserAction(id))(parse.json) { request =>
     request.body.validate[UserUpdateRequest] match {
       case JsSuccess(result, path) =>
         logger.info(s"Updating user id:$id, body: $result")
-        usersRepository.findById(id) map {
-          case None => ApiErrors.notFound
-          case Some(user) =>
-            // TODO validate update for fields and use write repo to perform it
-            NoContent
-        }
-      case JsError(e) => Future.successful(ApiErrors.badRequest(e.toString()))
+        NoContent
+      case JsError(e) => ApiErrors.badRequest(e.toString())
     }
-
   }
 
-  def delete(id: String) = Action.async { request =>
-    usersRepository.findById(id) map {
-      case None => ApiErrors.notFound
-      case Some(user) =>
-        logger.info(s"Deleting user with id: $id")
-        NoContent
-    }
+  def delete(id: String) = (Action andThen UserAction(id)) { request =>
+    logger.info(s"Deleting user with id: $id")
+    NoContent
   }
 }
