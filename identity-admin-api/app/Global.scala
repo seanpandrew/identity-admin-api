@@ -22,7 +22,6 @@ object Global extends WithFilters(AddEC2InstanceHeader, LogRequestsFilter) {
 
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
     logger.error(s"Error handling request request: $request", ex)
-    Future { internalError }
+    Future { internalError(ex.getMessage) }
   }
 }
-

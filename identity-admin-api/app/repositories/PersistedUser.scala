@@ -89,7 +89,7 @@ object StatusFields {
   implicit val format = Json.format[StatusFields]
 }
 
-case class User(primaryEmailAddress: String,
+case class PersistedUser(primaryEmailAddress: String,
                 _id: Option[String] = None,
                 publicFields: Option[PublicFields] = None,
                 privateFields: Option[PrivateFields] = None,
@@ -101,10 +101,10 @@ case class User(primaryEmailAddress: String,
                 adData: Option[Map[String, Any]] = None
                  )
 
-object User {
-  implicit val format = Json.format[User]
+object PersistedUser {
+  implicit val format = Json.format[PersistedUser]
 
-  implicit def userToResult(user: User): Result = {
+  implicit def userToResult(user: PersistedUser): Result = {
     Results.Ok(Json.toJson(user))
   }
 }

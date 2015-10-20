@@ -15,10 +15,10 @@ object ApiErrors {
       statusCode = 404
     )
 
-  val internalError: ApiError =
+  def internalError(msg: String): ApiError =
     ApiError(
       message = "Internal Server Error",
-      details = "Internal Server Error",
+      details = msg,
       statusCode = 500
     )
 

@@ -2,8 +2,8 @@ package repositories
 
 import javax.inject.Inject
 
-import models.{UserResponse, SearchResponse}
-import User._
+import models.{ApiErrors, ApiError, User, SearchResponse}
+import PersistedUser._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 
@@ -20,7 +20,7 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
 
   private val MaximumResults = 20
 
-  def jsonCollection = reactiveMongoApi.db.collection[JSONCollection]("users")
+  private def jsonCollection = reactiveMongoApi.db.collection[JSONCollection]("users")
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): Future[SearchResponse] =  {
     val q = buildSearchQuery(query)
@@ -32,7 +32,7 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
     val results = jsonCollection
       .find(q)
       .options(QueryOpts(o, l))
-      .cursor[User](ReadPreference.primaryPreferred)
+      .cursor[PersistedUser](ReadPreference.primaryPreferred)
       .collect[List](l)
 
     for {
@@ -51,10 +51,14 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
         Json.obj("privateFields.postcode" -> query)
       )
     )
-
-  def findById(id: String): Future[Option[UserResponse]] =
+  
+  private def findBy(field: String, value: String): Future[Option[User]] =
     jsonCollection
-    .find(Json.obj("_id" -> id))
-    .cursor[User](ReadPreference.primaryPreferred)
-    .headOption.map(_.map(UserResponse.fromUser))
+      .find(Json.obj(field -> value))
+      .cursor[PersistedUser](ReadPreference.primaryPreferred)
+      .headOption.map(_.map(User.fromUser))
+
+  def findById(id: String): Future[Option[User]] = findBy("_id", id)
+  
+  def findByEmail(email: String): Future[Option[User]] = findBy("primaryEmailAddress", email)
 }
