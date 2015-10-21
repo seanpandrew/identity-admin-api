@@ -17,7 +17,10 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWrit
   
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     if(!user.email.equalsIgnoreCase(userUpdateRequest.email)) {
-      val updateResult = usersReadRepository.findByEmail(userUpdateRequest.email) map { x => usersWriteRepository.update(user, userUpdateRequest)}
+      val updateResult = usersReadRepository.findByEmail(userUpdateRequest.email) map {
+        case None => usersWriteRepository.update(user, userUpdateRequest)
+        case Some(existing) => Left(ApiErrors.badRequest("Email is in use"))
+      }
       ApiResponse.Async(updateResult, handleError)
     } else {
       ApiResponse.Right(user)

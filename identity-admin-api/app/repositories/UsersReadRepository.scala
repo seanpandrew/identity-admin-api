@@ -2,8 +2,7 @@ package repositories
 
 import javax.inject.Inject
 
-import models.{ApiErrors, ApiError, User, SearchResponse}
-import PersistedUser._
+import models.{User, SearchResponse}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 

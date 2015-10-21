@@ -1,8 +1,9 @@
 import filters.{AddEC2InstanceHeader, LogRequestsFilter}
 import models.ApiErrors._
-import play.api.Logger
+import play.api.{Play, Application, Logger}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.{RequestHeader, Result, WithFilters}
+import com.novus.salat.global.{ctx => SalatGlobalContext}
 
 import scala.concurrent.Future
 
@@ -23,5 +24,10 @@ object Global extends WithFilters(AddEC2InstanceHeader, LogRequestsFilter) {
   override def onError(request: RequestHeader, ex: Throwable): Future[Result] = {
     logger.error(s"Error handling request request: $request", ex)
     Future { internalError(ex.getMessage) }
+  }
+
+  override def onStart(app: Application) = {
+    SalatGlobalContext.clearAllGraters()
+    SalatGlobalContext.registerClassLoader(Play.classloader(Play.current))
   }
 }

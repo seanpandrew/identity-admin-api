@@ -3,7 +3,6 @@ package repositories
 import models.MongoJsFormats
 import org.joda.time.DateTime
 import play.api.libs.json.Json
-import play.api.mvc.{Result, Results}
 import MongoJsFormats._
 
 import scala.language.implicitConversions
@@ -103,8 +102,4 @@ case class PersistedUser(primaryEmailAddress: String,
 
 object PersistedUser {
   implicit val format = Json.format[PersistedUser]
-
-  implicit def userToResult(user: PersistedUser): Result = {
-    Results.Ok(Json.toJson(user))
-  }
 }
