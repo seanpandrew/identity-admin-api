@@ -3,7 +3,7 @@ package models
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.json.Json
 import play.api.mvc.{Results, Result}
-import repositories.User
+import repositories.PersistedUser
 import scala.language.implicitConversions
 import MongoJsFormats._
 
@@ -51,7 +51,7 @@ object LastActiveLocation {
   implicit val format = Json.format[LastActiveLocation]
 }
 
-case class UserResponse(id: String,
+case class User(id: String,
                          email: String,
                          displayName: Option[String] = None,
                          username: Option[String] = None,
@@ -66,14 +66,14 @@ case class UserResponse(id: String,
                          status: UserStatus = UserStatus(),
                          groups: Seq[UserGroup] = Nil)
 
-object UserResponse {
-  implicit val format = Json.format[UserResponse]
+object User {
+  implicit val format = Json.format[User]
 
-  implicit def userResponseToResult(userResponse: UserResponse): Result =
+  implicit def userResponseToResult(userResponse: User): Result =
     Results.Ok(Json.toJson(userResponse))
 
-  def fromUser(user: User): UserResponse =
-    UserResponse(
+  def fromUser(user: PersistedUser): User =
+    User(
                 id = user._id.getOrElse(throw new IllegalStateException("User must have an id")),
                 email = user.primaryEmailAddress,
                 displayName = user.publicFields.flatMap(_.displayName),

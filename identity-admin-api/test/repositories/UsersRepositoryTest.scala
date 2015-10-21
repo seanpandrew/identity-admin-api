@@ -4,7 +4,7 @@ import java.util.UUID
 
 import com.github.simplyscala.{MongoEmbedDatabase, MongodProps}
 import de.flapdoodle.embed.mongo.distribution.Version
-import models.SearchResponse
+import models.{User, UserUpdateRequest, SearchResponse}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
@@ -22,9 +22,9 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
 
   override def afterAll() { mongoStop(mongoProps) }
 
-  def createUser(username: Option[String] = None, postcode: Option[String] = None): User = {
+  def createUser(username: Option[String] = None, postcode: Option[String] = None): PersistedUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
-    User(email,
+    PersistedUser(email,
       Some(BSONObjectID.generate.toString()),
       publicFields = Some(PublicFields(username = username)),
       privateFields = Some(PrivateFields(postcode = postcode)))
@@ -125,6 +125,39 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
       val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
 
       Await.result(repo.findById(UUID.randomUUID().toString), 1.second) mustEqual None
+    }
+  }
+  
+  "findByEmail" should {
+    "return Some user when user found" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser()
+      val createdUser1 = writeRepo.createUser(user1)
+
+      Await.result(repo.findByEmail(user1.primaryEmailAddress), 1.second).map(_.id) mustEqual createdUser1
+    }
+
+    "return None when user not found" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+
+      Await.result(repo.findByEmail(UUID.randomUUID().toString), 1.second) mustEqual None
+    }
+  }
+
+  "update" should {
+    "return updated user when successful" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser()
+      val createdUser1 = writeRepo.createUser(user1)
+      val userUpdateRequest = UserUpdateRequest(email = UUID.randomUUID().toString)
+      val origUser = User.fromUser(user1.copy(_id = createdUser1))
+
+      val result  = writeRepo.update(origUser, userUpdateRequest)
+      result.isRight mustBe true
+      result.right.get mustEqual origUser.copy(email = userUpdateRequest.email)
+      Await.result(repo.findById(createdUser1.get), 1.second).map(_.email) mustEqual Some(userUpdateRequest.email)
     }
   }
 

@@ -2,7 +2,7 @@ package models
 
 import org.joda.time.DateTime
 import play.api.libs.json.Json
-import repositories.User
+import repositories.PersistedUser
 import scala.language.implicitConversions
 import MongoJsFormats._
 
@@ -19,7 +19,7 @@ case class UserSummary(id: String,
 object UserSummary {
   implicit val format = Json.format[UserSummary]
 
-  def fromUser(user: User): UserSummary =
+  def fromUser(user: PersistedUser): UserSummary =
     UserSummary(
       id = user._id.getOrElse(""),
       email = user.primaryEmailAddress,
