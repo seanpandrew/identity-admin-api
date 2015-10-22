@@ -1,6 +1,7 @@
 package controllers
 
 import javax.inject.Inject
+import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import models._
 import play.api.libs.json.{JsError, JsSuccess}
@@ -16,7 +17,7 @@ class UsersController @Inject() (userService: UserService) extends Controller wi
 
   private val MinimumQueryLength = 3
 
-  def search(query: String, limit: Option[Int], offset: Option[Int]) = Action.async { request =>
+  def search(query: String, limit: Option[Int], offset: Option[Int]) = AuthenticatedAction.async { request =>
     ApiResponse {
       if (offset.getOrElse(0) < 0) {
         ApiResponse.Left(ApiErrors.badRequest("offset must be a positive integer"))
@@ -42,11 +43,11 @@ class UsersController @Inject() (userService: UserService) extends Controller wi
     }
   }
 
-  def findById(id: String) = (Action andThen UserAction(id)) { request =>
+  def findById(id: String) = (AuthenticatedAction andThen UserAction(id)) { request =>
     request.user
   }
 
-  def update(id: String) = (Action andThen UserAction(id)).async(parse.json) { request =>
+  def update(id: String) = (AuthenticatedAction andThen UserAction(id)).async(parse.json) { request =>
     ApiResponse {
       request.body.validate[UserUpdateRequest] match {
         case JsSuccess(result, path) =>
@@ -58,7 +59,7 @@ class UsersController @Inject() (userService: UserService) extends Controller wi
     }
   }
 
-  def delete(id: String) = (Action andThen UserAction(id)) { request =>
+  def delete(id: String) = (AuthenticatedAction andThen UserAction(id)) { request =>
     logger.info(s"Deleting user with id: $id")
     NoContent
   }
