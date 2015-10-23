@@ -4,8 +4,6 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentialsProvider}
 import com.amazonaws.regions.Regions
 import com.typesafe.config.ConfigFactory
-import play.api.Configuration
-import play.filters.cors.CORSConfig
 
 object Config {
   val config = ConfigFactory.load()
@@ -20,5 +18,5 @@ object Config {
     val region = Regions.EU_WEST_1
   }
 
-  val corsConfig = CORSConfig.fromConfiguration(Configuration(config))
+  val hmacSecret = config.getString("hmac.secret")
 }

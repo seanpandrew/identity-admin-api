@@ -2,9 +2,10 @@ package actions
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import javax.inject.Singleton
 
+import com.google.inject.ImplementedBy
 import com.gu.identity.util.Logging
+import configuration.Config
 import models.ApiErrors
 import org.apache.commons.codec.binary.Base64
 import play.api.http.HeaderNames
@@ -15,8 +16,18 @@ import scala.util.{Failure, Success, Try}
 
 import play.api.mvc._
 
-@Singleton
-class AuthenticatedAction extends ActionBuilder[Request] with Logging {
+class AuthenticatedActionWithSecret extends AuthenticatedAction {
+  val secret = Config.hmacSecret
+}
+
+trait WithSecret {
+  def secret: String
+}
+
+@ImplementedBy(classOf[AuthenticatedActionWithSecret])
+trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
+
+  def secret: String
 
   private val ALGORITHM = "HmacSHA256"
   private val HMAC_PATTERN = "HMAC\\s(.+)".r
@@ -52,11 +63,11 @@ class AuthenticatedAction extends ActionBuilder[Request] with Logging {
   private[actions] def sign(date: String, path: String): String = {
     val input = List[String](date, path)
     val toSign = input.mkString("\n")
-    calculateHMAC("secret", toSign)
+    calculateHMAC(toSign)
   }
 
 
-  private def calculateHMAC(secret: String, toEncode: String): String = {
+  private def calculateHMAC(toEncode: String): String = {
     val signingKey = new SecretKeySpec(secret.getBytes, ALGORITHM)
     val mac = Mac.getInstance(ALGORITHM)
     mac.init(signingKey)

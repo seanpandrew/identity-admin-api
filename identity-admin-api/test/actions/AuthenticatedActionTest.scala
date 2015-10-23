@@ -1,6 +1,6 @@
 package actions
 
-import models.{ApiError, ApiErrors}
+import models.ApiErrors
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import play.api.http.HeaderNames
@@ -15,7 +15,11 @@ import play.api.libs.json.Json
 
 class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter {
 
-  val action = spy(new AuthenticatedAction)
+  class TestAuthenticatedAction extends AuthenticatedAction {
+    val secret = "secret"
+  }
+
+  val action = spy(new TestAuthenticatedAction)
 
   before {
     Mockito.reset(action)

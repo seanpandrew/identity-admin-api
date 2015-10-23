@@ -18,6 +18,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   val userService = mock[UserService]
   class StubAuthenticatedAction extends AuthenticatedAction {
+    val secret = "secret"
     override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
       block(request)
     }
