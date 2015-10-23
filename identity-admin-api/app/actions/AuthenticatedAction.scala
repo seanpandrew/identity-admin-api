@@ -70,13 +70,4 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
     val rawHmac = mac.doFinal(toEncode.getBytes)
     new String(Base64.encodeBase64(rawHmac))
   }
-
-  def main(args: Array[String]) {
-    if (args.length < 2) throw new IllegalArgumentException("date (dd-MM-yyyy'T'HH:mm:ss'Z') and path are required as args")
-
-    val date = args(0)
-    val path = args(1)
-
-    println(sign(date, path))
-  }
 }
