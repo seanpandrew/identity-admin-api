@@ -9,19 +9,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWriteRepository: UsersWriteRepository) extends Logging {
 
-  def handleError[T]: PartialFunction[Throwable, Either[ApiError, T]] = {
-    case t: Throwable =>
-      logger.error("Unexpected error", t)
-      scala.Left(ApiErrors.internalError(t.getMessage))
-  }
-  
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     if(!user.email.equalsIgnoreCase(userUpdateRequest.email)) {
       val updateResult = usersReadRepository.findByEmail(userUpdateRequest.email) map {
         case None => usersWriteRepository.update(user, userUpdateRequest)
         case Some(existing) => Left(ApiErrors.badRequest("Email is in use"))
       }
-      ApiResponse.Async(updateResult, handleError)
+      ApiResponse.Async(updateResult)
     } else {
       ApiResponse.Right(user)
     }
@@ -32,7 +26,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWrit
 
   def findById(id: String): ApiResponse[User] = {
     val result =  usersReadRepository.findById(id).map(_.toRight(ApiErrors.notFound))
-    ApiResponse.Async(result, handleError)
+    ApiResponse.Async(result)
   }
 
 }

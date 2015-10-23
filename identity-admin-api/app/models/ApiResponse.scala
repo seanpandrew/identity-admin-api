@@ -1,5 +1,6 @@
 package models
 
+import com.gu.identity.util.Logging
 import play.api.libs.json._
 import play.api.mvc.{Result, Results}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -53,9 +54,16 @@ object ApiResponse extends Results {
    * Asynchronous versions of the ApiResponse Right/Left helpers for when you have
    * a Future that returns a good/bad value directly.
    */
-  object Async {
+  object Async extends Logging {
 
-    def apply[A](underlying: Future[Either[ApiError, A]], recovery: PartialFunction[Throwable, Either[ApiError, A]]): ApiResponse[A] =
+    def handleError[T]: PartialFunction[Throwable, Either[ApiError, T]] = {
+      case t: Throwable =>
+        logger.error("Unexpected error", t)
+        scala.Left(ApiErrors.internalError(t.getMessage))
+    }
+
+
+    def apply[A](underlying: Future[Either[ApiError, A]], recovery: PartialFunction[Throwable, Either[ApiError, A]] = handleError): ApiResponse[A] =
       ApiResponse(underlying recover recovery)
 
     /**
