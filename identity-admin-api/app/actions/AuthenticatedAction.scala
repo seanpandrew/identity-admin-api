@@ -35,6 +35,8 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
       val date = request.headers.get(HeaderNames.DATE).getOrElse(throw new scala.IllegalArgumentException("Date header is required."))
       val uri = request.uri
 
+      logger.info(s"path: $uri, date: $date, hmac: $hmac")
+
       val signed = sign(date, uri)
 
       if (signed == hmac) {
@@ -56,7 +58,7 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
     matched.toSeq.headOption
   }
 
-  private[actions] def sign(date: String, path: String): String = {
+  def sign(date: String, path: String): String = {
     val input = List[String](date, path)
     val toSign = input.mkString("\n")
     calculateHMAC(toSign)
