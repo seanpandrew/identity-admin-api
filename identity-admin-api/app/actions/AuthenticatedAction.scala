@@ -20,10 +20,6 @@ class AuthenticatedActionWithSecret extends AuthenticatedAction {
   val secret = Config.hmacSecret
 }
 
-trait WithSecret {
-  def secret: String
-}
-
 @ImplementedBy(classOf[AuthenticatedActionWithSecret])
 trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
 
