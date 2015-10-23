@@ -22,9 +22,9 @@ object ApiErrors {
       statusCode = 500
     )
 
-  val unauthorized = ApiError(
+  def unauthorized(msg: String) = ApiError(
     message = "Unauthorized",
-    details = "Failed to authenticate",
+    details = msg,
     statusCode = 401
   )
 }

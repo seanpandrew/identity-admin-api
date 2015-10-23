@@ -13,11 +13,11 @@ import scala.concurrent.Future
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
-class UsersController @Inject() (userService: UserService) extends Controller with Logging {
+class UsersController @Inject() (userService: UserService, auth: AuthenticatedAction) extends Controller with Logging {
 
   private val MinimumQueryLength = 3
 
-  def search(query: String, limit: Option[Int], offset: Option[Int]) = AuthenticatedAction.async { request =>
+  def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     ApiResponse {
       if (offset.getOrElse(0) < 0) {
         ApiResponse.Left(ApiErrors.badRequest("offset must be a positive integer"))
@@ -43,11 +43,11 @@ class UsersController @Inject() (userService: UserService) extends Controller wi
     }
   }
 
-  def findById(id: String) = (AuthenticatedAction andThen UserAction(id)) { request =>
+  def findById(id: String) = (auth andThen UserAction(id)) { request =>
     request.user
   }
 
-  def update(id: String) = (AuthenticatedAction andThen UserAction(id)).async(parse.json) { request =>
+  def update(id: String) = (auth andThen UserAction(id)).async(parse.json) { request =>
     ApiResponse {
       request.body.validate[UserUpdateRequest] match {
         case JsSuccess(result, path) =>
@@ -59,7 +59,7 @@ class UsersController @Inject() (userService: UserService) extends Controller wi
     }
   }
 
-  def delete(id: String) = (AuthenticatedAction andThen UserAction(id)) { request =>
+  def delete(id: String) = (auth andThen UserAction(id)) { request =>
     logger.info(s"Deleting user with id: $id")
     NoContent
   }

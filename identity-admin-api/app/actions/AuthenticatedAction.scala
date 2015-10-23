@@ -1,8 +1,8 @@
 package actions
 
-import java.security.MessageDigest
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import javax.inject.Singleton
 
 import com.gu.identity.util.Logging
 import models.ApiErrors
@@ -15,9 +15,10 @@ import scala.util.{Failure, Success, Try}
 
 import play.api.mvc._
 
-object AuthenticatedAction extends ActionBuilder[Request] with Logging {
+@Singleton
+class AuthenticatedAction extends ActionBuilder[Request] with Logging {
 
-  val ALGORITHM = "HmacSHA256"
+  private val ALGORITHM = "HmacSHA256"
   private val HMAC_PATTERN = "HMAC\\s(.+)".r
 
   def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
@@ -32,14 +33,11 @@ object AuthenticatedAction extends ActionBuilder[Request] with Logging {
       if (signed == hmac) {
         Success
       } else {
-        throw new IllegalArgumentException("Authorization token is invalid")
+        throw new IllegalArgumentException("Authorization token is invalid.")
       }
     } match {
-      case Success(r) =>
-        block(request)
-      case Failure(t) =>
-        logger.info(s"Authentication failed due to ${t.getMessage}")
-        Future.successful(ApiErrors.unauthorized)
+      case Success(r) => block(request)
+      case Failure(t) => Future.successful(ApiErrors.unauthorized(t.getMessage))
     }
   }
 

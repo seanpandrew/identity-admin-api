@@ -1,19 +1,28 @@
 package controllers
 
+import actions.AuthenticatedAction
 import models._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json
+import play.api.mvc.{Result, Request}
 import play.api.test.FakeRequest
 import repositories.PersistedUser
 import play.api.test.Helpers._
 import services.UserService
 
+import scala.concurrent.Future
+
 class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   val userService = mock[UserService]
-  val controller = new UsersController(userService)
+  class StubAuthenticatedAction extends AuthenticatedAction {
+    override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
+      block(request)
+    }
+  }
+  val controller = new UsersController(userService, new StubAuthenticatedAction)
   
   "search" should {
     "return 400 when query string is less than minimum length" in {
