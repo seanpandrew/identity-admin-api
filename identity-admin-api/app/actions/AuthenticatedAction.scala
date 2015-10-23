@@ -24,7 +24,7 @@ class AuthenticatedAction extends ActionBuilder[Request] with Logging {
   def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
     Try {
       val authorization = request.headers.get(HeaderNames.AUTHORIZATION).getOrElse(throw new IllegalArgumentException("Authorization header is required."))
-      val hmac = extractToken(authorization)
+      val hmac = extractToken(authorization).getOrElse(throw new IllegalArgumentException("Authorization header is invalid."))
       val date = request.headers.get(HeaderNames.DATE).getOrElse(throw new scala.IllegalArgumentException("Date header is required."))
       val uri = request.uri
 
@@ -41,15 +41,15 @@ class AuthenticatedAction extends ActionBuilder[Request] with Logging {
     }
   }
 
-  private def extractToken(authHeader: String): String = {
+  private[actions] def extractToken(authHeader: String): Option[String] = {
     val matched = HMAC_PATTERN.findAllIn(authHeader).matchData map {
       m => m.group(1)
     }
 
-    matched.toSeq.headOption.getOrElse(throw new IllegalArgumentException("Invalid authorization header"))
+    matched.toSeq.headOption
   }
 
-  private def sign(date: String, path: String): String = {
+  private[actions] def sign(date: String, path: String): String = {
     val input = List[String](date, path)
     val toSign = input.mkString("\n")
     calculateHMAC("secret", toSign)
