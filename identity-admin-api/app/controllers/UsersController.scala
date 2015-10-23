@@ -7,6 +7,7 @@ import models._
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.utils.UriEncoding
 import services.UserService
 
 import scala.concurrent.Future
@@ -29,7 +30,7 @@ class UsersController @Inject() (userService: UserService, auth: AuthenticatedAc
         ApiResponse.Left(ApiErrors.badRequest(s"query must be a minimum of $MinimumQueryLength characters"))
       }
       else {
-        userService.search(query, limit, offset)
+        userService.search(UriEncoding.decodePathSegment(query, "UTF-8"), limit, offset)
       }
     }
   }
