@@ -8,16 +8,16 @@ import com.mongodb.casbah.MongoCursor
 import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.dao.SalatDAO
 import models.{ApiErrors, ApiError}
-import reactivemongo.bson.BSONObjectID
+import org.bson.types.ObjectId
 import com.novus.salat.global._
 
 import scala.util.{Failure, Success, Try}
 
-case class ReservedUsername(_id: String, username: String)
+case class ReservedUsername(_id: ObjectId, username: String)
 
 
 @Singleton
-class ReservedUserNameWriteRepository extends SalatDAO[ReservedUsername, String](collection=SalatMongoConnection.db()("reservedUsernames")) with Logging {
+class ReservedUserNameWriteRepository extends SalatDAO[ReservedUsername, ObjectId](collection=SalatMongoConnection.db()("reservedUsernames")) with Logging {
 
   def loadReservedUsernames: Either[ApiError, ReservedUsernameList] =
     Try {
@@ -33,9 +33,11 @@ class ReservedUserNameWriteRepository extends SalatDAO[ReservedUsername, String]
 
   def addReservedUsername(reservedUsername: String): Either[ApiError, ReservedUsernameList]  = {
     Try {
-      insert(ReservedUsername(BSONObjectID.generate.toString(), reservedUsername))
+      insert(ReservedUsername(new ObjectId(), reservedUsername))
     } match {
-      case Success(r) => loadReservedUsernames
+      case Success(r) =>
+        logger.info(s"Reserving username: $reservedUsername")
+        loadReservedUsernames
       case Failure(t) =>
         logger.error("Could not add to reserved username list", t)
         Left(ApiErrors.internalError(t.getMessage))

@@ -77,6 +77,7 @@ object User {
                 id = user._id.getOrElse(throw new IllegalStateException("User must have an id")),
                 email = user.primaryEmailAddress,
                 displayName = user.publicFields.flatMap(_.displayName),
+                username = user.publicFields.flatMap(_.username),
                 vanityUrl = user.publicFields.flatMap(_.vanityUrl),
                 personalDetails = PersonalDetails(
                  firstName = user.privateFields.flatMap(_.firstName),
