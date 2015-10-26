@@ -2,13 +2,16 @@ package services
 
 import javax.inject.Inject
 
+import com.gu.identity.model.ReservedUsernameList
 import com.gu.identity.util.Logging
 import models._
-import repositories.{UsersWriteRepository, UsersReadRepository}
+import repositories.{ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWriteRepository: UsersWriteRepository) extends Logging {
+class UserService @Inject() (usersReadRepository: UsersReadRepository,
+                             usersWriteRepository: UsersWriteRepository,
+                             reservedUserNameRepository: ReservedUserNameWriteRepository) extends Logging {
 
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     if(!user.email.equalsIgnoreCase(userUpdateRequest.email)) {
@@ -30,8 +33,14 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWrit
     ApiResponse.Async(result)
   }
 
-  def delete(user: User): ApiResponse[Boolean] = {
-    val result = usersWriteRepository.delete(user)
+  def delete(user: User): ApiResponse[ReservedUsernameList] = {
+    val result = usersWriteRepository.delete(user) match{
+      case Right(r) => 
+        user.username.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
+          reservedUserNameRepository.loadReservedUsernames
+        }
+      case Left(r) => Left(r)
+    }
     ApiResponse.Async(Future.successful(result))
   }
 

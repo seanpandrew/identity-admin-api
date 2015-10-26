@@ -1,6 +1,7 @@
 package controllers
 
 import actions.AuthenticatedAction
+import com.gu.identity.model.ReservedUsernameList
 import models._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
@@ -138,7 +139,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val id = "abc"
       val user = mock[User]
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
-      when(userService.delete(user)).thenReturn(ApiResponse.Right(true))
+      when(userService.delete(user)).thenReturn(ApiResponse.Right(ReservedUsernameList(Nil)))
       val result = controller.delete(id)(FakeRequest())
       status(result) shouldEqual NO_CONTENT
     }
@@ -147,7 +148,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val id = "abc"
       val user = mock[User]
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
-      when(userService.delete(user)).thenReturn(ApiResponse.Left[Boolean](ApiErrors.internalError("boom")))
+      when(userService.delete(user)).thenReturn(ApiResponse.Left[ReservedUsernameList](ApiErrors.internalError("boom")))
       val result = controller.delete(id)(FakeRequest())
       status(result) shouldEqual INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldEqual Json.toJson(ApiErrors.internalError("boom"))

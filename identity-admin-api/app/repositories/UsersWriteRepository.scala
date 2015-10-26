@@ -4,12 +4,9 @@ import javax.inject.Singleton
 
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.commons.MongoDBObject
-import com.novus.salat.{StringTypeHintStrategy, TypeHintFrequency, Context}
 import com.novus.salat.dao.SalatDAO
 import com.novus.salat.global._
 import models._
-import play.api.Play
-import play.api.Play.current
 
 import scala.util.{Failure, Success, Try}
 

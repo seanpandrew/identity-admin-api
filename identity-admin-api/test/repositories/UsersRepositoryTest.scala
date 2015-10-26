@@ -2,11 +2,8 @@ package repositories
 
 import java.util.UUID
 
-import com.github.simplyscala.{MongoEmbedDatabase, MongodProps}
-import de.flapdoodle.embed.mongo.distribution.Version
 import models.{User, UserUpdateRequest, SearchResponse}
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.Eventually
+import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play
 import reactivemongo.bson.BSONObjectID
@@ -14,13 +11,8 @@ import reactivemongo.bson.BSONObjectID
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventually with MongoEmbedDatabase with BeforeAndAfterAll {
-
-  var mongoProps: MongodProps = null
-
-  override def beforeAll() { mongoProps = mongoStart(port = 12345, version = Version.V2_4_10) }
-
-  override def afterAll() { mongoStop(mongoProps) }
+@DoNotDiscover
+class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   def createUser(username: Option[String] = None, postcode: Option[String] = None): PersistedUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
