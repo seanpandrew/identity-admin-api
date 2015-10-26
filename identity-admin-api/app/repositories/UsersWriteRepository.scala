@@ -32,4 +32,16 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
         Left(ApiErrors.internalError(t.getMessage))
     }
   }
+
+  def delete(user: User): Either[ApiError, Boolean] = {
+    Try {
+      removeById(user.id)
+    } match {
+      case Success(r) =>
+        Right(true)
+      case Failure(t) =>
+        logger.error(s"Failed to delete user. id: ${user.id}", t)
+        Left(ApiErrors.internalError(t.getMessage))
+    }
+  }
 }

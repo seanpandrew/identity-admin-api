@@ -60,8 +60,11 @@ class UsersController @Inject() (userService: UserService, auth: AuthenticatedAc
     }
   }
 
-  def delete(id: String) = (auth andThen UserAction(id)) { request =>
+  def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user with id: $id")
-    NoContent
+    userService.delete(request.user).asFuture.map {
+      case Right(r) => NoContent
+      case Left(r) => ApiError.apiErrorToResult(r)
+    }
   }
 }

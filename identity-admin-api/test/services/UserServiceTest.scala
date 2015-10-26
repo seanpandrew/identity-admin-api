@@ -69,4 +69,23 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     }
   }
 
+  "delete" should {
+    "remove the given user" in {
+      val user = User("id", "email")
+      when(writeRepo.delete(user)).thenReturn(Right(true))
+      val result = service.delete(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(true)
+    }
+
+    "return internal server api error if an error occurs deleting the user" in {
+      val user = User("id", "email")
+      when(writeRepo.delete(user)).thenReturn(Left(ApiErrors.internalError("boom")))
+
+      val result = service.delete(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+    }
+  }
+
 }

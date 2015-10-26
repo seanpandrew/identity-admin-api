@@ -6,6 +6,7 @@ import com.gu.identity.util.Logging
 import models._
 import repositories.{UsersWriteRepository, UsersReadRepository}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWriteRepository: UsersWriteRepository) extends Logging {
 
@@ -27,6 +28,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository, usersWrit
   def findById(id: String): ApiResponse[User] = {
     val result =  usersReadRepository.findById(id).map(_.toRight(ApiErrors.notFound))
     ApiResponse.Async(result)
+  }
+
+  def delete(user: User): ApiResponse[Boolean] = {
+    val result = usersWriteRepository.delete(user)
+    ApiResponse.Async(Future.successful(result))
   }
 
 }

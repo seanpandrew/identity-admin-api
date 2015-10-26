@@ -161,4 +161,18 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
     }
   }
 
+  "delete" should {
+    "return true when successful" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser()
+      val createdUser1 = writeRepo.createUser(user1)
+      val origUser = User.fromUser(user1.copy(_id = createdUser1))
+
+      val result  = writeRepo.delete(origUser)
+      result.isRight mustBe true
+      Await.result(repo.findById(origUser.id), 1.second) mustEqual None
+    }
+  }
+
 }
