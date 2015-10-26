@@ -4,12 +4,9 @@ import javax.inject.Singleton
 
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.commons.MongoDBObject
-import com.novus.salat.{StringTypeHintStrategy, TypeHintFrequency, Context}
 import com.novus.salat.dao.SalatDAO
 import com.novus.salat.global._
 import models._
-import play.api.Play
-import play.api.Play.current
 
 import scala.util.{Failure, Success, Try}
 
@@ -29,6 +26,18 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
         Right(updated)
       case Failure(t) =>
         logger.error(s"Failed to update user. id: ${user.id}, updateRequest: $userUpdateRequest", t)
+        Left(ApiErrors.internalError(t.getMessage))
+    }
+  }
+
+  def delete(user: User): Either[ApiError, Boolean] = {
+    Try {
+      removeById(user.id)
+    } match {
+      case Success(r) =>
+        Right(true)
+      case Failure(t) =>
+        logger.error(s"Failed to delete user. id: ${user.id}", t)
         Left(ApiErrors.internalError(t.getMessage))
     }
   }

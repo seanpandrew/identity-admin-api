@@ -2,11 +2,8 @@ package repositories
 
 import java.util.UUID
 
-import com.github.simplyscala.{MongoEmbedDatabase, MongodProps}
-import de.flapdoodle.embed.mongo.distribution.Version
 import models.{User, UserUpdateRequest, SearchResponse}
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.Eventually
+import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play
 import reactivemongo.bson.BSONObjectID
@@ -14,13 +11,8 @@ import reactivemongo.bson.BSONObjectID
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventually with MongoEmbedDatabase with BeforeAndAfterAll {
-
-  var mongoProps: MongodProps = null
-
-  override def beforeAll() { mongoProps = mongoStart(port = 12345, version = Version.V2_4_10) }
-
-  override def afterAll() { mongoStop(mongoProps) }
+@DoNotDiscover
+class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   def createUser(username: Option[String] = None, postcode: Option[String] = None): PersistedUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
@@ -158,6 +150,20 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite with Eventuall
       result.isRight mustBe true
       result.right.get mustEqual origUser.copy(email = userUpdateRequest.email)
       Await.result(repo.findById(createdUser1.get), 1.second).map(_.email) mustEqual Some(userUpdateRequest.email)
+    }
+  }
+
+  "delete" should {
+    "return true when successful" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser()
+      val createdUser1 = writeRepo.createUser(user1)
+      val origUser = User.fromUser(user1.copy(_id = createdUser1))
+
+      val result  = writeRepo.delete(origUser)
+      result.isRight mustBe true
+      Await.result(repo.findById(origUser.id), 1.second) mustEqual None
     }
   }
 
