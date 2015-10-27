@@ -64,6 +64,10 @@
       "Description": "CIDR of VPC subnet",
       "Type": "String"
     },
+    "DepartmentSubnet": {
+      "Description": "CIDR of department subnet",
+      "Type": "String"
+    },
     "SshAccessSecurityGroup": {
       "Description": "Security group that is allowed SSH access to the instances",
       "Type": "AWS::EC2::SecurityGroup::Id"
@@ -335,6 +339,12 @@
             "FromPort": "443",
             "ToPort": "443",
             "CidrIp": {"Ref": "VpcSubnet"}
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "443",
+            "ToPort": "443",
+            "CidrIp": {"Ref": "DepartmentSubnet"}
           }
         ]
       }
