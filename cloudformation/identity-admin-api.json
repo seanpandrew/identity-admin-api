@@ -62,11 +62,13 @@
     },
     "VpcSubNet": {
       "Description": "CIDR of VPC subnet",
-      "Type": "String"
+      "Type": "String",
+      "Default": "192.168.0.0/32"
     },
     "DepartmentSubnet": {
       "Description": "CIDR of department subnet",
-      "Type": "String"
+      "Type": "String",
+      "Default": "192.168.0.0/32"
     },
     "SshAccessSecurityGroup": {
       "Description": "Security group that is allowed SSH access to the instances",
