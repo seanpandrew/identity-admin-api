@@ -60,12 +60,12 @@
       "Description": "ID of the VPC onto which to launch the application",
       "Type": "AWS::EC2::VPC::Id"
     },
-    "VpcSubNet": {
+    "VpcSubNetCIDR": {
       "Description": "CIDR of VPC subnet",
       "Type": "String",
       "Default": "192.168.0.0/32"
     },
-    "DepartmentSubnet": {
+    "DepartmentSubnetCIDR": {
       "Description": "CIDR of department subnet",
       "Type": "String",
       "Default": "192.168.0.0/32"
@@ -340,13 +340,13 @@
             "IpProtocol": "tcp",
             "FromPort": "443",
             "ToPort": "443",
-            "CidrIp": {"Ref": "VpcSubnet"}
+            "CidrIp": {"Ref": "VpcSubNetCIDR"}
           },
           {
             "IpProtocol": "tcp",
             "FromPort": "443",
             "ToPort": "443",
-            "CidrIp": {"Ref": "DepartmentSubnet"}
+            "CidrIp": {"Ref": "DepartmentSubnetCIDR"}
           }
         ]
       }
