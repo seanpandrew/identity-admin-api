@@ -60,6 +60,10 @@
       "Description": "ID of the VPC onto which to launch the application",
       "Type": "AWS::EC2::VPC::Id"
     },
+    "VpcSubNet": {
+      "Description": "CIDR of VPC subnet",
+      "Type": "String"
+    },
     "SshAccessSecurityGroup": {
       "Description": "Security group that is allowed SSH access to the instances",
       "Type": "AWS::EC2::SecurityGroup::Id"
@@ -330,7 +334,7 @@
             "IpProtocol": "tcp",
             "FromPort": "443",
             "ToPort": "443",
-            "CidrIp": "0.0.0.0/0"
+            "CidrIp": {"Ref": "VpcSubnet"}
           }
         ]
       }
