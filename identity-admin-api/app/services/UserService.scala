@@ -10,11 +10,6 @@ import uk.gov.hmrc.emailaddress.EmailAddress
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-sealed trait UpdateState
-case object NoUpdateRequired extends UpdateState
-case object UpdateValid extends UpdateState
-case class UpdateInvalid(message: String) extends UpdateState
-
 class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              usersWriteRepository: UsersWriteRepository,
                              reservedUserNameRepository: ReservedUserNameWriteRepository) extends Logging {
