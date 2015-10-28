@@ -36,9 +36,9 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
 
   private def prepareUserForUpdate(userUpdateRequest: UserUpdateRequest, persistedUser: PersistedUser): PersistedUser = {
     val publicFields = persistedUser.publicFields.getOrElse(PublicFields()).copy(
-      username = Some(userUpdateRequest.username),
-      displayName = Some(userUpdateRequest.username),
-      vanityUrl = Some(userUpdateRequest.username)
+      username = userUpdateRequest.username,
+      displayName = userUpdateRequest.displayName,
+      vanityUrl = userUpdateRequest.username
     )
     val privateFields = persistedUser.privateFields.getOrElse(PrivateFields()).copy(
       firstName = userUpdateRequest.firstName,

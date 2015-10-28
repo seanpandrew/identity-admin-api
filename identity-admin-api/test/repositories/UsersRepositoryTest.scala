@@ -145,7 +145,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       val createdUser1 = writeRepo.createUser(user1)
       val userUpdateRequest = UserUpdateRequest(
         email = UUID.randomUUID().toString,
-        username = UUID.randomUUID().toString,
+        username = Some(UUID.randomUUID().toString),
+        displayName = Some(UUID.randomUUID().toString),
         firstName = Some("firstName"),
         lastName = Some("lastName"),
         receiveGnmMarketing = Some(true),
@@ -158,9 +159,9 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
       val updatedUser = Await.result(repo.findById(createdUser1.get), 1.second).get
       updatedUser.email mustEqual userUpdateRequest.email
-      updatedUser.username mustEqual Some(userUpdateRequest.username)
-      updatedUser.displayName mustEqual Some(userUpdateRequest.username)
-      updatedUser.vanityUrl mustEqual Some(userUpdateRequest.username)
+      updatedUser.username mustEqual userUpdateRequest.username
+      updatedUser.displayName mustEqual userUpdateRequest.displayName
+      updatedUser.vanityUrl mustEqual userUpdateRequest.username
       updatedUser.personalDetails.firstName mustEqual userUpdateRequest.firstName
       updatedUser.personalDetails.lastName mustEqual userUpdateRequest.lastName
       updatedUser.status.receiveGnmMarketing mustEqual userUpdateRequest.receiveGnmMarketing
