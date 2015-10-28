@@ -138,7 +138,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
   }
 
   "update" should {
-    "persist email, username, displayname, vanityurl, firstname, lastname" in {
+    "persist fields" in {
       val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
       val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
@@ -147,7 +147,9 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
         email = UUID.randomUUID().toString,
         username = UUID.randomUUID().toString,
         firstName = Some("firstName"),
-        lastName = Some("lastName"))
+        lastName = Some("lastName"),
+        receiveGnmMarketing = Some(true),
+        receive3rdPartyMarketing = Some(false))
 
       val origUser = User.fromUser(user1.copy(_id = createdUser1))
 
@@ -161,6 +163,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       updatedUser.vanityUrl mustEqual Some(userUpdateRequest.username)
       updatedUser.personalDetails.firstName mustEqual userUpdateRequest.firstName
       updatedUser.personalDetails.lastName mustEqual userUpdateRequest.lastName
+      updatedUser.status.receiveGnmMarketing mustEqual userUpdateRequest.receiveGnmMarketing
+      updatedUser.status.receive3rdPartyMarketing mustEqual userUpdateRequest.receive3rdPartyMarketing
     }
   }
 

@@ -44,10 +44,15 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
       firstName = userUpdateRequest.firstName,
       secondName = userUpdateRequest.lastName
     )
+    val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
+      receive3rdPartyMarketing = userUpdateRequest.receive3rdPartyMarketing,
+      receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing
+    )
     persistedUser.copy(
       primaryEmailAddress = userUpdateRequest.email,
       publicFields = Some(publicFields),
-      privateFields = Some(privateFields)
+      privateFields = Some(privateFields),
+      statusFields = Some(statusFields)
     )
   }
 
