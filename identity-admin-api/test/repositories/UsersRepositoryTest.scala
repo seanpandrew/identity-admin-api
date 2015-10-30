@@ -14,12 +14,15 @@ import scala.concurrent.duration._
 @DoNotDiscover
 class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
-  def createUser(username: Option[String] = None, postcode: Option[String] = None): PersistedUser = {
+  def createUser(username: Option[String] = None, postcode: Option[String] = None, registeredIp: Option[String] = None, lastActiveIp: Option[String] = None): PersistedUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
     PersistedUser(email,
       Some(BSONObjectID.generate.toString()),
       publicFields = Some(PublicFields(username = username)),
-      privateFields = Some(PrivateFields(postcode = postcode)))
+      privateFields = Some(
+        PrivateFields(postcode = postcode,
+        registrationIp = registeredIp,
+        lastActiveIpAddress = lastActiveIp)))
   }
 
     "search" must {
@@ -48,6 +51,24 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
         Await.result(repo.search(postcode), 1.second).results.map(_.id) must contain(createdUser.get)
+      }
+
+      "return a user when registered ip matches exactly" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val ip = "127.0.0.1"
+        val user = createUser(registeredIp = Some(ip))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.search(ip), 1.second).results.map(_.id) must contain(createdUser.get)
+      }
+
+      "return a user when last active ip matches exactly" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val ip = "127.0.0.1"
+        val user = createUser(lastActiveIp = Some(ip))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.search(ip), 1.second).results.map(_.id) must contain(createdUser.get)
       }
       
       "return Nil when no results are found" in {
