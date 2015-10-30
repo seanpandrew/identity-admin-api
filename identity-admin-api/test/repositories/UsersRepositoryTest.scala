@@ -138,18 +138,33 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
   }
 
   "update" should {
-    "return updated user when successful" in {
+    "persist fields" in {
       val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
       val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
-      val userUpdateRequest = UserUpdateRequest(email = UUID.randomUUID().toString)
+      val userUpdateRequest = UserUpdateRequest(
+        email = UUID.randomUUID().toString,
+        username = UUID.randomUUID().toString,
+        firstName = Some("firstName"),
+        lastName = Some("lastName"),
+        receiveGnmMarketing = Some(true),
+        receive3rdPartyMarketing = Some(false))
+
       val origUser = User.fromUser(user1.copy(_id = createdUser1))
 
       val result  = writeRepo.update(origUser, userUpdateRequest)
       result.isRight mustBe true
-      result.right.get mustEqual origUser.copy(email = userUpdateRequest.email)
-      Await.result(repo.findById(createdUser1.get), 1.second).map(_.email) mustEqual Some(userUpdateRequest.email)
+
+      val updatedUser = Await.result(repo.findById(createdUser1.get), 1.second).get
+      updatedUser.email mustEqual userUpdateRequest.email
+      updatedUser.username mustEqual Some(userUpdateRequest.username)
+      updatedUser.displayName mustEqual Some(userUpdateRequest.username)
+      updatedUser.vanityUrl mustEqual Some(userUpdateRequest.username)
+      updatedUser.personalDetails.firstName mustEqual userUpdateRequest.firstName
+      updatedUser.personalDetails.lastName mustEqual userUpdateRequest.lastName
+      updatedUser.status.receiveGnmMarketing mustEqual userUpdateRequest.receiveGnmMarketing
+      updatedUser.status.receive3rdPartyMarketing mustEqual userUpdateRequest.receive3rdPartyMarketing
     }
   }
 
