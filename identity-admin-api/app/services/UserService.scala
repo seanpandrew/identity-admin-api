@@ -37,11 +37,9 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {
     def validateUsername(username: String) = UsernamePattern.pattern.matcher(username).matches()
 
-    (user.username, userUpdateRequest.username) match {
-      case (None, None) => true
-      case (Some(existing), None) => true
-      case (Some(existing), Some(updated)) => if(!existing.equalsIgnoreCase(updated)) validateUsername(updated) else true
-      case (None, Some(updated)) => validateUsername(updated)
+    user.username match {
+      case None => validateUsername(userUpdateRequest.username)
+      case Some(existing) => if(!existing.equalsIgnoreCase(userUpdateRequest.username)) validateUsername(userUpdateRequest.username) else true
     }
   }
 

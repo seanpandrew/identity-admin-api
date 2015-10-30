@@ -25,7 +25,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   "update" should {
     "update when email and username are valid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = Some("username"))
+      val updateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
@@ -38,7 +38,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the username is less than 6 chars" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = user.email, username = Some("123"))
+      val updateRequest = UserUpdateRequest(email = user.email, username = "123")
 
       val result = service.update(user, updateRequest)
 
@@ -48,7 +48,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the username is more than 20 chars" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = user.email, username = Some("123456789012345678901"))
+      val updateRequest = UserUpdateRequest(email = user.email, username = "123456789012345678901")
 
       val result = service.update(user, updateRequest)
 
@@ -58,7 +58,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the username is contains non alpha-numeric chars" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = user.email, username = Some("abc123$"))
+      val updateRequest = UserUpdateRequest(email = user.email, username = "abc123$")
 
       val result = service.update(user, updateRequest)
 
@@ -68,7 +68,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the email is invalid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "invalid", username = Some("username"))
+      val updateRequest = UserUpdateRequest(email = "invalid", username = "username")
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
 
@@ -80,7 +80,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the email and username are invalid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "invalid", username = Some("123"))
+      val updateRequest = UserUpdateRequest(email = "invalid", username = "123")
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
 
@@ -92,7 +92,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return internal server api error if an error occurs updating the user" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "test@theguardian.com", username = Some("username"))
+      val updateRequest = UserUpdateRequest(email = "test@theguardian.com", username = "username")
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Left(ApiErrors.internalError("boom")))
