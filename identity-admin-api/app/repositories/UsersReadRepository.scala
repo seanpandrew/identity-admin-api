@@ -47,7 +47,8 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
       "$or" -> Json.arr(
         Json.obj("primaryEmailAddress" -> query),
         Json.obj("publicFields.username" -> query),
-        Json.obj("privateFields.postcode" -> query)
+        Json.obj("privateFields.postcode" -> query),
+        Json.obj("privateFields.registrationIp" -> query)
       )
     )
   
