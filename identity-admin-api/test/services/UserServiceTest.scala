@@ -16,10 +16,11 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val userReadRepo = mock[UsersReadRepository]
   val userWriteRepo = mock[UsersWriteRepository]
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
-  val service = new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo)
+  val identityApiClient = mock[IdentityApiClient]
+  val service = new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
 
   before {
-    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo)
+    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
   }
 
   "update" should {

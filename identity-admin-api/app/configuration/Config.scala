@@ -19,4 +19,9 @@ object Config {
   }
 
   val hmacSecret = config.getString("hmac.secret")
+  
+  object IdentityApi {
+    val clientToken = config.getString("identity-api.client-token")
+    val baseUrl = config.getString("identity-api.base-url")
+  }
 }

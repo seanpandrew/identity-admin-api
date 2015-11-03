@@ -1,7 +1,6 @@
 package services
 
 import javax.inject.Inject
-
 import com.gu.identity.model.ReservedUsernameList
 import com.gu.identity.util.Logging
 import models._
@@ -12,7 +11,8 @@ import scala.concurrent.Future
 
 class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              usersWriteRepository: UsersWriteRepository,
-                             reservedUserNameRepository: ReservedUserNameWriteRepository) extends Logging {
+                             reservedUserNameRepository: ReservedUserNameWriteRepository,
+                             identityApiClient: IdentityApiClient) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -67,6 +67,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       case Left(r) => Left(r)
     }
     ApiResponse.Async(Future.successful(result))
+  }
+  
+  def sendEmailValidation(user: User): ApiResponse[Boolean] = {
+    val result = identityApiClient.sendEmailValidation(user.id)
+    ApiResponse.Async(result)
   }
 
 }
