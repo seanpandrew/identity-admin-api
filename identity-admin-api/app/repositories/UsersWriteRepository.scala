@@ -3,6 +3,7 @@ package repositories
 import javax.inject.Singleton
 
 import com.gu.identity.util.Logging
+import com.mongodb.casbah.WriteConcern
 import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.dao.SalatDAO
 import com.novus.salat.global._
@@ -19,13 +20,50 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
   
   def update(user: User, userUpdateRequest: UserUpdateRequest): Either[ApiError, User] = {
     Try {
-      update(MongoDBObject("_id" -> user.id),  MongoDBObject("primaryEmailAddress" -> userUpdateRequest.email), upsert = false, multi = false)
+      findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
+        prepareUserForUpdate(userUpdateRequest, persistedUser)
+      }
     } match {
-      case Success(r) =>
-        val updated = user.copy(email = userUpdateRequest.email)
-        Right(updated)
+      case Success(Some(userToSave)) =>
+          doUpdate(userToSave)
+      case Success(None) =>
+        Left(ApiErrors.notFound)
+       case Failure(t) =>
+        logger.error(s"Failed to update user. id: ${user.id}", t)
+        Left(ApiErrors.internalError(t.getMessage))
+    }
+  }
+
+  private def prepareUserForUpdate(userUpdateRequest: UserUpdateRequest, persistedUser: PersistedUser): PersistedUser = {
+    val publicFields = persistedUser.publicFields.getOrElse(PublicFields()).copy(
+      username = Some(userUpdateRequest.username),
+      displayName = Some(userUpdateRequest.username),
+      vanityUrl = Some(userUpdateRequest.username)
+    )
+    val privateFields = persistedUser.privateFields.getOrElse(PrivateFields()).copy(
+      firstName = userUpdateRequest.firstName,
+      secondName = userUpdateRequest.lastName
+    )
+    val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
+      receive3rdPartyMarketing = userUpdateRequest.receive3rdPartyMarketing,
+      receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing
+    )
+    persistedUser.copy(
+      primaryEmailAddress = userUpdateRequest.email,
+      publicFields = Some(publicFields),
+      privateFields = Some(privateFields),
+      statusFields = Some(statusFields)
+    )
+  }
+
+  private def doUpdate(userToSave: PersistedUser): Either[ApiError, User] = {
+    Try {
+      update(MongoDBObject("_id" -> userToSave._id), userToSave, upsert = false, multi = false, wc = WriteConcern.Safe)
+    } match {
+      case Success(_) =>
+        Right(User.fromUser(userToSave))
       case Failure(t) =>
-        logger.error(s"Failed to update user. id: ${user.id}, updateRequest: $userUpdateRequest", t)
+        logger.error(s"Failed to update user. id: ${userToSave._id}", t)
         Left(ApiErrors.internalError(t.getMessage))
     }
   }

@@ -14,12 +14,15 @@ import scala.concurrent.duration._
 @DoNotDiscover
 class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
-  def createUser(username: Option[String] = None, postcode: Option[String] = None): PersistedUser = {
+  def createUser(username: Option[String] = None, postcode: Option[String] = None, registeredIp: Option[String] = None, lastActiveIp: Option[String] = None): PersistedUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
     PersistedUser(email,
       Some(BSONObjectID.generate.toString()),
       publicFields = Some(PublicFields(username = username)),
-      privateFields = Some(PrivateFields(postcode = postcode)))
+      privateFields = Some(
+        PrivateFields(postcode = postcode,
+        registrationIp = registeredIp,
+        lastActiveIpAddress = lastActiveIp)))
   }
 
     "search" must {
@@ -48,6 +51,24 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
         Await.result(repo.search(postcode), 1.second).results.map(_.id) must contain(createdUser.get)
+      }
+
+      "return a user when registered ip matches exactly" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val ip = "127.0.0.1"
+        val user = createUser(registeredIp = Some(ip))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.search(ip), 1.second).results.map(_.id) must contain(createdUser.get)
+      }
+
+      "return a user when last active ip matches exactly" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val ip = "127.0.0.1"
+        val user = createUser(lastActiveIp = Some(ip))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.search(ip), 1.second).results.map(_.id) must contain(createdUser.get)
       }
       
       "return Nil when no results are found" in {
@@ -138,18 +159,33 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
   }
 
   "update" should {
-    "return updated user when successful" in {
+    "persist fields" in {
       val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
       val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
-      val userUpdateRequest = UserUpdateRequest(email = UUID.randomUUID().toString)
+      val userUpdateRequest = UserUpdateRequest(
+        email = UUID.randomUUID().toString,
+        username = UUID.randomUUID().toString,
+        firstName = Some("firstName"),
+        lastName = Some("lastName"),
+        receiveGnmMarketing = Some(true),
+        receive3rdPartyMarketing = Some(false))
+
       val origUser = User.fromUser(user1.copy(_id = createdUser1))
 
       val result  = writeRepo.update(origUser, userUpdateRequest)
       result.isRight mustBe true
-      result.right.get mustEqual origUser.copy(email = userUpdateRequest.email)
-      Await.result(repo.findById(createdUser1.get), 1.second).map(_.email) mustEqual Some(userUpdateRequest.email)
+
+      val updatedUser = Await.result(repo.findById(createdUser1.get), 1.second).get
+      updatedUser.email mustEqual userUpdateRequest.email
+      updatedUser.username mustEqual Some(userUpdateRequest.username)
+      updatedUser.displayName mustEqual Some(userUpdateRequest.username)
+      updatedUser.vanityUrl mustEqual Some(userUpdateRequest.username)
+      updatedUser.personalDetails.firstName mustEqual userUpdateRequest.firstName
+      updatedUser.personalDetails.lastName mustEqual userUpdateRequest.lastName
+      updatedUser.status.receiveGnmMarketing mustEqual userUpdateRequest.receiveGnmMarketing
+      updatedUser.status.receive3rdPartyMarketing mustEqual userUpdateRequest.receive3rdPartyMarketing
     }
   }
 

@@ -16,16 +16,17 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val userReadRepo = mock[UsersReadRepository]
   val userWriteRepo = mock[UsersWriteRepository]
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
-  val service = new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo)
+  val identityApiClient = mock[IdentityApiClient]
+  val service = new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
 
   before {
-    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo)
+    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
   }
 
   "update" should {
-    "update email address when the email has changed" in {
-      val user = User("id", "email")
-      val updateRequest = UserUpdateRequest("changedEmail")
+    "update when email and username are valid" in {
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
@@ -36,31 +37,63 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
     }
 
-    "return the user as is if the email has not changed" in {
-      val user = User("id", "email")
-      val updateRequest = UserUpdateRequest(user.email)
+    "return bad request api error if the username is less than 6 chars" in {
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = user.email, username = "123")
 
       val result = service.update(user, updateRequest)
 
-      Await.result(result.underlying, 1.second) shouldEqual Right(user)
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.badRequest("Username is invalid"))
       verifyZeroInteractions(userReadRepo, userWriteRepo)
     }
 
-    "return bad request api error if the email is already in use" in {
-      val user = User("id", "email")
-      val updateRequest = UserUpdateRequest("changedEmail")
+    "return bad request api error if the username is more than 20 chars" in {
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = user.email, username = "123456789012345678901")
+
+      val result = service.update(user, updateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.badRequest("Username is invalid"))
+      verifyZeroInteractions(userReadRepo, userWriteRepo)
+    }
+
+    "return bad request api error if the username is contains non alpha-numeric chars" in {
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = user.email, username = "abc123$")
+
+      val result = service.update(user, updateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.badRequest("Username is invalid"))
+      verifyZeroInteractions(userReadRepo, userWriteRepo)
+    }
+
+    "return bad request api error if the email is invalid" in {
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = "invalid", username = "username")
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
 
       val result = service.update(user, updateRequest)
 
-      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.badRequest("Email is in use"))
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.badRequest("Email is invalid"))
+      verifyZeroInteractions(userWriteRepo)
+    }
+
+    "return bad request api error if the email and username are invalid" in {
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = "invalid", username = "123")
+
+      when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
+
+      val result = service.update(user, updateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.badRequest("Email and username are invalid"))
       verifyZeroInteractions(userWriteRepo)
     }
 
     "return internal server api error if an error occurs updating the user" in {
-      val user = User("id", "email")
-      val updateRequest = UserUpdateRequest("changedEmail")
+      val user = User("id", "email@theguardian.com")
+      val updateRequest = UserUpdateRequest(email = "test@theguardian.com", username = "username")
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Left(ApiErrors.internalError("boom")))

@@ -20,11 +20,13 @@ object Dependencies {
   val reactiveMongo = "org.reactivemongo" %% "play2-reactivemongo" % "0.11.7.play24"
   val salat = "com.novus" %% "salat" % "1.9.9"
   val embeddedMongo = "com.github.simplyscala" %% "scalatest-embedmongo" % "0.2.2" % "test"
+  val emailValidation = "uk.gov.hmrc" %% "emailaddress" % "1.0.0"
+  val wireMock = "com.github.tomakehurst" % "wiremock" % "1.57" % "test"
 
   //projects
 
-  val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth,
+  val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz, reactiveMongo, salat,
-    specs2, scalaTest, embeddedMongo)
+    specs2, scalaTest, embeddedMongo, wireMock)
 
 }
