@@ -17,10 +17,10 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val userWriteRepo = mock[UsersWriteRepository]
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
   val identityApiClient = mock[IdentityApiClient]
-  val service = new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
+  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient))
 
   before {
-    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
+    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, service)
   }
 
   "update" should {
@@ -31,10 +31,12 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      doNothing().when(service).userEmailValidation(user, updateRequest)
 
       val result = service.update(user, updateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
+      verify(service).userEmailValidation(user, updateRequest)
     }
 
     "return bad request api error if the username is less than 6 chars" in {
@@ -101,6 +103,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val result = service.update(user, updateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+      verify(userWriteRepo, never()).invalidateEmail(user.id)
     }
   }
 
@@ -131,6 +134,30 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val result = service.delete(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+    }
+  }
+
+  "userEmailValidation" should {
+    "invalidate email and send validation to user when email has changed" in {
+      val user = User("id", "email", username = Some("username"))
+      val updateRequest = UserUpdateRequest("newEmail", "username")
+
+      doReturn(Right(true)).when(userWriteRepo).invalidateEmail(user.id)
+      doReturn(Future.successful(Right(true))).when(identityApiClient).sendEmailValidation(user.id)
+      service.userEmailValidation(user, updateRequest)
+
+      verify(userWriteRepo).invalidateEmail(user.id)
+      verify(identityApiClient).sendEmailValidation(user.id)
+    }
+
+    "do nothing when email has not changed" in {
+      val user = User("id", "email", username = Some("username"))
+      val updateRequest = UserUpdateRequest("email", "username")
+
+      service.userEmailValidation(user, updateRequest)
+
+      verifyZeroInteractions(userWriteRepo)
+      verifyZeroInteractions(identityApiClient)
     }
   }
 

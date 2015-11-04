@@ -23,6 +23,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     (emailValid, usernameValid) match {
       case (true, true) =>
         val result = usersWriteRepository.update(user, userUpdateRequest)
+        if(result.isRight)
+          userEmailValidation(user, userUpdateRequest)
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>
         ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
@@ -32,6 +34,14 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         ApiResponse.Left(ApiErrors.badRequest("Email and username are invalid"))
     }
 
+  }
+
+  private[services] def userEmailValidation(user: User, userUpdateRequest: UserUpdateRequest): Unit = {
+    if (!user.email.equalsIgnoreCase(userUpdateRequest.email)) {
+      logger.debug(s"Email has changed so sending email validation for user id: ${user.id}")
+      usersWriteRepository.invalidateEmail(user.id)
+      identityApiClient.sendEmailValidation(user.id)
+    }
   }
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {
@@ -68,7 +78,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     }
     ApiResponse.Async(Future.successful(result))
   }
-  
+
   def sendEmailValidation(user: User): ApiResponse[Boolean] = {
     val result = identityApiClient.sendEmailValidation(user.id)
     ApiResponse.Async(result)

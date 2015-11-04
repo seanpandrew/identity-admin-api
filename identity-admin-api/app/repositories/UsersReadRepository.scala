@@ -57,7 +57,7 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
     jsonCollection
       .find(Json.obj(field -> value))
       .cursor[PersistedUser](ReadPreference.primaryPreferred)
-      .headOption.map(_.map(User.fromUser))
+      .headOption.map(_.map(User.fromPersistedUser))
 
   def findById(id: String): Future[Option[User]] = findBy("_id", id)
   

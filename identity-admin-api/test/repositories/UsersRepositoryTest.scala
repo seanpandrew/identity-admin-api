@@ -172,7 +172,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
         receiveGnmMarketing = Some(true),
         receive3rdPartyMarketing = Some(false))
 
-      val origUser = User.fromUser(user1.copy(_id = createdUser1))
+      val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))
 
       val result  = writeRepo.update(origUser, userUpdateRequest)
       result.isRight mustBe true
@@ -189,13 +189,29 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
     }
   }
 
+  "invalidateEmail" should {
+    "set the userEmailValidated status field to false" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser().copy(statusFields = Some(StatusFields(userEmailValidated = Some(true), receive3rdPartyMarketing = Some(true))))
+      val createdUser1 = writeRepo.createUser(user1).get
+
+      val result  = writeRepo.invalidateEmail(createdUser1)
+      result.isRight mustBe true
+
+      val updatedUser = Await.result(repo.findById(createdUser1), 1.second).get
+      updatedUser.status.userEmailValidated mustEqual Some(false)
+      updatedUser.status.receive3rdPartyMarketing mustEqual Some(true)
+    }
+  }
+
   "delete" should {
     "return true when successful" in {
       val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
       val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
-      val origUser = User.fromUser(user1.copy(_id = createdUser1))
+      val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))
 
       val result  = writeRepo.delete(origUser)
       result.isRight mustBe true
