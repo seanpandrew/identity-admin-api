@@ -5,7 +5,7 @@ import models.{ApiErrors, UserUpdateRequest, User}
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mock.MockitoSugar
-import repositories.{ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
+import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
 
 import scala.concurrent.{Await, Future}
 import org.mockito.Mockito._
@@ -17,24 +17,27 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val userWriteRepo = mock[UsersWriteRepository]
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
   val identityApiClient = mock[IdentityApiClient]
-  val service = new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
+  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient))
 
   before {
-    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient)
+    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, service)
   }
 
   "update" should {
     "update when email and username are valid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
+      val updateRequest = PersistedUserUpdate(userUpdateRequest, Some(false))
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
 
-      val result = service.update(user, updateRequest)
+      val result = service.update(user, userUpdateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
+      verify(identityApiClient).sendEmailValidation(user.id)
     }
 
     "return bad request api error if the username is less than 6 chars" in {
@@ -93,14 +96,16 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return internal server api error if an error occurs updating the user" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "test@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = "username")
+      val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Left(ApiErrors.internalError("boom")))
 
-      val result = service.update(user, updateRequest)
+      val result = service.update(user, userUpdateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+      verify(identityApiClient, never()).sendEmailValidation(user.id)
     }
   }
 

@@ -18,7 +18,7 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     insert(user)
   }
   
-  def update(user: User, userUpdateRequest: UserUpdateRequest): Either[ApiError, User] = {
+  def update(user: User, userUpdateRequest: PersistedUserUpdate): Either[ApiError, User] = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
         prepareUserForUpdate(userUpdateRequest, persistedUser)
@@ -34,9 +34,10 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     }
   }
 
-  private def prepareUserForUpdate(userUpdateRequest: UserUpdateRequest, persistedUser: PersistedUser): PersistedUser = {
+  private def prepareUserForUpdate(userUpdateRequest: PersistedUserUpdate, persistedUser: PersistedUser): PersistedUser = {
     val publicFields = persistedUser.publicFields.getOrElse(PublicFields()).copy(
       username = Some(userUpdateRequest.username),
+      usernameLowerCase = Some(userUpdateRequest.username.toLowerCase),
       displayName = Some(userUpdateRequest.username),
       vanityUrl = Some(userUpdateRequest.username)
     )
@@ -46,7 +47,8 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     )
     val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
       receive3rdPartyMarketing = userUpdateRequest.receive3rdPartyMarketing,
-      receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing
+      receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing,
+      userEmailValidated = userUpdateRequest.userEmailValidated
     )
     persistedUser.copy(
       primaryEmailAddress = userUpdateRequest.email,
@@ -61,7 +63,7 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
       update(MongoDBObject("_id" -> userToSave._id), userToSave, upsert = false, multi = false, wc = WriteConcern.Safe)
     } match {
       case Success(_) =>
-        Right(User.fromUser(userToSave))
+        Right(User.fromPersistedUser(userToSave))
       case Failure(t) =>
         logger.error(s"Failed to update user. id: ${userToSave._id}", t)
         Left(ApiErrors.internalError(t.getMessage))

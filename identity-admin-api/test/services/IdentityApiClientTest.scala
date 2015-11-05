@@ -13,7 +13,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
 
 class IdentityApiClientTest extends WordSpec with Matchers with BeforeAndAfterEach with OneServerPerSuite with BeforeAndAfterAll{
 
-  val Port = 8080
+  val Port = 8698
   val Host = "localhost"
   val ClientToken = "TestToken"
   val UserId = "123"

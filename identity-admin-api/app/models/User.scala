@@ -72,7 +72,7 @@ object User {
   implicit def userResponseToResult(userResponse: User): Result =
     Results.Ok(Json.toJson(userResponse))
 
-  def fromUser(user: PersistedUser): User =
+  def fromPersistedUser(user: PersistedUser): User =
     User(
                 id = user._id.getOrElse(throw new IllegalStateException("User must have an id")),
                 email = user.primaryEmailAddress,

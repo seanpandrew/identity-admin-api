@@ -59,6 +59,7 @@ object PrivateFields {
 
 
 case class PublicFields(username: Option[String] = None,
+                        usernameLowerCase: Option[String] = None,
                         displayName: Option[String] = None,
                         vanityUrl: Option[String] = None,
                         aboutMe: Option[String] = None,
