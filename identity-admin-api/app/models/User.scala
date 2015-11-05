@@ -112,7 +112,7 @@ object User {
                   userEmailValidated = user.statusFields.flatMap(_.userEmailValidated)
                 ),
                 groups = user.userGroups.map(g =>
-                  UserGroup(g.packageCode, g.joinedDate)
-                ).toList
+                  g.map(ug => UserGroup(ug.packageCode, ug.joinedDate)).toList
+                ).getOrElse(Nil)
     )
 }
