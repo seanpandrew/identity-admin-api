@@ -95,9 +95,9 @@ case class PersistedUser(primaryEmailAddress: String,
                 statusFields: Option[StatusFields] = None,
                 dates: Option[UserDates] = Some(new UserDates()),
                 password: Option[String] = None,
-                userGroups: Set[GroupMembership] = Set.empty,
-                socialLinks: Set[SocialLink] = Set.empty,
-                adData: Map[String, Any] = Map.empty
+                userGroups: Option[Set[GroupMembership]] = None,
+                socialLinks: Option[Set[SocialLink]] = None,
+                adData: Option[Map[String, Any]] = None
                  )
 
 object PersistedUser {
