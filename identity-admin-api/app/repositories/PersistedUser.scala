@@ -2,8 +2,9 @@ package repositories
 
 import models.MongoJsFormats
 import org.joda.time.DateTime
-import play.api.libs.json.Json
+import play.api.libs.json._
 import MongoJsFormats._
+import play.api.libs.functional.syntax._
 
 import scala.language.implicitConversions
 
@@ -102,5 +103,32 @@ case class PersistedUser(primaryEmailAddress: String,
                  )
 
 object PersistedUser {
-  implicit val format = Json.format[PersistedUser]
+  val persistedUserReads: Reads[PersistedUser] = (
+  (JsPath \ "primaryEmailAddress").read[String] and
+  (JsPath \ "_id").readNullable[String] and
+  (JsPath \ "publicFields").readNullable[PublicFields] and
+  (JsPath \ "privateFields").readNullable[PrivateFields] and
+  (JsPath \ "statusFields").readNullable[StatusFields] and
+  (JsPath \ "dates").readNullable[UserDates] and
+  (JsPath \ "password").readNullable[String] and
+  (JsPath \ "userGroups").readNullable[List[GroupMembership]].map(_.getOrElse(Nil)) and
+  (JsPath \ "socialLinks").readNullable[List[SocialLink]].map(_.getOrElse(Nil)) and
+  (JsPath \ "adData").readNullable[Map[String, Any]].map(_.getOrElse(Map.empty))
+)(PersistedUser.apply _)
+
+  val persistedUserWrites: Writes[PersistedUser] = (
+  (JsPath \ "primaryEmailAddress").write[String] and
+  (JsPath \ "_id").writeNullable[String] and
+  (JsPath \ "publicFields").writeNullable[PublicFields] and
+  (JsPath \ "privateFields").writeNullable[PrivateFields] and
+  (JsPath \ "statusFields").writeNullable[StatusFields] and
+  (JsPath \ "dates").writeNullable[UserDates] and
+  (JsPath \ "password").writeNullable[String] and
+  (JsPath \ "userGroups").write[List[GroupMembership]] and
+  (JsPath \ "socialLinks").write[List[SocialLink]] and
+  (JsPath \ "adData").write[Map[String, Any]]
+)(unlift(PersistedUser.unapply))
+
+  implicit val format: Format[PersistedUser] =
+    Format(persistedUserReads, persistedUserWrites)
 }
