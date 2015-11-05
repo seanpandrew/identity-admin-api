@@ -22,10 +22,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
     (emailValid, usernameValid) match {
       case (true, true) =>
-        val userEmailValidated = if(!user.email.equalsIgnoreCase(userUpdateRequest.email)) Some(false) else user.status.userEmailValidated
+        val userEmailChanged = !user.email.equalsIgnoreCase(userUpdateRequest.email)
+        val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
         val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
-        if(result.isRight)
+        if(result.isRight && userEmailChanged)
           identityApiClient.sendEmailValidation(user.id)
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>

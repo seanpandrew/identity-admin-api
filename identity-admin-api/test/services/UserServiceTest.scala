@@ -40,6 +40,22 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       verify(identityApiClient).sendEmailValidation(user.id)
     }
 
+    "not send email validation when email has not changed" in {
+      val user = User("id", "email@theguardian.com")
+      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = "username")
+      val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
+      val updatedUser = user.copy(email = updateRequest.email)
+
+      when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
+
+      val result = service.update(user, userUpdateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
+      verifyZeroInteractions(identityApiClient)
+    }
+
     "return bad request api error if the username is less than 6 chars" in {
       val user = User("id", "email@theguardian.com")
       val updateRequest = UserUpdateRequest(email = user.email, username = "123")
