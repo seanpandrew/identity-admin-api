@@ -172,9 +172,11 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
         receiveGnmMarketing = Some(true),
         receive3rdPartyMarketing = Some(false))
 
+      val updateRequest = PersistedUserUpdate(userUpdateRequest, Some(false))
+
       val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))
 
-      val result  = writeRepo.update(origUser, userUpdateRequest)
+      val result  = writeRepo.update(origUser, updateRequest)
       result.isRight mustBe true
 
       val updatedUser = Await.result(repo.findById(createdUser1.get), 1.second).get
@@ -186,22 +188,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       updatedUser.personalDetails.lastName mustEqual userUpdateRequest.lastName
       updatedUser.status.receiveGnmMarketing mustEqual userUpdateRequest.receiveGnmMarketing
       updatedUser.status.receive3rdPartyMarketing mustEqual userUpdateRequest.receive3rdPartyMarketing
-    }
-  }
-
-  "invalidateEmail" should {
-    "set the userEmailValidated status field to false" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
-      val user1 = createUser().copy(statusFields = Some(StatusFields(userEmailValidated = Some(true), receive3rdPartyMarketing = Some(true))))
-      val createdUser1 = writeRepo.createUser(user1).get
-
-      val result  = writeRepo.invalidateEmail(createdUser1)
-      result.isRight mustBe true
-
-      val updatedUser = Await.result(repo.findById(createdUser1), 1.second).get
       updatedUser.status.userEmailValidated mustEqual Some(false)
-      updatedUser.status.receive3rdPartyMarketing mustEqual Some(true)
     }
   }
 

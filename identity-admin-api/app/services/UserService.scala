@@ -4,7 +4,7 @@ import javax.inject.Inject
 import com.gu.identity.model.ReservedUsernameList
 import com.gu.identity.util.Logging
 import models._
-import repositories.{ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
+import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -22,9 +22,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
     (emailValid, usernameValid) match {
       case (true, true) =>
-        val result = usersWriteRepository.update(user, userUpdateRequest)
+        val userEmailValidated = if(!user.email.equalsIgnoreCase(userUpdateRequest.email)) Some(false) else user.status.userEmailValidated
+        val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
+        val result = usersWriteRepository.update(user, update)
         if(result.isRight)
-          userEmailValidation(user, userUpdateRequest)
+          identityApiClient.sendEmailValidation(user.id)
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>
         ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
@@ -34,14 +36,6 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         ApiResponse.Left(ApiErrors.badRequest("Email and username are invalid"))
     }
 
-  }
-
-  private[services] def userEmailValidation(user: User, userUpdateRequest: UserUpdateRequest): Unit = {
-    if (!user.email.equalsIgnoreCase(userUpdateRequest.email)) {
-      logger.debug(s"Email has changed so sending email validation for user id: ${user.id}")
-      usersWriteRepository.invalidateEmail(user.id)
-      identityApiClient.sendEmailValidation(user.id)
-    }
   }
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {

@@ -18,7 +18,7 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     insert(user)
   }
   
-  def update(user: User, userUpdateRequest: UserUpdateRequest): Either[ApiError, User] = {
+  def update(user: User, userUpdateRequest: PersistedUserUpdate): Either[ApiError, User] = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
         prepareUserForUpdate(userUpdateRequest, persistedUser)
@@ -34,21 +34,7 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     }
   }
 
-  def invalidateEmail(userId: String): Either[ApiError, Boolean] = {
-    Try {
-      findOne(MongoDBObject("_id" -> userId)).map { persistedUser =>
-        val updated = persistedUser.copy(statusFields = Some(persistedUser.statusFields.getOrElse(StatusFields()).copy(userEmailValidated = Some(false))))
-        doUpdate(updated)
-      }
-    } match {
-      case Success(result) => Right(true)
-       case Failure(t) =>
-        logger.error(s"Failed to invalidate user's email. id: $userId", t)
-        Left(ApiErrors.internalError(t.getMessage))
-    }
-  }
-
-  private def prepareUserForUpdate(userUpdateRequest: UserUpdateRequest, persistedUser: PersistedUser): PersistedUser = {
+  private def prepareUserForUpdate(userUpdateRequest: PersistedUserUpdate, persistedUser: PersistedUser): PersistedUser = {
     val publicFields = persistedUser.publicFields.getOrElse(PublicFields()).copy(
       username = Some(userUpdateRequest.username),
       usernameLowerCase = Some(userUpdateRequest.username.toLowerCase),
@@ -61,7 +47,8 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     )
     val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
       receive3rdPartyMarketing = userUpdateRequest.receive3rdPartyMarketing,
-      receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing
+      receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing,
+      userEmailValidated = userUpdateRequest.userEmailValidated
     )
     persistedUser.copy(
       primaryEmailAddress = userUpdateRequest.email,

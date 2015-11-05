@@ -5,7 +5,7 @@ import models.{ApiErrors, UserUpdateRequest, User}
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mock.MockitoSugar
-import repositories.{ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
+import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
 
 import scala.concurrent.{Await, Future}
 import org.mockito.Mockito._
@@ -26,17 +26,18 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   "update" should {
     "update when email and username are valid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
+      val updateRequest = PersistedUserUpdate(userUpdateRequest, Some(false))
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
-      doNothing().when(service).userEmailValidation(user, updateRequest)
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
 
-      val result = service.update(user, updateRequest)
+      val result = service.update(user, userUpdateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
-      verify(service).userEmailValidation(user, updateRequest)
+      verify(identityApiClient).sendEmailValidation(user.id)
     }
 
     "return bad request api error if the username is less than 6 chars" in {
@@ -95,15 +96,16 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return internal server api error if an error occurs updating the user" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "test@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = "username")
+      val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Left(ApiErrors.internalError("boom")))
 
-      val result = service.update(user, updateRequest)
+      val result = service.update(user, userUpdateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
-      verify(userWriteRepo, never()).invalidateEmail(user.id)
+      verify(identityApiClient, never()).sendEmailValidation(user.id)
     }
   }
 
@@ -134,30 +136,6 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val result = service.delete(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
-    }
-  }
-
-  "userEmailValidation" should {
-    "invalidate email and send validation to user when email has changed" in {
-      val user = User("id", "email", username = Some("username"))
-      val updateRequest = UserUpdateRequest("newEmail", "username")
-
-      doReturn(Right(true)).when(userWriteRepo).invalidateEmail(user.id)
-      doReturn(Future.successful(Right(true))).when(identityApiClient).sendEmailValidation(user.id)
-      service.userEmailValidation(user, updateRequest)
-
-      verify(userWriteRepo).invalidateEmail(user.id)
-      verify(identityApiClient).sendEmailValidation(user.id)
-    }
-
-    "do nothing when email has not changed" in {
-      val user = User("id", "email", username = Some("username"))
-      val updateRequest = UserUpdateRequest("email", "username")
-
-      service.userEmailValidation(user, updateRequest)
-
-      verifyZeroInteractions(userWriteRepo)
-      verifyZeroInteractions(identityApiClient)
     }
   }
 
