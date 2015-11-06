@@ -12,7 +12,9 @@ case class UserSummary(id: String,
                        firstName: Option[String],
                        lastName: Option[String],
                        creationDate: Option[DateTime],
-                       lastActivityDate: Option[DateTime])
+                       lastActivityDate: Option[DateTime],
+                       registrationIp: Option[String],
+                       lastActiveIpAddress: Option[String])
 
 
 
@@ -27,7 +29,9 @@ object UserSummary {
       firstName = user.privateFields.flatMap(_.firstName),
       lastName = user.privateFields.flatMap(_.secondName),
       creationDate = user.dates.flatMap(_.accountCreatedDate),
-      lastActivityDate = user.dates.flatMap(_.lastActivityDate)
+      lastActivityDate = user.dates.flatMap(_.lastActivityDate),
+      registrationIp = user.privateFields.flatMap(_.registrationIp),
+      lastActiveIpAddress= user.privateFields.flatMap(_.lastActiveIpAddress)
     )
 
 }
