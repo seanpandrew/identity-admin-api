@@ -37,4 +37,17 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
     }
   }
 
+  def unreserveUsername() = auth(parse.json) { request =>
+    request.body.validate[ReservedUsernameRequest] match {
+      case JsSuccess(result, path) =>
+        logger.info(s"Unreserving username: ${result.username}")
+        reservedUsernameRepository.removeReservedUsername(result.username) match {
+          case Left(e) => e
+          case Right(success) => NoContent
+        }
+      case JsError(e) =>
+        ApiErrors.badRequest(e.toString())
+    }
+  }
+
 }

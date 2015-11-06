@@ -50,6 +50,30 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
     }
   }
 
+  "unreserveUsername" should {
+    "return bad request when json cannot be parsed" in {
+      val json = """{"key":"value"}"""
+      val result = controller.unreserveUsername()(FakeRequest().withBody(Json.parse(json)))
+      status(result) shouldEqual BAD_REQUEST
+    }
+
+    "return no content when succesful" in {
+      val json = """{"username":"usernameToReserve"}"""
+      when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(Right(ReservedUsernameList()))
+      val result = controller.unreserveUsername()(FakeRequest().withBody(Json.parse(json)))
+      status(result) shouldEqual NO_CONTENT
+    }
+
+    "return internal server error when error occurs" in {
+      val json = """{"username":"usernameToReserve"}"""
+      val error = ApiErrors.internalError("boom")
+      when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(Left(error))
+      val result = controller.unreserveUsername()(FakeRequest().withBody(Json.parse(json)))
+      status(result) shouldEqual INTERNAL_SERVER_ERROR
+      contentAsJson(result) shouldEqual Json.toJson(error)
+    }
+  }
+
   "getReservedUsernames" should {
     "return reserved usernames when successful" in {
       val reservedUsernameList = ReservedUsernameList(List("1", "2", "3"))

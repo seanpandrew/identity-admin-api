@@ -9,3 +9,4 @@ POST       /v1/user/:id/send-validation-email       @controllers.UsersController
 
 GET        /v1/reserved-username                    @controllers.ReservedUsernameController.getReservedUsernames
 POST       /v1/reserved-username                    @controllers.ReservedUsernameController.reserveUsername()
+DELETE     /v1/reserved-username                    @controllers.ReservedUsernameController.unreserveUsername()
