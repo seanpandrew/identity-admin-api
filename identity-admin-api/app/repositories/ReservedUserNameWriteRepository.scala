@@ -2,12 +2,11 @@ package repositories
 
 import javax.inject.Singleton
 
-import com.gu.identity.model.ReservedUsernameList
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.MongoCursor
 import com.mongodb.casbah.commons.MongoDBObject
 import com.novus.salat.dao.SalatDAO
-import models.{ApiErrors, ApiError}
+import models.{ApiErrors, ApiError, ReservedUsernameList}
 import org.bson.types.ObjectId
 import com.novus.salat.global._
 

@@ -2,7 +2,7 @@ package repositories
 
 import java.util.UUID
 
-import com.gu.identity.model.ReservedUsernameList
+import models.ReservedUsernameList
 import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play

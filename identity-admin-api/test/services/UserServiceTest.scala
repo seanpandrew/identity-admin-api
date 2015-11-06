@@ -1,7 +1,6 @@
 package services
 
-import com.gu.identity.model.ReservedUsernameList
-import models.{ApiErrors, UserUpdateRequest, User}
+import models._
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mock.MockitoSugar
