@@ -6,3 +6,7 @@ GET        /v1/user/:id                             @controllers.UsersController
 PUT        /v1/user/:id                             @controllers.UsersController.update(id: String)
 DELETE     /v1/user/:id                             @controllers.UsersController.delete(id: String)
 POST       /v1/user/:id/send-validation-email       @controllers.UsersController.sendEmailValidation(id: String)
+
+GET        /v1/reserved-username                    @controllers.ReservedUsernameController.getReservedUsernames
+POST       /v1/reserved-username                    @controllers.ReservedUsernameController.reserveUsername()
+DELETE     /v1/reserved-username                    @controllers.ReservedUsernameController.unreserveUsername()

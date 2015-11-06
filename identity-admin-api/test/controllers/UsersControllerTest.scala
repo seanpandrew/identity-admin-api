@@ -1,7 +1,6 @@
 package controllers
 
 import actions.AuthenticatedAction
-import com.gu.identity.model.ReservedUsernameList
 import models._
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}

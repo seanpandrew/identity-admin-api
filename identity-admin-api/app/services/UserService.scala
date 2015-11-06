@@ -1,7 +1,6 @@
 package services
 
 import javax.inject.Inject
-import com.gu.identity.model.ReservedUsernameList
 import com.gu.identity.util.Logging
 import models._
 import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
