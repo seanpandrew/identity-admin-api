@@ -63,6 +63,7 @@ case class User(id: String,
                          lastActivityIp: Option[String] = None,
                          registrationDate: Option[DateTime] = None,
                          registrationIp: Option[String] = None,
+                         registrationType: Option[String] = None,
                          status: UserStatus = UserStatus(),
                          groups: Seq[UserGroup] = Nil)
 
@@ -106,6 +107,7 @@ object User {
                 lastActivityIp = user.privateFields.flatMap(_.lastActiveIpAddress),
                 registrationDate = user.dates.flatMap(_.accountCreatedDate),
                 registrationIp = user.privateFields.flatMap(_.registrationIp),
+                registrationType = user.privateFields.flatMap(_.registrationType),
                 status = UserStatus(
                   receive3rdPartyMarketing = user.statusFields.flatMap(_.receive3rdPartyMarketing),
                   receiveGnmMarketing = user.statusFields.flatMap(_.receiveGnmMarketing),
