@@ -75,4 +75,12 @@ class UsersController @Inject() (userService: UserService, auth: AuthenticatedAc
       case Left(r) => ApiError.apiErrorToResult(r)
     }
   }
+
+  def validateEmail(id: String) = (auth andThen UserAction(id)).async { request =>
+    logger.info(s"Validating email for user with id: $id")
+    userService.validateEmail(request.user).asFuture.map {
+      case Right(r) => NoContent
+      case Left(r) => ApiError.apiErrorToResult(r)
+    }
+  }
 }

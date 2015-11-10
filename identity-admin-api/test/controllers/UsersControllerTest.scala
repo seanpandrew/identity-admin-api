@@ -181,4 +181,32 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       contentAsJson(result) shouldEqual Json.toJson(ApiErrors.internalError("boom"))
     }
   }
+
+  "validateEmail" should {
+    "return 404 when user is not found" in {
+      val id = "abc"
+      when(userService.findById(id)).thenReturn(ApiResponse.Left[User](ApiErrors.notFound))
+      val result = controller.validateEmail(id)(FakeRequest())
+      status(result) shouldEqual NOT_FOUND
+    }
+
+    "return 204 when email is validated" in {
+      val id = "abc"
+      val user = mock[User]
+      when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
+      when(userService.validateEmail(user)).thenReturn(ApiResponse.Right(true))
+      val result = controller.validateEmail(id)(FakeRequest())
+      status(result) shouldEqual NO_CONTENT
+    }
+
+    "return 500 when error occurs" in {
+      val id = "abc"
+      val user = mock[User]
+      when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
+      when(userService.validateEmail(user)).thenReturn(ApiResponse.Left[Boolean](ApiErrors.internalError("boom")))
+      val result = controller.validateEmail(id)(FakeRequest())
+      status(result) shouldEqual INTERNAL_SERVER_ERROR
+      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.internalError("boom"))
+    }
+  }
 }
