@@ -37,7 +37,10 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
   def validateEmail(user: User): Either[ApiError, User] = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
-        persistedUser.copy(statusFields = Some(persistedUser.statusFields.getOrElse(StatusFields().copy(userEmailValidated = Some(true)))))
+        val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
+          userEmailValidated = Some(true)
+        )
+        persistedUser.copy(statusFields = Some(statusFields))
       }
     } match {
       case Success(Some(userToSave)) =>
