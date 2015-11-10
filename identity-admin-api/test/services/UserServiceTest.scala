@@ -154,4 +154,23 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     }
   }
 
+  "validateEmailAddress" should {
+    "validate the email address" in {
+      val user = User("id", "email")
+      when(userWriteRepo.validateEmail(user)).thenReturn(Right(user))
+      val result = service.validateEmail(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(true)
+    }
+
+    "return internal server api error if an error occurs validating the email address" in {
+      val user = User("id", "email")
+      when(userWriteRepo.validateEmail(user)).thenReturn(Left(ApiErrors.internalError("boom")))
+
+      val result = service.validateEmail(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+    }
+  }
+
 }

@@ -192,6 +192,21 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
     }
   }
 
+  "validateEmail" should {
+    "set user email validated status to true" in {
+      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val user1 = createUser()
+      val createdUser1 = writeRepo.createUser(user1)
+
+      val result  = writeRepo.validateEmail(User.fromPersistedUser(user1))
+      result.isRight mustBe true
+
+      val updatedUser = Await.result(repo.findById(createdUser1.get), 1.second).get
+      updatedUser.status.userEmailValidated mustEqual Some(true)
+    }
+  }
+
   "delete" should {
     "return true when successful" in {
       val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
