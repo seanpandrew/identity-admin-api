@@ -74,15 +74,22 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def validateEmail(user: User): ApiResponse[Boolean] = {
-    val result = usersWriteRepository.validateEmail(user) match{
-      case Right(r) => Right(true)
-      case Left(r) => Left(r)
-    }
+    val result = doValidateEmail(user, emailValidated = true)
     ApiResponse.Async(Future.successful(result))
   }
 
+  private def doValidateEmail(user: User, emailValidated: Boolean): Either[ApiError, Boolean] = {
+    usersWriteRepository.updateEmailValidationStatus(user, emailValidated) match{
+      case Right(r) => Right(true)
+      case Left(r) => Left(r)
+    }
+  }
+
   def sendEmailValidation(user: User): ApiResponse[Boolean] = {
-    val result = identityApiClient.sendEmailValidation(user.id)
+    val result = doValidateEmail(user, emailValidated = false) match {
+      case Right(_) => identityApiClient.sendEmailValidation(user.id)
+      case Left(r) => Future.successful(Left(r))
+    }
     ApiResponse.Async(result)
   }
 

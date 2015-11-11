@@ -157,7 +157,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   "validateEmailAddress" should {
     "validate the email address" in {
       val user = User("id", "email")
-      when(userWriteRepo.validateEmail(user)).thenReturn(Right(user))
+      when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(Right(user))
       val result = service.validateEmail(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(true)
@@ -165,9 +165,40 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return internal server api error if an error occurs validating the email address" in {
       val user = User("id", "email")
-      when(userWriteRepo.validateEmail(user)).thenReturn(Left(ApiErrors.internalError("boom")))
+      when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(Left(ApiErrors.internalError("boom")))
 
       val result = service.validateEmail(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+    }
+  }
+
+  "sendEmailValidation" should {
+    "invalidate the email address and send validation request email" in {
+      val user = User("id", "email")
+      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Right(user))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
+      val result = service.sendEmailValidation(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(true)
+    }
+
+    "return internal server api error if an error occurs invalidating the email address" in {
+      val user = User("id", "email")
+      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Left(ApiErrors.internalError("boom")))
+
+      val result = service.sendEmailValidation(user)
+
+      Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
+      verifyZeroInteractions(identityApiClient)
+    }
+
+    "return internal server api error if an error occurs sending the email" in {
+      val user = User("id", "email")
+      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Right(user))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Left(ApiErrors.internalError("boom"))))
+
+      val result = service.sendEmailValidation(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
     }
