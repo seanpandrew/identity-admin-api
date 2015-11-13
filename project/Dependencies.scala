@@ -12,7 +12,7 @@ object Dependencies {
   val playWS = PlayImport.ws
   val playCache = PlayImport.cache
   val playFilters = PlayImport.filters
-  val scalaTest =  "org.scalatestplus" %% "play" % "1.4.0-M3" % "test"
+  val scalaTestPlus =  "org.scalatestplus" %% "play" % "1.4.0-M3" % "test"
   val specs2 = PlayImport.specs2 % "test"
   val awsWrap = "com.github.dwhjames" %% "aws-wrap" % "0.7.2"
   val awsCloudWatch = "com.amazonaws" % "aws-java-sdk-cloudwatch" % "1.9.31"
@@ -22,11 +22,12 @@ object Dependencies {
   val embeddedMongo = "com.github.simplyscala" %% "scalatest-embedmongo" % "0.2.2" % "test"
   val emailValidation = "uk.gov.hmrc" %% "emailaddress" % "1.0.0"
   val wireMock = "com.github.tomakehurst" % "wiremock" % "1.57" % "test"
+  val scalaTest = "org.scalatest" %% "scalatest" % "2.2.5" % "test"
 
   //projects
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz, reactiveMongo, salat,
-    specs2, scalaTest, embeddedMongo, wireMock)
+    specs2, scalaTest, embeddedMongo, wireMock, scalaTestPlus)
 
 }
