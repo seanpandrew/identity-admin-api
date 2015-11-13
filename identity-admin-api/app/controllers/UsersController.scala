@@ -31,7 +31,8 @@ class UsersController @Inject() (userService: UserService, auth: AuthenticatedAc
       }
       else {
         val formattedQuery = query.replace(" ", "%20")
-        userService.search(UriEncoding.decodePathSegment(formattedQuery, "UTF-8"), limit, offset)
+        val encodedQuery = UriEncoding.decodePathSegment(formattedQuery, "UTF-8")
+        userService.search(encodedQuery, limit, offset)
       }
     }
   }
