@@ -34,7 +34,7 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
       val authorization = request.headers.get(HeaderNames.AUTHORIZATION).getOrElse(throw new IllegalArgumentException("Authorization header is required."))
       val hmac = extractToken(authorization).getOrElse(throw new IllegalArgumentException("Authorization header is invalid."))
       val date = request.headers.get(HeaderNames.DATE).getOrElse(throw new scala.IllegalArgumentException("Date header is required."))
-      val uri = getPath(request)
+      val uri = request.uri
 
       logger.info(s"path: $uri, date: $date, hmac: $hmac")
 
@@ -49,11 +49,6 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
       case Success(r) => block(request)
       case Failure(t) => Future.successful(ApiErrors.unauthorized(t.getMessage))
     }
-  }
-
-  private[actions] def getPath(request: Request[Any]): String = {
-    val queryString = request.rawQueryString
-    if(queryString == null || queryString.isEmpty) request.path else s"${request.path}?$queryString"
   }
 
   private[actions] def extractToken(authHeader: String): Option[String] = {
