@@ -30,7 +30,9 @@ class UsersController @Inject() (userService: UserService, auth: AuthenticatedAc
         ApiResponse.Left(ApiErrors.badRequest(s"query must be a minimum of $MinimumQueryLength characters"))
       }
       else {
-        userService.search(query, limit, offset)
+        val formattedQuery = query.replace(" ", "%20")
+        val encodedQuery = UriEncoding.decodePathSegment(formattedQuery, "UTF-8")
+        userService.search(encodedQuery, limit, offset)
       }
     }
   }
