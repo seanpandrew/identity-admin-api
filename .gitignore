@@ -1,6 +1,7 @@
 ### Scala template
 *.class
 *.log
+logs/
 
 # sbt specific
 .cache
@@ -17,5 +18,7 @@ project/plugins/project/
 .scala_dependencies
 .worksheet
 
+#Intellij Specific
 .idea
+.DS_Store
 
