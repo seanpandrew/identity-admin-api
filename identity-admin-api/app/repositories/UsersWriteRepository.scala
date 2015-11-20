@@ -85,8 +85,17 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
         Right(User.fromPersistedUser(userToSave))
       case Failure(t) =>
         logger.error(s"Failed to update user. id: ${userToSave._id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+        val errorMessage = generateErrorMessage(t)
+        Left(ApiErrors.internalError(errorMessage))
     }
+  }
+
+  private def generateErrorMessage(error: Throwable): String = {
+    val errorText = error.toString
+    if (errorText contains "E11000 duplicate key error")
+      "this data is already in use in the database"
+    else
+      "update could not be performed contact identitydev@guardian.co.uk"
   }
 
   def delete(user: User): Either[ApiError, Boolean] = {
