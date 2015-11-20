@@ -85,7 +85,10 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
         Right(User.fromPersistedUser(userToSave))
       case Failure(t) =>
         logger.error(s"Failed to update user. id: ${userToSave._id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+        if (t.toString contains "primaryEmailAddress")
+          Left(ApiErrors.internalError("email address is already in use."))
+        else
+          Left(ApiErrors.internalError("username is already in use"))
     }
   }
 
