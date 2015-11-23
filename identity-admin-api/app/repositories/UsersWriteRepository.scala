@@ -14,8 +14,11 @@ import scala.util.{Failure, Success, Try}
 @Singleton
 class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=SalatMongoConnection.db()("users")) with Logging {
 
-  def createUser(user: PersistedUser) = {
-    insert(user)
+  private[repositories] def createUser(user: PersistedUser) = {
+    val userToCreate = user.copy(
+      primaryEmailAddress = user.primaryEmailAddress.toLowerCase,
+      publicFields = user.publicFields.map(pf => pf.copy(usernameLowerCase = pf.username.map(_.toLowerCase))))
+    insert(userToCreate)
   }
   
   def update(user: User, userUpdateRequest: PersistedUserUpdate): Either[ApiError, User] = {
@@ -70,7 +73,7 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
       userEmailValidated = userUpdateRequest.userEmailValidated
     )
     persistedUser.copy(
-      primaryEmailAddress = userUpdateRequest.email,
+      primaryEmailAddress = userUpdateRequest.email.toLowerCase,
       publicFields = Some(publicFields),
       privateFields = Some(privateFields),
       statusFields = Some(statusFields)
