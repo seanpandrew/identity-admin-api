@@ -22,7 +22,14 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       privateFields = Some(
         PrivateFields(postcode = postcode,
         registrationIp = registeredIp,
-        lastActiveIpAddress = lastActiveIp)))
+        lastActiveIpAddress = lastActiveIp)),
+      searchFields = Some(SearchFields(
+        username = username.map(_.toLowerCase),
+        displayName = username.map(_.toLowerCase),
+        emailAddress = Some(email.toLowerCase),
+        postcode = postcode.map(_.toLowerCase),
+        postcodePrefix = postcode.map(_.toLowerCase.split(" ").head)
+      )))
   }
 
     "search" must {
@@ -51,6 +58,15 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
         Await.result(repo.search(postcode), 1.second).results.map(_.id) must contain(createdUser.get)
+      }
+
+      "return a user when postcode prefix matches" in {
+        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val postcode = "N1 9GU"
+        val user = createUser(postcode = Some(postcode))
+        val createdUser = writeRepo.createUser(user)
+        Await.result(repo.search("N1"), 1.second).results.map(_.id) must contain(createdUser.get)
       }
 
       "return a user when registered ip matches exactly" in {

@@ -72,11 +72,17 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
       receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing,
       userEmailValidated = userUpdateRequest.userEmailValidated
     )
+    val searchFields = persistedUser.searchFields.getOrElse(SearchFields()).copy(
+      emailAddress = Some(userUpdateRequest.email.toLowerCase),
+      username = Some(userUpdateRequest.username.toLowerCase),
+      displayName = Some(userUpdateRequest.username.toLowerCase)
+    )
     persistedUser.copy(
       primaryEmailAddress = userUpdateRequest.email.toLowerCase,
       publicFields = Some(publicFields),
       privateFields = Some(privateFields),
-      statusFields = Some(statusFields)
+      statusFields = Some(statusFields),
+      searchFields = Some(searchFields)
     )
   }
 

@@ -42,17 +42,20 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
     }
   }
 
-  private def buildSearchQuery(query: String): JsObject =
+  private def buildSearchQuery(query: String): JsObject = {
+    val term = query.toLowerCase
     Json.obj(
       "$or" -> Json.arr(
-        Json.obj("primaryEmailAddress" -> query.toLowerCase),
-        Json.obj("publicFields.usernameLowerCase" -> query.toLowerCase),
-        Json.obj("privateFields.postcode" -> query),
-        Json.obj("privateFields.registrationIp" -> query),
-        Json.obj("privateFields.lastActiveIpAddress" -> query),
-        Json.obj("publicFields.displayName" -> query)
+        Json.obj("searchFields.emailAddress" -> term),
+        Json.obj("searchFields.username" -> term),
+        Json.obj("searchFields.postcode" -> term),
+        Json.obj("searchFields.postcodePrefix" -> term),
+        Json.obj("searchFields.displayName" -> term),
+        Json.obj("privateFields.registrationIp" -> term),
+        Json.obj("privateFields.lastActiveIpAddress" -> term)
       )
     )
+  }
   
   private def findBy(field: String, value: String): Future[Option[User]] =
     jsonCollection
@@ -61,7 +64,7 @@ class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) exte
       .headOption.map(_.map(User.fromPersistedUser))
 
   def findById(id: String): Future[Option[User]] = findBy("_id", id)
-  
+
   def findByEmail(email: String): Future[Option[User]] = findBy("primaryEmailAddress", email.toLowerCase)
   def findByUsername(username: String): Future[Option[User]] = findBy("publicFields.usernameLowerCase", username.toLowerCase)
   def findByVanityUrl(vanityUrl: String): Future[Option[User]] = findBy("publicFields.vanityUrl", vanityUrl)
