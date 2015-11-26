@@ -13,7 +13,19 @@ case class SocialLink(socialId: String,
                       profileData: Map[String, Any] = Map.empty)
 
 object SocialLink {
-  implicit val format = Json.format[SocialLink]
+  val reads: Reads[SocialLink] = (
+  (JsPath \ "socialId").read[String] and
+  (JsPath \ "network").read[String] and
+  (JsPath \ "profileDate").readNullable[Map[String, Any]].map(_.getOrElse(Map.empty))
+  )(SocialLink.apply _)
+
+  val writes: Writes[SocialLink] = (
+  (JsPath \ "socialId").write[String] and
+  (JsPath \ "network").write[String] and
+  (JsPath \ "profileData").write[Map[String, Any]]
+  )(unlift(SocialLink.unapply))
+
+  implicit val format: Format[SocialLink] = Format(reads, writes)
 }
 
 case class GroupMembership(path: String, 
@@ -90,6 +102,16 @@ object StatusFields {
   implicit val format = Json.format[StatusFields]
 }
 
+case class SearchFields(emailAddress: Option[String] = None,
+                        username: Option[String] = None,
+                        displayName: Option[String] = None,
+                        postcode: Option[String] = None,
+                        postcodePrefix: Option[String] = None)
+
+object SearchFields {
+  implicit val format = Json.format[SearchFields]
+}
+
 case class PersistedUser(primaryEmailAddress: String,
                 _id: Option[String] = None,
                 publicFields: Option[PublicFields] = None,
@@ -99,7 +121,8 @@ case class PersistedUser(primaryEmailAddress: String,
                 password: Option[String] = None,
                 userGroups: List[GroupMembership] = Nil,
                 socialLinks: List[SocialLink] = Nil,
-                adData: Map[String, Any] = Map.empty
+                adData: Map[String, Any] = Map.empty,
+                searchFields: Option[SearchFields] = None
                  )
 
 object PersistedUser {
@@ -113,7 +136,8 @@ object PersistedUser {
   (JsPath \ "password").readNullable[String] and
   (JsPath \ "userGroups").readNullable[List[GroupMembership]].map(_.getOrElse(Nil)) and
   (JsPath \ "socialLinks").readNullable[List[SocialLink]].map(_.getOrElse(Nil)) and
-  (JsPath \ "adData").readNullable[Map[String, Any]].map(_.getOrElse(Map.empty))
+  (JsPath \ "adData").readNullable[Map[String, Any]].map(_.getOrElse(Map.empty)) and
+  (JsPath \ "searchFields").readNullable[SearchFields]
 )(PersistedUser.apply _)
 
   val persistedUserWrites: Writes[PersistedUser] = (
@@ -126,7 +150,8 @@ object PersistedUser {
   (JsPath \ "password").writeNullable[String] and
   (JsPath \ "userGroups").write[List[GroupMembership]] and
   (JsPath \ "socialLinks").write[List[SocialLink]] and
-  (JsPath \ "adData").write[Map[String, Any]]
+  (JsPath \ "adData").write[Map[String, Any]] and
+  (JsPath \ "searchFields").writeNullable[SearchFields]
 )(unlift(PersistedUser.unapply))
 
   implicit val format: Format[PersistedUser] =
