@@ -113,6 +113,6 @@ object User {
                   receiveGnmMarketing = user.statusFields.flatMap(_.receiveGnmMarketing),
                   userEmailValidated = user.statusFields.flatMap(_.userEmailValidated)
                 ),
-                groups = user.userGroups.map(g => UserGroup(g.packageCode, g.joinedDate))
+                groups = user.userGroups.map(g => UserGroup(g.path, g.joinedDate))
     )
 }
