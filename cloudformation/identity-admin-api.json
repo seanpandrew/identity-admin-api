@@ -87,6 +87,20 @@
     "AlarmEmailAddress": {
       "Description": "Contact email for alarms",
       "Type": "String"
+    },
+    "Stack": {
+      "Description": "Application stack",
+      "Type": "String",
+      "Default": "identity"
+    },
+    "App": {
+      "Description": "Application name",
+      "Type": "String",
+      "Default": "identity-admin"
+    },
+    "LoadBalancerLogsS3Bucket":{
+      "Description": "S3 Bucket to write ELB logs to",
+      "Type": "String"
     }
   },
 
