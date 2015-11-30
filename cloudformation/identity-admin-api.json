@@ -201,7 +201,21 @@
         "Subnets": { "Ref": "PrivateVpcSubnets" },
         "SecurityGroups": [
           { "Ref": "LoadBalancerSecurityGroup" }
-        ]
+        ],
+        "AccessLoggingPolicy" : {
+          "EmitInterval": 5,
+          "Enabled": true,
+          "S3BucketName": {"Ref": "LoadBalancerLogsS3Bucket"},
+          "S3BucketPrefix": {
+            "Fn::Join": ["/", [
+              "ELBLogs",
+              {"Ref": "Stack"},
+              {"Ref": "App"},
+              {"Ref": "Stage"}
+            ]
+            ]
+          }
+        }
       }
     },
 
