@@ -269,25 +269,23 @@
           {
             "Key": "Name",
             "Value": {
-              "Fn::FindInMap": ["StageVariables", {
-                "Ref": "Stage"
-              }, "InstanceName"]
+              "Fn::Join": [":", [{"Ref":"Stage"}, {"Ref":"App"}]]
             },
             "PropagateAtLaunch": "true"
           },
           {
             "Key": "Stack",
-            "Value": "identity",
+            "Value": {"Ref": "Stack"},
             "PropagateAtLaunch": "true"
           },
           {
             "Key": "App",
-            "Value": "identity-admin-api",
+            "Value": {"Ref": "App"},
             "PropagateAtLaunch": "true"
           },
           {
             "Key": "Role",
-            "Value": "identity-admin-api",
+            "Value": {"Ref": "App"},
             "PropagateAtLaunch": "true"
           }
         ],
