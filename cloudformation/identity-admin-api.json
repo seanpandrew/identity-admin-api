@@ -110,15 +110,13 @@
         "AutoscalingNotificationsARN": "arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsPROD",
         "LatencyAlarmThreshold": 0.5,
         "LatencyAlarmPeriod": 60,
-        "NotificationAlarmPeriod": 1200,
-        "InstanceName": "PROD:identity-admin-api"
+        "NotificationAlarmPeriod": 1200
       },
       "CODE": {
         "AutoscalingNotificationsARN": "arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsCODE",
         "LatencyAlarmThreshold": 5,
         "LatencyAlarmPeriod": 1200,
-        "NotificationAlarmPeriod": 1200,
-        "InstanceName": "CODE:identity-admin-api"
+        "NotificationAlarmPeriod": 1200
       }
     },
     "CertsMap": {
