@@ -37,7 +37,8 @@ object UserStatus {
   implicit val format = Json.format[UserStatus]
 }
 
-case class UserGroup(name: String,
+case class UserGroup(packageCode: String,
+                     path:String,
                      joinDate: Option[DateTime])
 
 object UserGroup {
@@ -113,6 +114,6 @@ object User {
                   receiveGnmMarketing = user.statusFields.flatMap(_.receiveGnmMarketing),
                   userEmailValidated = user.statusFields.flatMap(_.userEmailValidated)
                 ),
-                groups = user.userGroups.map(g => UserGroup(g.path, g.joinedDate))
+                groups = user.userGroups.map(g => UserGroup(g.packageCode, g.path, g.joinedDate))
     )
 }
