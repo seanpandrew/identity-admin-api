@@ -16,7 +16,7 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
 
 class UsersController @Inject() (userService: UserService, auth: AuthenticatedAction) extends Controller with Logging {
 
-  private val MinimumQueryLength = 3
+  private val MinimumQueryLength = 2
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     ApiResponse {
