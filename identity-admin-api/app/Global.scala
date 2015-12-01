@@ -1,9 +1,14 @@
+import com.novus.salat.global.{ctx => SalatGlobalContext}
+import configuration.Config
 import filters.{AddEC2InstanceHeader, LogRequestsFilter}
 import models.ApiErrors._
-import play.api.{Play, Application, Logger}
+import monitoring.{Metrics, MongoDBHealthCheck}
+import play.api.libs.concurrent.Akka.system
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.{RequestHeader, Result, WithFilters}
-import com.novus.salat.global.{ctx => SalatGlobalContext}
+import play.api.{Application, Logger, Play}
+import repositories.UsersReadRepository
+import play.api.Play.current
 
 import scala.concurrent.Future
 
@@ -29,5 +34,11 @@ object Global extends WithFilters(AddEC2InstanceHeader, LogRequestsFilter) {
   override def onStart(app: Application) = {
     SalatGlobalContext.clearAllGraters()
     SalatGlobalContext.registerClassLoader(Play.classloader(Play.current))
+
+    if(Config.Monitoring.mongoEnabled) {
+      val userRepo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val metrics = app.injector.instanceOf(classOf[Metrics])
+      new MongoDBHealthCheck(userRepo, system, metrics).start()
+    }
   }
 }

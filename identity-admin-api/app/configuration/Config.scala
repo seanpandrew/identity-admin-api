@@ -24,4 +24,8 @@ object Config {
     val clientToken = config.getString("identity-api.client-token")
     val baseUrl = config.getString("identity-api.base-url")
   }
+
+  object Monitoring {
+    val mongoEnabled = config.getBoolean("monitoring.mongo.enabled")
+  }
 }

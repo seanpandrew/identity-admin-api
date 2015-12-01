@@ -426,6 +426,35 @@
       }
     },
 
+    "MongoDBConnectionUnhealthyAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "ActionsEnabled": "true",
+        "AlarmDescription": "identity-admin-api cannot communicate with mongo",
+        "ComparisonOperator": "LessThanThreshold",
+        "EvaluationPeriods": "1",
+        "MetricName": "MongoConnectivity",
+        "Namespace": "identity-admin-api",
+        "Period": "300",
+        "Statistic": "Average",
+        "Threshold": "1",
+        "AlarmActions": [
+          { "Ref": "TopicSendEmail" },
+          { "Ref": "TopicPagerDutyAlerts" }
+        ],
+        "OKActions": [
+          { "Ref": "TopicPagerDutyAlerts" }
+        ],
+        "Dimensions": [
+          {
+            "Name": "Stage",
+            "Value": { "Ref": "Stage" }
+          }
+        ]
+      }
+    },
+
+
     "ScaleUpPolicy": {
       "Type": "AWS::AutoScaling::ScalingPolicy",
       "Properties": {

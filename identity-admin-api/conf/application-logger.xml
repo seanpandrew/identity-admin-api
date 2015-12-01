@@ -40,7 +40,7 @@
         <appender-ref ref="ACCESSLOGFILE"/>
     </logger>
 
-    <root level="WARN">
+    <root level="INFO">
         <appender-ref ref="LOGFILE"/>
     </root>
 
