@@ -440,7 +440,7 @@
         "EvaluationPeriods": "1",
         "MetricName": "MongoConnectivity",
         "Namespace": "identity-admin-api",
-        "Period": "60",
+        "Period": "300",
         "Statistic": "Average",
         "Threshold": "0.9",
         "AlarmActions": [
