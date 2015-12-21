@@ -22,6 +22,26 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, service)
   }
 
+  "isUsernameChanged" should {
+    "return true if a username is being changed" in {
+      service.isUsernameChanged("changedUsername", Some("oldUsername")) should be(true)
+    }
+
+    "return false if a username is not being changed" in {
+      service.isUsernameChanged("oldUsername", Some("oldUsername")) should be(false)
+    }
+
+    "return true if a username is being added" in {
+      service.isUsernameChanged("newUsername", None) should be(true)
+    }
+
+    "return false if a zero length username is being added" in {
+      service.isUsernameChanged("", None) should be(false)
+      service.isUsernameChanged("", Some("existingUsername")) should be(false)
+      service.isUsernameChanged("", Some("")) should be(false)
+    }
+  }
+
   "update" should {
     "update when email and username are valid" in {
       val user = User("id", "email@theguardian.com")

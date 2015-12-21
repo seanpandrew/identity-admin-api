@@ -28,4 +28,10 @@ object Config {
   object Monitoring {
     val mongoEnabled = config.getBoolean("monitoring.mongo.enabled")
   }
+
+  object PublishEvents {
+    val eventsEnabled = config.getBoolean("events.enabled")
+    val emailValidationChangedEventSnsArn = config.getString("events.email-validation-changed-sns-topic-arn")
+    val displayNameChangedEventSnsArn = config.getString("events.displayname-changed-sns-topic-arn")
+  }
 }

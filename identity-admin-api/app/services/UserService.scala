@@ -1,6 +1,8 @@
 package services
 
 import javax.inject.Inject
+import actors.EventPublishingActor.{EmailValidationChanged, DisplayNameChanged}
+import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
 import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
@@ -11,7 +13,8 @@ import scala.concurrent.Future
 class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              usersWriteRepository: UsersWriteRepository,
                              reservedUserNameRepository: ReservedUserNameWriteRepository,
-                             identityApiClient: IdentityApiClient) extends Logging {
+                             identityApiClient: IdentityApiClient,
+                             eventPublishingActorProvider: EventPublishingActorProvider) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -23,8 +26,10 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       case (true, true) =>
         val userEmailChanged = !user.email.equalsIgnoreCase(userUpdateRequest.email)
         val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
+        val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
         val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
+        triggerEvents(user.id, usernameChanged, userEmailValidated)
         if(result.isRight && userEmailChanged)
           identityApiClient.sendEmailValidation(user.id)
         ApiResponse.Async(Future.successful(result))
@@ -36,6 +41,23 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         ApiResponse.Left(ApiErrors.badRequest("Email and username are invalid"))
     }
 
+  }
+
+  def isUsernameChanged(newUsername: String, existingUsername: Option[String]): Boolean = {
+    existingUsername match {
+      case Some(username) if newUsername.length > 0 => !username.equals(newUsername)
+      case None if newUsername.length > 0 => true
+      case _ => false
+    }
+  }
+
+  private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidated: Option[Boolean]) = {
+    if (usernameChanged) {
+      eventPublishingActorProvider.actor ! DisplayNameChanged(userId)
+    }
+    if (emailValidated.getOrElse(false)) {
+      eventPublishingActorProvider.actor ! EmailValidationChanged(userId)
+    }
   }
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {
