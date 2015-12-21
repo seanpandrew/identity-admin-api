@@ -33,8 +33,8 @@ class MongoDBHealthCheck(userRepository: UsersReadRepository, actorSystem: Actor
     // trigger immediately
     triggerUpdate()
 
-    // trigger every minute
-    actorSystem.scheduler.schedule(1.minute, 1.minute) {
+    // trigger every 10 seconds
+    actorSystem.scheduler.schedule(10.seconds, 10.seconds) {
       triggerUpdate()
     }
   }
