@@ -19,8 +19,6 @@ object Global extends WithFilters(AddEC2InstanceHeader, LogRequestsFilter) {
 
   private val logger = Logger(this.getClass)
 
-  var eventPublishingActorProvider: EventPublishingActorProvider = _
-
   override def onBadRequest(request: RequestHeader, error: String): Future[Result] = {
     logger.debug(s"Bad request: $request, error: $error")
     Future { badRequest(error) }
@@ -44,11 +42,6 @@ object Global extends WithFilters(AddEC2InstanceHeader, LogRequestsFilter) {
       val userRepo = app.injector.instanceOf(classOf[UsersReadRepository])
       val metrics = app.injector.instanceOf(classOf[Metrics])
       new MongoDBHealthCheck(userRepo, system, metrics).start()
-    }
-
-    if(Config.PublishEvents.eventsEnabled) {
-      val eventPublishingActor = Akka.system.actorOf(EventPublishingActor.getProps(SimpleNotificationService.client))
-      eventPublishingActorProvider = EventPublishingActorProvider(eventPublishingActor)
     }
   }
 }

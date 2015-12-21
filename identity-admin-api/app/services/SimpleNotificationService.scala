@@ -7,8 +7,8 @@ import configuration.Config
 object SimpleNotificationService {
 
   val client = {
-    val client = new AmazonSNSAsyncClient()(Config.AWS.credentialsProvider)
-    client.setEndpoint(Region.getRegion(Config.AWS.region).getServiceEndpoint(ServiceAbbreviations.CloudWatch))
+    val client = new AmazonSNSAsyncClient(Config.AWS.credentialsProvider)
+    client.setEndpoint(Region.getRegion(Config.AWS.region).getServiceEndpoint(ServiceAbbreviations.SNS))
     client
   }
 

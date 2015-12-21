@@ -1,5 +1,6 @@
 package services
 
+import actors.EventPublishingActorProvider
 import models._
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
@@ -16,10 +17,11 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val userWriteRepo = mock[UsersWriteRepository]
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
   val identityApiClient = mock[IdentityApiClient]
-  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient))
+  val eventPublishingActorProvider = mock[EventPublishingActorProvider]
+  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider))
 
   before {
-    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, service)
+    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service)
   }
 
   "isUsernameChanged" should {
@@ -39,6 +41,23 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       service.isUsernameChanged("", None) should be(false)
       service.isUsernameChanged("", Some("existingUsername")) should be(false)
       service.isUsernameChanged("", Some("")) should be(false)
+    }
+  }
+
+  "isEmailValidationChanged" should {
+    "return true if e-mail validation status is changing" in {
+      service.isEmailValidationChanged(Some(false), Some(true)) should be(true)
+      service.isEmailValidationChanged(Some(false), None) should be(true)
+      service.isEmailValidationChanged(Some(true), Some(false)) should be(true)
+      service.isEmailValidationChanged(Some(true), None) should be(true)
+      service.isEmailValidationChanged(None, Some(true)) should be(true)
+      service.isEmailValidationChanged(None, Some(false)) should be(true)
+    }
+
+    "return false if e-mail validation status is not changing" in {
+      service.isEmailValidationChanged(None, None) should be(false)
+      service.isEmailValidationChanged(Some(true), Some(true)) should be(false)
+      service.isEmailValidationChanged(Some(false), Some(false)) should be(false)
     }
   }
 

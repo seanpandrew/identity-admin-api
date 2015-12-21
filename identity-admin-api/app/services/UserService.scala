@@ -26,6 +26,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       case (true, true) =>
         val userEmailChanged = !user.email.equalsIgnoreCase(userUpdateRequest.email)
         val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
+        val userEmailValidatedChanged = isEmailValidationChanged(userEmailValidated, user.status.userEmailValidated)
         val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
         val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
@@ -51,12 +52,16 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     }
   }
 
+  def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
+    !newEmailValidated.equals(existingEmailValidated)
+  }
+
   private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidated: Option[Boolean]) = {
     if (usernameChanged) {
-      eventPublishingActorProvider.actor ! DisplayNameChanged(userId)
+      eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
     }
     if (emailValidated.getOrElse(false)) {
-      eventPublishingActorProvider.actor ! EmailValidationChanged(userId)
+      eventPublishingActorProvider.sendEvent(EmailValidationChanged(userId))
     }
   }
 
