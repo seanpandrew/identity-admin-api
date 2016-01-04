@@ -52,5 +52,6 @@ class EventPublishingActor(amazonSNSAsyncClient: AmazonSNSAsyncClient) extends A
         case Failure(e) => logger.error(s"Could not publish event to displayname changed SNS for user ID ${displayNameChanged.userId}", e)
       }
     }
+    case unknown => logger.error(s"Received unsupported event in EventPublishingActor: $unknown")
   }
 }
