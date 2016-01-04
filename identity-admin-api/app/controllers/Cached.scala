@@ -3,6 +3,7 @@ package controllers
 import com.github.nscala_time.time.Imports._
 import org.joda.time.DateTime
 import play.api.mvc.Result
+import util.Formats
 
 import scala.math.max
 
@@ -25,14 +26,10 @@ object Cached {
     val staleWhileRevalidateSeconds = max(maxAge / 10, 1)
     result.withHeaders(
       "Cache-Control" -> s"public, max-age=$maxAge, stale-while-revalidate=$staleWhileRevalidateSeconds, stale-if-error=$tenDaysInSeconds",
-      "Expires" -> toHttpDateTimeString(now + maxAge.seconds),
-      "Date" -> toHttpDateTimeString(now)
+      "Expires" -> Formats.toHttpDateTimeString(now + maxAge.seconds),
+      "Date" -> Formats.toHttpDateTimeString(now)
     )
   }
-
-  //http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.3.1
-  private val HTTPDateFormat = DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'").withZone(DateTimeZone.UTC)
-  def toHttpDateTimeString(dateTime: DateTime): String = dateTime.toString(HTTPDateFormat)
 }
 
 object NoCache {

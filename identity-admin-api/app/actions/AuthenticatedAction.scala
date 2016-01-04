@@ -8,9 +8,10 @@ import com.gu.identity.util.Logging
 import configuration.Config
 import models.ApiErrors
 import org.apache.commons.codec.binary.Base64
+import org.joda.time.{DateTimeZone, DateTime}
 import play.api.http.HeaderNames
-import play.api.libs.ws.WSRequest
 import play.api.mvc.{Request, Result, _}
+import util.Formats
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -26,8 +27,9 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
 
   def secret: String
 
-  private val ALGORITHM = "HmacSHA256"
-  private val HMAC_PATTERN = "HMAC\\s(.+)".r
+  private val Algorithm = "HmacSHA256"
+  private val HmacPattern = "HMAC\\s(.+)".r
+  private[actions] val HmacValidDurationInMinutes = 5
 
   def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
     Try {
@@ -38,9 +40,7 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
 
       logger.info(s"path: $uri, date: $date, hmac: $hmac")
 
-      val signed = sign(date, uri)
-
-      if (signed == hmac) {
+      if (isDateValid(date) && isHmacValid(date, uri, hmac)) {
         Success
       } else {
         throw new IllegalArgumentException("Authorization token is invalid.")
@@ -51,8 +51,25 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
     }
   }
 
+  private def isDateValid(date: String): Boolean  = {
+    Try {
+      val d = Formats.toDateTime(date)
+      val now = DateTime.now(DateTimeZone.forID("GMT"))
+      val expires = d.plusMinutes(HmacValidDurationInMinutes)
+      if (now.isAfter(expires)) false else true
+    } match {
+      case Success(r) => r
+      case Failure(t) =>
+        logger.error(s"Date header could not be parsed", t)
+        false
+    }
+  }
+
+  private def isHmacValid(date: String, uri: String, hmac: String): Boolean =
+    sign(date, uri) == hmac
+
   private[actions] def extractToken(authHeader: String): Option[String] = {
-    val matched = HMAC_PATTERN.findAllIn(authHeader).matchData map {
+    val matched = HmacPattern.findAllIn(authHeader).matchData map {
       m => m.group(1)
     }
 
@@ -67,8 +84,8 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
 
 
   private def calculateHMAC(toEncode: String): String = {
-    val signingKey = new SecretKeySpec(secret.getBytes, ALGORITHM)
-    val mac = Mac.getInstance(ALGORITHM)
+    val signingKey = new SecretKeySpec(secret.getBytes, Algorithm)
+    val mac = Mac.getInstance(Algorithm)
     mac.init(signingKey)
     val rawHmac = mac.doFinal(toEncode.getBytes)
     new String(Base64.encodeBase64(rawHmac))
