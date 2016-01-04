@@ -30,7 +30,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
         val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
-        triggerEvents(user.id, usernameChanged, userEmailValidated)
+        triggerEvents(user.id, usernameChanged, userEmailValidatedChanged)
         if(result.isRight && userEmailChanged)
           identityApiClient.sendEmailValidation(user.id)
         ApiResponse.Async(Future.successful(result))
@@ -46,21 +46,21 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   def isUsernameChanged(newUsername: String, existingUsername: Option[String]): Boolean = {
     existingUsername match {
-      case Some(username) if newUsername.length > 0 => !username.equals(newUsername)
+      case Some(username) if newUsername.length > 0 => username != newUsername
       case None if newUsername.length > 0 => true
       case _ => false
     }
   }
 
   def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
-    !newEmailValidated.equals(existingEmailValidated)
+    newEmailValidated != existingEmailValidated
   }
 
-  private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidated: Option[Boolean]) = {
+  private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidatedChanged: Boolean) = {
     if (usernameChanged) {
       eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
     }
-    if (emailValidated.getOrElse(false)) {
+    if (emailValidatedChanged) {
       eventPublishingActorProvider.sendEvent(EmailValidationChanged(userId))
     }
   }
