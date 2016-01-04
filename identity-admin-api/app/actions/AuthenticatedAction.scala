@@ -60,7 +60,7 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
     } match {
       case Success(r) => r
       case Failure(t) =>
-        logger.info(s"Date header could not be parsed: ${t.getMessage}")
+        logger.error(s"Date header could not be parsed", t)
         false
     }
   }
