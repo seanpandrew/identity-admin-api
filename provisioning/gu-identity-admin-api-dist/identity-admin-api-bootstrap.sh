@@ -3,7 +3,10 @@
 source /set-env.sh
 source /identity-functions.sh
 
-installScriptFromS3 s3://gu-identity-dist/$stagetag/mongo-hosts.sh mongo-hosts.sh
+installScriptFromBucket gu-identity-dist/$stagetag identity-bootstrap.sh
+installScriptFromBucket gu-identity-dist/$stagetag logstash-setup.sh
+installScriptFromBucket gu-identity-dist/$stagetag mongo-hosts-$stagetag.sh
+
 aws s3 cp s3://gu-$apptag-dist/$stacktag/$stagetag/$apptag/app.zip /$apptag/$apptag.zip
 aws s3 cp s3://gu-$apptag-private/$stagetag/$apptag.conf /etc/gu/$apptag.conf
 
