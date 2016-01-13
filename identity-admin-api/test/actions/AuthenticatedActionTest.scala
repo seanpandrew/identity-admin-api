@@ -106,5 +106,13 @@ class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter
       val request = FakeRequest("GET", path).withHeaders(HeaderNames.DATE -> dateHeaderValue, HeaderNames.AUTHORIZATION -> authHeaderValue)
       Await.result(action.invokeBlock(request, block), 1.second) shouldEqual Results.Ok
     }
+
+    "Execute block if HMAC was sent by client with skewed clock, but within time limit" in {
+      val skewedDateHeader = Formats.toHttpDateTimeString(DateTime.now.minusMinutes(action.HmacValidDurationInMinutes - 1))
+      val path= "/v1/user/id?param=val"
+      val authHeaderValue = s"HMAC ${action.sign(skewedDateHeader, path)}"
+      val request = FakeRequest("GET", path).withHeaders(HeaderNames.DATE -> skewedDateHeader, HeaderNames.AUTHORIZATION -> authHeaderValue)
+      Await.result(action.invokeBlock(request, block), 1.second) shouldEqual Results.Ok
+    }
   }
 }

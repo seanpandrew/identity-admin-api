@@ -30,6 +30,7 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
   private val Algorithm = "HmacSHA256"
   private val HmacPattern = "HMAC\\s(.+)".r
   private[actions] val HmacValidDurationInMinutes = 5
+  private[actions] val MinuteInMilliseconds = 60000
 
   def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
     Try {
@@ -53,10 +54,11 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
 
   private def isDateValid(date: String): Boolean  = {
     Try {
-      val d = Formats.toDateTime(date)
+      val provided = Formats.toDateTime(date)
       val now = DateTime.now(DateTimeZone.forID("GMT"))
-      val expires = d.plusMinutes(HmacValidDurationInMinutes)
-      if (now.isAfter(expires)) false else true
+      val delta = Math.abs(provided.getMillis - now.getMillis)
+      val allowedOffset = HmacValidDurationInMinutes * MinuteInMilliseconds
+      delta <= allowedOffset
     } match {
       case Success(r) => r
       case Failure(t) =>
