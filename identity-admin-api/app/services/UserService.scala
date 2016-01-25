@@ -9,6 +9,7 @@ import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, Users
 import uk.gov.hmrc.emailaddress.EmailAddress
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import configuration.Config.PublishEvents.eventsEnabled
 
 class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              usersWriteRepository: UsersWriteRepository,
@@ -57,10 +58,10 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidatedChanged: Boolean) = {
-    if (usernameChanged) {
+    if (usernameChanged && eventsEnabled) {
       eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
     }
-    if (emailValidatedChanged) {
+    if (emailValidatedChanged && eventsEnabled) {
       eventPublishingActorProvider.sendEvent(EmailValidationChanged(userId))
     }
   }
