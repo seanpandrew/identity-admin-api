@@ -45,7 +45,7 @@ class EventPublishingActor(amazonSNSAsyncClient: AmazonSNSAsyncClient) extends A
     }
     case displayNameChanged: DisplayNameChanged => {
       logger.debug(s"Sending displayname changed event to SNS for user ${displayNameChanged.userId}")
-      val subject = "Displayname Changed"
+      val subject = "Display Name Changed"
       val message: String = write(displayNameChanged)
       Try(amazonSNSAsyncClient.publishAsync(new PublishRequest(displayNameChangedTopicArn, message, subject))) match {
         case Success(_) => logger.trace("Published to SNS message {}", message)
