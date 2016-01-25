@@ -1,4 +1,3 @@
-import actors.{EventPublishingActor, EventPublishingActorProvider}
 import com.novus.salat.global.{ctx => SalatGlobalContext}
 import configuration.Config
 import filters.{AddEC2InstanceHeader, LogRequestsFilter}
@@ -10,8 +9,6 @@ import play.api.mvc.{RequestHeader, Result, WithFilters}
 import play.api.{Application, Logger, Play}
 import repositories.UsersReadRepository
 import play.api.Play.current
-import services.SimpleNotificationService
-import play.api.libs.concurrent.Akka
 
 import scala.concurrent.Future
 
