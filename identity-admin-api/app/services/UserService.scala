@@ -58,11 +58,13 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidatedChanged: Boolean) = {
-    if (usernameChanged && eventsEnabled) {
-      eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
-    }
-    if (emailValidatedChanged && eventsEnabled) {
-      eventPublishingActorProvider.sendEvent(EmailValidationChanged(userId))
+    if (eventsEnabled) {
+      if (usernameChanged) {
+        eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
+      }
+      if (emailValidatedChanged) {
+        eventPublishingActorProvider.sendEvent(EmailValidationChanged(userId))
+      }
     }
   }
 
