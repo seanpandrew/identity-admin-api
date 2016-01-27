@@ -27,7 +27,7 @@ object ReactiveMongoConnection extends Logging {
     registerDriverShutdownHook(driver)
     MongoConnection.parseURI(uri).map { parsedUri =>
       val connection = driver.connection(parsedUri)
-      val databaseName = parsedUri.db.getOrElse(throw new Exception("No database specified in provided URI"))
+      val databaseName = parsedUri.db.getOrElse(throw new Exception("No database specified in provided MongoDB URI"))
       val db = connection.db(databaseName)
       mongoDb = Some(db)
       db
