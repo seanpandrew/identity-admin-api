@@ -2,7 +2,7 @@ package repositories
 
 import java.util.UUID
 
-import models.{ApiErrors, ReservedUsernameList}
+import models.ApiErrors
 import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play
