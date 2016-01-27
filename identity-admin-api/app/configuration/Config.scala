@@ -11,6 +11,7 @@ object Config {
   val applicationName = "identity-admin-api"
 
   val stage = config.getString("stage")
+  val stack = "identity"
 
   object AWS {
     val profile = config.getString("aws-profile")

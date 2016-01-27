@@ -155,7 +155,7 @@
               },
               {
                 "Effect": "Allow",
-                "Action": "ec2:DescribeTags",
+                "Action": "ec2:Describe*",
                 "Resource": "*"
               },
               {
