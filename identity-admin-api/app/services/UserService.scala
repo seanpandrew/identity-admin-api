@@ -1,17 +1,21 @@
 package services
 
 import javax.inject.Inject
+import actors.EventPublishingActor.{EmailValidationChanged, DisplayNameChanged}
+import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
 import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import configuration.Config.PublishEvents.eventsEnabled
 
 class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              usersWriteRepository: UsersWriteRepository,
                              reservedUserNameRepository: ReservedUserNameWriteRepository,
-                             identityApiClient: IdentityApiClient) extends Logging {
+                             identityApiClient: IdentityApiClient,
+                             eventPublishingActorProvider: EventPublishingActorProvider) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -23,8 +27,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       case (true, true) =>
         val userEmailChanged = !user.email.equalsIgnoreCase(userUpdateRequest.email)
         val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
+        val userEmailValidatedChanged = isEmailValidationChanged(userEmailValidated, user.status.userEmailValidated)
+        val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
         val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
+        triggerEvents(user.id, usernameChanged, userEmailValidatedChanged)
         if(result.isRight && userEmailChanged)
           identityApiClient.sendEmailValidation(user.id)
         ApiResponse.Async(Future.successful(result))
@@ -36,6 +43,29 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         ApiResponse.Left(ApiErrors.badRequest("Email and username are invalid"))
     }
 
+  }
+
+  def isUsernameChanged(newUsername: String, existingUsername: Option[String]): Boolean = {
+    existingUsername match {
+      case Some(username) if newUsername.length > 0 => username != newUsername
+      case None if newUsername.length > 0 => true
+      case _ => false
+    }
+  }
+
+  def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
+    newEmailValidated != existingEmailValidated
+  }
+
+  private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidatedChanged: Boolean) = {
+    if (eventsEnabled) {
+      if (usernameChanged) {
+        eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
+      }
+      if (emailValidatedChanged) {
+        eventPublishingActorProvider.sendEvent(EmailValidationChanged(userId))
+      }
+    }
   }
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {

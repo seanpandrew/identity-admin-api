@@ -63,7 +63,8 @@ case class PrivateFields(firstName: Option[String] = None,
                           socialAvatarUrl: Option[String] = None,
                           lastActiveIpAddress: Option[String] = None,
                           lastActiveLocation: Option[LastActiveLocation] = None,
-                          registrationType: Option[String] = None
+                          registrationType: Option[String] = None,
+                          registrationPlatform: Option[String] = None
                           )
 
 object PrivateFields {

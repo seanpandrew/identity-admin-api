@@ -20,7 +20,7 @@ object Config {
   }
 
   val hmacSecret = config.getString("hmac.secret")
-  
+
   object IdentityApi {
     val clientToken = config.getString("identity-api.client-token")
     val baseUrl = config.getString("identity-api.base-url")
@@ -29,4 +29,11 @@ object Config {
   object Monitoring {
     val mongoEnabled = config.getBoolean("monitoring.mongo.enabled")
   }
+
+  object PublishEvents {
+    val eventsEnabled = config.getBoolean("events.enabled")
+    val emailValidationChangedEventSnsArn = config.getString("events.email-validation-changed-sns-topic-arn")
+    val displayNameChangedEventSnsArn = config.getString("events.displayname-changed-sns-topic-arn")
+  }
+
 }
