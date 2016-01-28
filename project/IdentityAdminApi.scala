@@ -36,6 +36,7 @@ trait IdentityAdminApi {
       "scalaz-bintray" at "https://dl.bintray.com/scalaz/releases",
       Resolver.typesafeRepo("releases"),
       Resolver.bintrayRepo("dwhjames", "maven"),
+      Resolver.bintrayRepo("guardian", "platforms"),
       Resolver.bintrayRepo("hmrc", "releases"),
       Resolver.sonatypeRepo("releases")),
     sources in (Compile,doc) := Seq.empty,

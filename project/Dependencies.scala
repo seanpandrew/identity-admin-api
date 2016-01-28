@@ -24,13 +24,13 @@ object Dependencies {
   val emailValidation = "uk.gov.hmrc" %% "emailaddress" % "1.0.0"
   val wireMock = "com.github.tomakehurst" % "wiremock" % "1.57" % "test"
   val scalaTest = "org.scalatest" %% "scalatest" % "2.2.5" % "test"
+  val autoMongoDiscovery = "com.gu" %% "mongodb-auto-discovery" % "1.0"
   val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % "2.4.1" % "test"
   val akkaTestkit = "com.typesafe.akka" %% "akka-testkit" % "2.4.1" % "test"
-
   //projects
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
-    playWS, playCache, playFilters, awsWrap, awsSns, awsCloudWatch, scalaz, reactiveMongo, salat,
-    specs2, scalaTest, embeddedMongo, wireMock, scalaTestPlus, akkaSlf4j, akkaTestkit)
+    playWS, playCache, playFilters, awsWrap, awsCloudWatch, scalaz, reactiveMongo, salat,
+    specs2, scalaTest, embeddedMongo, wireMock, scalaTestPlus, autoMongoDiscovery, akkaSlf4j, akkaTestkit)
 
 }

@@ -5,6 +5,7 @@ import com.gu.identity.util.Logging
 import com.mongodb.WriteConcern
 import com.mongodb.casbah._
 import com.mongodb.casbah.commons.conversions.scala.RegisterJodaTimeConversionHelpers
+import configuration.MongoConfig
 import play.api.Play
 import play.api.Play.current
 
@@ -14,7 +15,7 @@ object SalatMongoConnection extends Logging {
   RegisterJodaTimeConversionHelpers()
   
   private def init(): MongoDB = {
-    val uri = Play.configuration.getString("mongodb.uri").getOrElse(throw new IllegalStateException("mongodb.uri is not set"))
+    val uri = MongoConfig.uri
     val mongoUri = MongoClientURI(uri)
     val connection: MongoClient = MongoClient(mongoUri)
     mongoUri.database.map { dbName =>

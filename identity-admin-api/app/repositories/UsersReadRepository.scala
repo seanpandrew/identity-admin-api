@@ -1,25 +1,20 @@
 package repositories
 
-import javax.inject.Inject
-
-import models.{User, SearchResponse}
+import models.{SearchResponse, User}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
+import play.modules.reactivemongo.json._
+import play.modules.reactivemongo.json.collection._
+import reactivemongo.api.{QueryOpts, ReadPreference}
 
 import scala.concurrent.Future
 
-import play.modules.reactivemongo.{ReactiveMongoApi, ReactiveMongoComponents}
-import reactivemongo.api.{QueryOpts, ReadPreference}
 
-import play.modules.reactivemongo.json._
-import play.modules.reactivemongo.json.collection._
-
-
-class UsersReadRepository @Inject()(val reactiveMongoApi: ReactiveMongoApi) extends ReactiveMongoComponents {
+class UsersReadRepository {
 
   private val MaximumResults = 20
 
-  private def jsonCollection = reactiveMongoApi.db.collection[JSONCollection]("users")
+  private def jsonCollection = ReactiveMongoConnection.db().collection[JSONCollection]("users")
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): Future[SearchResponse] =  {
     val q = buildSearchQuery(query)
