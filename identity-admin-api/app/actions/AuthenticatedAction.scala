@@ -53,30 +53,19 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
   }
 
   private def isDateValid(date: String): Boolean  = {
-    Try {
-      val provided = Formats.toDateTime(date)
-      val now = DateTime.now(DateTimeZone.forID("GMT"))
-      val delta = Math.abs(provided.getMillis - now.getMillis)
-      val allowedOffset = HmacValidDurationInMinutes * MinuteInMilliseconds
-      delta <= allowedOffset
-    } match {
-      case Success(r) => r
-      case Failure(t) =>
-        logger.error(s"Date header could not be parsed", t)
-        false
-    }
+    val provided = Try(Formats.toDateTime(date)).toOption.getOrElse(throw new scala.IllegalArgumentException("Date header is of invalid format."))
+    val now = DateTime.now(DateTimeZone.forID("GMT"))
+    val delta = Math.abs(provided.getMillis - now.getMillis)
+    val allowedOffset = HmacValidDurationInMinutes * MinuteInMilliseconds
+    delta <= allowedOffset
   }
 
   private def isHmacValid(date: String, uri: String, hmac: String): Boolean =
     sign(date, uri) == hmac
 
   private[actions] def extractToken(authHeader: String): Option[String] = {
-    val matched = HmacPattern.findAllIn(authHeader).matchData map {
-      m => m.group(1)
-    }
-
-    matched.toSeq.headOption
-  }
+    (HmacPattern.findAllIn(authHeader).matchData map { m => m.group(1) }).toList.headOption
+}
 
   def sign(date: String, path: String): String = {
     val input = List[String](date, path)
