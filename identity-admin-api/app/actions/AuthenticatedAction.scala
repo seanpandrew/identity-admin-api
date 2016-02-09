@@ -53,7 +53,13 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
   }
 
   private def isDateValid(date: String): Boolean  = {
-    val provided = Try(Formats.toDateTime(date)).toOption.getOrElse(throw new scala.IllegalArgumentException("Date header is of invalid format."))
+    val provided = Try(Formats.toDateTime(date)) match {
+      case Success(parsedDate) => parsedDate
+      case _ => {
+        logger.error(s"Could not parse date header from HTTP headers: ${date}")
+        throw new scala.IllegalArgumentException("Date header is of invalid format.")
+      }
+    }
     val now = DateTime.now(DateTimeZone.forID("GMT"))
     val delta = Math.abs(provided.getMillis - now.getMillis)
     val allowedOffset = HmacValidDurationInMinutes * MinuteInMilliseconds
