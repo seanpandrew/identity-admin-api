@@ -24,7 +24,7 @@ object Dependencies {
   val emailValidation = "uk.gov.hmrc" %% "emailaddress" % "1.0.0"
   val wireMock = "com.github.tomakehurst" % "wiremock" % "1.57" % "test"
   val scalaTest = "org.scalatest" %% "scalatest" % "2.2.5" % "test"
-  val autoMongoDiscovery = "com.gu" %% "mongodb-auto-discovery" % "1.0"
+  val autoMongoDiscovery = "com.gu" %% "mongodb-auto-discovery" % "1.6"
   val akkaSlf4j = "com.typesafe.akka" %% "akka-slf4j" % "2.4.1" % "test"
   val akkaTestkit = "com.typesafe.akka" %% "akka-testkit" % "2.4.1" % "test"
   //projects
