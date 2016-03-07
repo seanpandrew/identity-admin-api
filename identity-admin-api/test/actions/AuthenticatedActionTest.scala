@@ -97,7 +97,7 @@ class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter
       val authHeaderValue = s"HMAC ${action.sign(dateHeaderValue, path)}"
       val request = FakeRequest("GET", path).withHeaders(HeaderNames.DATE -> dateHeader, HeaderNames.AUTHORIZATION -> authHeaderValue)
       val result = action.invokeBlock(request, block)
-      verifyUnauthorized(result, "Authorization token is invalid.")
+      verifyUnauthorized(result, "Date header is of invalid format.")
     }
 
     "Execute block if auhorization header value matches calculated signed request" in {
