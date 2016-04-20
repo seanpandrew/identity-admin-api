@@ -45,6 +45,13 @@ object UserGroup {
   implicit val format = Json.format[UserGroup]
 }
 
+case class SocialLink(socialId: String,
+                      network: String)
+
+object SocialLink {
+  implicit val format = Json.format[SocialLink]
+}
+
 case class LastActiveLocation(countryCode: Option[String] = None,
                               cityCode : Option[String] = None)
 
@@ -66,7 +73,8 @@ case class User(id: String,
                          registrationIp: Option[String] = None,
                          registrationType: Option[String] = None,
                          status: UserStatus = UserStatus(),
-                         groups: Seq[UserGroup] = Nil)
+                         groups: Seq[UserGroup] = Nil,
+                         socialLinks: Seq[SocialLink] = Nil)
 
 object User {
   implicit val format = Json.format[User]
@@ -114,6 +122,7 @@ object User {
                   receiveGnmMarketing = user.statusFields.flatMap(_.receiveGnmMarketing),
                   userEmailValidated = user.statusFields.flatMap(_.userEmailValidated)
                 ),
-                groups = user.userGroups.map(g => UserGroup(g.packageCode, g.path, g.joinedDate))
+                groups = user.userGroups.map(g => UserGroup(g.packageCode, g.path, g.joinedDate)),
+                socialLinks = user.socialLinks.map(s => SocialLink(s.socialId, s.network))
     )
 }
