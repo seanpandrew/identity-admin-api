@@ -215,6 +215,10 @@
             ]
             ]
           }
+        },
+        "ConnectionDrainingPolicy": {
+          "Enabled" : "true",
+          "Timeout" : "60"
         }
       }
     },
