@@ -1,6 +1,6 @@
 package services
 
-import com.amazonaws.regions.{ServiceAbbreviations, Region}
+import com.amazonaws.regions.{Region, ServiceAbbreviations}
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
 import configuration.Config
 

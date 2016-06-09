@@ -110,7 +110,10 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   private def doValidateEmail(user: User, emailValidated: Boolean): Either[ApiError, Boolean] = {
     usersWriteRepository.updateEmailValidationStatus(user, emailValidated) match{
-      case Right(r) => Right(true)
+      case Right(r) => {
+        triggerEvents(user.id, usernameChanged = false, emailValidatedChanged = true)
+        Right(true)
+      }
       case Left(r) => Left(r)
     }
   }

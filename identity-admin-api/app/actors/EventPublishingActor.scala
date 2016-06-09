@@ -35,7 +35,7 @@ class EventPublishingActor(amazonSNSAsyncClient: AmazonSNSAsyncClient) extends A
 
   override def receive: Receive = {
     case emailValidationChanged: EmailValidationChanged => {
-      logger.debug(s"Sending email validation changed event to SNS for user ${emailValidationChanged.userId}")
+      logger.info(s"Sending email validation changed event to SNS for user ${emailValidationChanged.userId}")
       val subject = "E-mail Validation Changed"
       val message: String = write(emailValidationChanged)
       Try(amazonSNSAsyncClient.publishAsync(new PublishRequest(emailValidationChangedTopicArn, message, subject))) match {
