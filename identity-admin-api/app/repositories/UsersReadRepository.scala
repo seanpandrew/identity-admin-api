@@ -41,6 +41,7 @@ class UsersReadRepository {
     val term = query.toLowerCase
     Json.obj(
       "$or" -> Json.arr(
+        Json.obj("_id" -> term),
         Json.obj("searchFields.emailAddress" -> term),
         Json.obj("searchFields.username" -> term),
         Json.obj("searchFields.postcode" -> term),
