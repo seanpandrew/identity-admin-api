@@ -126,6 +126,16 @@
       "PROD": {
         "ssl": "arn:aws:iam::942464564246:server-certificate/star.gutools.co.uk-exp2018-11-17"
       }
+    },
+    "SNSMap": {
+      "CODE": {
+        "emailValidationChangedTopic": "arn:aws:sns:eu-west-1:942464564246:CODE-TopicEmailValidationChanged",
+        "displayNameChangedTopic": "arn:aws:sns:eu-west-1:942464564246:CODE-TopicDisplayNameChanged"
+      },
+      "PROD": {
+        "emailValidationChangedTopic": "arn:aws:sns:eu-west-1:942464564246:PROD-TopicEmailValidationChanged",
+        "displayNameChangedTopic": "arn:aws:sns:eu-west-1:942464564246:PROD-TopicDisplayNameChanged"
+      }
     }
   },
 
@@ -165,6 +175,16 @@
                   "logs:*"
                 ],
                 "Resource": "*"
+              },
+              {
+                "Effect":"Allow",
+                "Action":["sns:Publish"],
+                "Resource": { "Fn::FindInMap": [ "SNSMap", { "Ref": "Stage" } , "emailValidationChangedTopic" ]}
+              },
+              {
+                "Effect":"Allow",
+                "Action":["sns:Publish"],
+                "Resource": { "Fn::FindInMap": [ "SNSMap", { "Ref": "Stage" } , "displayNameChangedTopic" ]}
               }
             ]
           }
