@@ -72,11 +72,6 @@ class Salesforce extends SalesforceService {
          |   Zuora__Status__c,
          |   Zuora__SubscriptionStartDate__c,
          |   Zuora__SubscriptionEndDate__c,
-         |   Zuora__MRR__c,
-         |   (SELECT
-         |       Billing_Account_Currency__c
-         |    FROM
-         |       Zuora__Subscription__c.Zuora__Subscription_Product_Charges__r),
          |   Zuora__CustomerAccount__c,
          |   Zuora__CustomerAccount__r.Contact__r.Id ,
          |   Zuora__CustomerAccount__r.Contact__r.Name,
@@ -107,8 +102,6 @@ class Salesforce extends SalesforceService {
             subscriberId = Some((records(0) \ "Name").as[String]),
             joinDate = Some((records(0) \ "Zuora__SubscriptionStartDate__c").as[String]),
             end = Some((records(0) \ "Zuora__SubscriptionEndDate__c").as[String]),
-            mrr = Some((records(0) \ "Zuora__MRR__c").as[Double].toString),
-            currency = Some(((records(0) \ "Zuora__Subscription_Product_Charges__r" \ "records")(0) \ "Billing_Account_Currency__c").as[String]),
             zuoraSubscriptionName = Some((records(0) \ "Name").as[String]))
         }
 
@@ -134,11 +127,6 @@ class Salesforce extends SalesforceService {
          |   Zuora__Status__c,
          |   Zuora__SubscriptionStartDate__c,
          |   Zuora__SubscriptionEndDate__c,
-         |   Zuora__MRR__c,
-         |   (SELECT
-         |       Billing_Account_Currency__c
-         |    FROM
-         |       Zuora__Subscription__c.Zuora__Subscription_Product_Charges__r),
          |   Zuora__CustomerAccount__c,
          |   Zuora__CustomerAccount__r.Contact__r.Id ,
          |   Zuora__CustomerAccount__r.Contact__r.Name,
@@ -170,8 +158,6 @@ class Salesforce extends SalesforceService {
             membershipNumber = Some((records(0) \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String]),
             joinDate = Some((records(0) \ "Zuora__SubscriptionStartDate__c").as[String]),
             end = Some((records(0) \ "Zuora__SubscriptionEndDate__c").as[String]),
-            mrr = Some((records(0) \ "Zuora__MRR__c").as[Double].toString),
-            currency = Some(((records(0) \ "Zuora__Subscription_Product_Charges__r" \ "records")(0) \ "Billing_Account_Currency__c").as[String]),
             zuoraSubscriptionName = Some((records(0) \ "Name").as[String]))
         }
 

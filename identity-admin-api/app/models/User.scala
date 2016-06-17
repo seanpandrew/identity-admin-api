@@ -60,12 +60,10 @@ object LastActiveLocation {
 }
 
 case class MembershipDetails(
-  tier: Option[String] = None,              // Products Summary
+  tier: Option[String] = None,
   membershipNumber: Option[String] = None,
   joinDate: Option[String] = None,
   end: Option[String] = None,
-  mrr: Option[String] = None,               // Monthly Recurring Revenue
-  currency: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None
 )
 
@@ -78,8 +76,6 @@ case class SubscriptionDetails(
   subscriberId: Option[String] = None,
   joinDate: Option[String] = None,
   end: Option[String] = None,
-  mrr: Option[String] = None,
-  currency: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None
 )
 
