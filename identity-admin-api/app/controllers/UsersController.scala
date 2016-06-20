@@ -40,10 +40,13 @@ class UsersController @Inject() (
 
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
+      println(userId)
       for {
         user <- userService.findById(userId).asFuture
-        subscription <- salesforce.getSubscriptionByIdentityId("21840840")
-        membership <- salesforce.getMembershipByIdentityId("21840840")
+//        subscription <- salesforce.getSubscriptionByIdentityId("21840840")
+//        membership <- salesforce.getMembershipByIdentityId("21840840")
+        subscription <- salesforce.getSubscriptionByIdentityId(userId)
+        membership <- salesforce.getMembershipByIdentityId(userId)
       } yield {
         user match {
           case Left(r) => Left(ApiError.apiErrorToResult(r))

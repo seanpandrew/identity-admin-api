@@ -83,7 +83,7 @@ class Salesforce extends SalesforceService {
          |  Zuora__SubscriptionProductCharge__c
          |
          |WHERE
-         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '21840840') AND
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
          |  (Zuora__ProductName__c = 'Digital Pack')
       """.stripMargin
 
@@ -135,7 +135,7 @@ class Salesforce extends SalesforceService {
          |    Zuora__SubscriptionProductCharge__c
          |
          |  WHERE
-         |    (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '21840840') AND
+         |    (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
          |    ((Zuora__ProductName__c = 'Friend') OR (Zuora__ProductName__c = 'Supporter') OR
          |     (Zuora__ProductName__c = 'Partner') OR (Zuora__ProductName__c = 'Patron') OR (Zuora__ProductName__c = 'Staff Membership'))
       """.stripMargin
@@ -149,9 +149,13 @@ class Salesforce extends SalesforceService {
         def createMembership(res: WSResponse): MembershipDetails = {
           val records: JsArray = (res.json \ "records").as[JsArray]
 
+          // Friends do not have membership number
+          val memTier = (records(0) \ "Zuora__ProductName__c").as[String]
+          val memNum = if (memTier == "Friend") None else Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String])
+
           MembershipDetails(
-            tier = Some((records(0) \ "Zuora__ProductName__c").as[String]),
-            membershipNumber = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String]),
+            tier = Some(memTier),
+            membershipNumber = memNum,
             joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
             end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
             zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]))
