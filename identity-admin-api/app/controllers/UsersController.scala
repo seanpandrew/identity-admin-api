@@ -43,8 +43,6 @@ class UsersController @Inject() (
       println(userId)
       for {
         user <- userService.findById(userId).asFuture
-//        subscription <- salesforce.getSubscriptionByIdentityId("21840840")
-//        membership <- salesforce.getMembershipByIdentityId("21840840")
         subscription <- salesforce.getSubscriptionByIdentityId(userId)
         membership <- salesforce.getMembershipByIdentityId(userId)
       } yield {

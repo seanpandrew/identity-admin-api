@@ -4,13 +4,12 @@ import com.google.inject.ImplementedBy
 import configuration.Config.TouchpointSalesforce._
 import models.{MembershipDetails, SubscriptionDetails}
 import play.api.Play._
-import play.api.libs.json.{JsArray, JsResult, Json}
-import play.api.libs.ws.{WS, WSRequest, WSResponse}
+import play.api.libs.json.{JsArray, Json}
+import play.api.libs.ws.{WS, WSResponse}
 import play.api.http.Status.OK
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import play.api.libs.concurrent.Execution.Implicits._
-
 import scala.util.{Failure, Success, Try}
 
 case class SalesforceError(msg: String) extends Exception(msg)
@@ -172,4 +171,3 @@ class Salesforce extends SalesforceService {
     }
   }
 }
-//}
