@@ -1,5 +1,6 @@
 package services
 
+import com.gu.identity.util.Logging
 import com.google.inject.ImplementedBy
 import configuration.Config.TouchpointSalesforce._
 import models.{MembershipDetails, SubscriptionDetails}
@@ -7,9 +8,9 @@ import play.api.Play._
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.ws.{WS, WSResponse}
 import play.api.http.Status.OK
+import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
-import play.api.libs.concurrent.Execution.Implicits._
 import scala.util.{Failure, Success, Try}
 
 case class SalesforceError(msg: String) extends Exception(msg)
@@ -33,9 +34,9 @@ trait SalesforceService {
 
 }
 
-class Salesforce extends SalesforceService {
+class Salesforce extends SalesforceService with Logging {
 
-  private lazy val sfAuth = {
+  private lazy val sfAuth: SFAuthentication = {
     val authEndpoint = s"${apiUrl}/services/oauth2/token"
 
     val param = Map(
@@ -108,7 +109,8 @@ class Salesforce extends SalesforceService {
           None
       }
       else {
-        throw new SalesforceError(s"Could not get subscriptions with identity ID $id: ${res.body.toString}")
+        logger.error(s"Salesforce error. Could not get digital pack for user $id: ${res.body.toString}")
+        None
       }
     }
   }
@@ -166,7 +168,8 @@ class Salesforce extends SalesforceService {
           None
       }
       else {
-        throw new SalesforceError(s"Could not get subscriptions with identity ID $id: ${res.body.toString}")
+        logger.error(s"Salesforce error. Could not get membership for user $id: ${res.body.toString}")
+        None
       }
     }
   }
