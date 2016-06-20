@@ -66,27 +66,25 @@ class Salesforce extends SalesforceService {
     val sooqlQuery =
       s"""
          |SELECT
-         |   Id,
-         |   Name,
-         |   tp_Products_Summary__c,
-         |   Zuora__Status__c,
-         |   Zuora__SubscriptionStartDate__c,
-         |   Zuora__SubscriptionEndDate__c,
-         |   Zuora__CustomerAccount__c,
-         |   Zuora__CustomerAccount__r.Contact__r.Id ,
-         |   Zuora__CustomerAccount__r.Contact__r.Name,
-         |   Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
-         |   Zuora__CustomerAccount__r.Contact__r.Email,
-         |   Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
-         |   Zuora__CustomerAccount__r.Contact__r.MailingCountry
+         |    Id,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
+         |    Zuora__ProductName__c,
+         |    Subscription_Status__c,
+         |    Subscription_Name__c,
+         |    Zuora__EffectiveStartDate__c,
+         |    Zuora__EffectiveEndDate__c
          |
-        |FROM
-         |   Zuora__Subscription__c
          |
-        |WHERE
-         |   (Zuora__CustomerAccount__r.Contact__r.IdentityID__c='$id') AND
-         |   (Zuora__Status__c = 'Active') AND
-         |   (tp_Products_Summary__c = 'Digital Pack')
+         |FROM
+         |  Zuora__SubscriptionProductCharge__c
+         |
+         |WHERE
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '21840840') AND
+         |  (Zuora__ProductName__c = 'Digital Pack')
       """.stripMargin
 
     val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
@@ -98,11 +96,11 @@ class Salesforce extends SalesforceService {
           val records: JsArray = (res.json \ "records").as[JsArray]
 
           SubscriptionDetails(
-            tier = Some((records(0) \ "tp_Products_Summary__c").as[String]),
-            subscriberId = Some((records(0) \ "Name").as[String]),
-            joinDate = Some((records(0) \ "Zuora__SubscriptionStartDate__c").as[String]),
-            end = Some((records(0) \ "Zuora__SubscriptionEndDate__c").as[String]),
-            zuoraSubscriptionName = Some((records(0) \ "Name").as[String]))
+            tier = Some((records(0) \ "Zuora__ProductName__c").as[String]),
+            subscriberId = Some((records(0) \ "Subscription_Name__c").as[String]),
+            joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
+            end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
+            zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]))
         }
 
         if ((res.json \ "totalSize").as[Int] > 0)
@@ -119,29 +117,27 @@ class Salesforce extends SalesforceService {
   def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = {
     val sooqlQuery =
       s"""
-         |SELECT
-         |   Id,
-         |   Name,
-         |   tp_Product_Types_Summary__c,
-         |   tp_Products_Summary__c,
-         |   Zuora__Status__c,
-         |   Zuora__SubscriptionStartDate__c,
-         |   Zuora__SubscriptionEndDate__c,
-         |   Zuora__CustomerAccount__c,
-         |   Zuora__CustomerAccount__r.Contact__r.Id ,
-         |   Zuora__CustomerAccount__r.Contact__r.Name,
-         |   Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
-         |   Zuora__CustomerAccount__r.Contact__r.Email,
-         |   Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
-         |   Zuora__CustomerAccount__r.Contact__r.MailingCountry
+         |  SELECT
+         |      Id,
+         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
+         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
+         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
+         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
+         |      Zuora__ProductName__c,
+         |      Subscription_Status__c,
+         |      Subscription_Name__c,
+         |      Zuora__EffectiveStartDate__c,
+         |      Zuora__EffectiveEndDate__c
          |
-        |FROM
-         |   Zuora__Subscription__c
          |
-        |WHERE
-         |   (Zuora__CustomerAccount__r.Contact__r.IdentityID__c='$id') AND
-         |   (Zuora__Status__c = 'Active') AND
-         |   (tp_Product_Types_Summary__c = 'Membership')
+         |  FROM
+         |    Zuora__SubscriptionProductCharge__c
+         |
+         |  WHERE
+         |    (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '21840840') AND
+         |    ((Zuora__ProductName__c = 'Friend') OR (Zuora__ProductName__c = 'Supporter') OR
+         |     (Zuora__ProductName__c = 'Partner') OR (Zuora__ProductName__c = 'Patron') OR (Zuora__ProductName__c = 'Staff Membership'))
       """.stripMargin
 
     val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
@@ -154,11 +150,11 @@ class Salesforce extends SalesforceService {
           val records: JsArray = (res.json \ "records").as[JsArray]
 
           MembershipDetails(
-            tier = Some((records(0) \ "tp_Products_Summary__c").as[String]),
-            membershipNumber = Some((records(0) \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String]),
-            joinDate = Some((records(0) \ "Zuora__SubscriptionStartDate__c").as[String]),
-            end = Some((records(0) \ "Zuora__SubscriptionEndDate__c").as[String]),
-            zuoraSubscriptionName = Some((records(0) \ "Name").as[String]))
+            tier = Some((records(0) \ "Zuora__ProductName__c").as[String]),
+            membershipNumber = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String]),
+            joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
+            end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
+            zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]))
         }
 
         if ((res.json \ "totalSize").as[Int] > 0)
