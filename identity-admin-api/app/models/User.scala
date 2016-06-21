@@ -59,22 +59,49 @@ object LastActiveLocation {
   implicit val format = Json.format[LastActiveLocation]
 }
 
+case class MembershipDetails(
+  tier: Option[String] = None,
+  membershipNumber: Option[String] = None,
+  joinDate: Option[String] = None,
+  end: Option[String] = None,
+  zuoraSubscriptionName: Option[String] = None
+)
+
+object MembershipDetails {
+  implicit val format = Json.format[MembershipDetails]
+}
+
+case class SubscriptionDetails(
+  tier: Option[String] = None,
+  subscriberId: Option[String] = None,
+  joinDate: Option[String] = None,
+  end: Option[String] = None,
+  zuoraSubscriptionName: Option[String] = None
+)
+
+object SubscriptionDetails {
+  implicit val format = Json.format[SubscriptionDetails]
+}
+
 case class User(id: String,
-                         email: String,
-                         displayName: Option[String] = None,
-                         username: Option[String] = None,
-                         vanityUrl: Option[String] = None,
-                         personalDetails: PersonalDetails = PersonalDetails(),
-                         deliveryAddress: Address = Address(),
-                         billingAddress: Address = Address(),
-                         lastActivityDate: Option[DateTime] = None,
-                         lastActivityIp: Option[String] = None,
-                         registrationDate: Option[DateTime] = None,
-                         registrationIp: Option[String] = None,
-                         registrationType: Option[String] = None,
-                         status: UserStatus = UserStatus(),
-                         groups: Seq[UserGroup] = Nil,
-                         socialLinks: Seq[SocialLink] = Nil)
+                email: String,
+                displayName: Option[String] = None,
+                username: Option[String] = None,
+                vanityUrl: Option[String] = None,
+                personalDetails: PersonalDetails = PersonalDetails(),
+                deliveryAddress: Address = Address(),
+                billingAddress: Address = Address(),
+                lastActivityDate: Option[DateTime] = None,
+                lastActivityIp: Option[String] = None,
+                registrationType: Option[String] = None,
+                registrationDate: Option[DateTime] = None,
+                registrationIp: Option[String] = None,
+                status: UserStatus = UserStatus(),
+                groups: Seq[UserGroup] = Nil,
+                socialLinks: Seq[SocialLink] = Nil,
+                membershipDetails: Option[MembershipDetails] = None,
+                subscriptionDetails: Option[SubscriptionDetails] = None
+               )
 
 object User {
   implicit val format = Json.format[User]

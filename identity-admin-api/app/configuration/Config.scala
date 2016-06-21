@@ -36,4 +36,13 @@ object Config {
     val displayNameChangedEventSnsArn = config.getString("events.displayname-changed-sns-topic-arn")
   }
 
+  object TouchpointSalesforce {
+    val consumerKey = config.getString("touchpoint.salesforce.consumer.key")
+    val consumerSecret = config.getString("touchpoint.salesforce.consumer.secret")
+    val apiUrl = config.getString("touchpoint.salesforce.api.url")
+    val apiUsername = config.getString("touchpoint.salesforce.api.username")
+    val apiPassword = config.getString("touchpoint.salesforce.api.password")
+    val apiToken = config.getString("touchpoint.salesforce.api.token")
+  }
+
 }

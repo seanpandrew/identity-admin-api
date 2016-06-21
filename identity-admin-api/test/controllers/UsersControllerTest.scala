@@ -6,24 +6,32 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json
-import play.api.mvc.{Result, Request}
+import play.api.mvc.{Request, Result}
 import play.api.test.FakeRequest
 import repositories.PersistedUser
 import play.api.test.Helpers._
-import services.UserService
+import services.{Salesforce, SalesforceService, UserService}
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   val userService = mock[UserService]
+
   class StubAuthenticatedAction extends AuthenticatedAction {
     val secret = "secret"
     override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
       block(request)
     }
   }
-  val controller = new UsersController(userService, new StubAuthenticatedAction)
+
+  class StubSalesfroce extends SalesforceService {
+    override def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]] = Future(None)
+    override def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = Future(None)
+  }
+
+  val controller = new UsersController(userService, new StubAuthenticatedAction, new StubSalesfroce)
   
   "search" should {
     "return 400 when query string is less than minimum length" in {
@@ -136,7 +144,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 204 when user is deleted" in {
       val id = "abc"
-      val user = mock[User]
+      val user = User("", "")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.delete(user)).thenReturn(ApiResponse.Right(ReservedUsernameList(Nil)))
       val result = controller.delete(id)(FakeRequest())
@@ -145,7 +153,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 500 when error occurs" in {
       val id = "abc"
-      val user = mock[User]
+      val user = User("", "")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.delete(user)).thenReturn(ApiResponse.Left[ReservedUsernameList](ApiErrors.internalError("boom")))
       val result = controller.delete(id)(FakeRequest())
@@ -164,7 +172,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 204 when email validation is sent" in {
       val id = "abc"
-      val user = mock[User]
+      val user = User("", "")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.sendEmailValidation(user)).thenReturn(ApiResponse.Right(true))
       val result = controller.sendEmailValidation(id)(FakeRequest())
@@ -173,7 +181,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 500 when error occurs" in {
       val id = "abc"
-      val user = mock[User]
+      val user = User("", "")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.sendEmailValidation(user)).thenReturn(ApiResponse.Left[Boolean](ApiErrors.internalError("boom")))
       val result = controller.sendEmailValidation(id)(FakeRequest())
@@ -192,7 +200,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 204 when email is validated" in {
       val id = "abc"
-      val user = mock[User]
+      val user = User("", "")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.validateEmail(user)).thenReturn(ApiResponse.Right(true))
       val result = controller.validateEmail(id)(FakeRequest())
@@ -201,7 +209,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 500 when error occurs" in {
       val id = "abc"
-      val user = mock[User]
+      val user = User("", "")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.validateEmail(user)).thenReturn(ApiResponse.Left[Boolean](ApiErrors.internalError("boom")))
       val result = controller.validateEmail(id)(FakeRequest())
