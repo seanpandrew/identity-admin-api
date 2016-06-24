@@ -76,6 +76,7 @@ case class SubscriptionDetails(
   subscriberId: Option[String] = None,
   joinDate: Option[String] = None,
   end: Option[String] = None,
+  activationDate: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None
 )
 

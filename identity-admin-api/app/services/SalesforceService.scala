@@ -76,8 +76,8 @@ class Salesforce extends SalesforceService with Logging {
          |    Subscription_Status__c,
          |    Subscription_Name__c,
          |    Zuora__EffectiveStartDate__c,
-         |    Zuora__EffectiveEndDate__c
-         |
+         |    Zuora__EffectiveEndDate__c,
+         |    Zuora__Subscription__r.ActivationDate__c
          |
          |FROM
          |  Zuora__SubscriptionProductCharge__c
@@ -96,11 +96,12 @@ class Salesforce extends SalesforceService with Logging {
           val records: JsArray = (res.json \ "records").as[JsArray]
 
           SubscriptionDetails(
-            tier = Some((records(0) \ "Zuora__ProductName__c").as[String]),
-            subscriberId = Some((records(0) \ "Subscription_Name__c").as[String]),
-            joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
-            end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
-            zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]))
+            tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
+            subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
+            joinDate = (records(0) \ "Zuora__EffectiveStartDate__c").asOpt[String],
+            end = (records(0) \ "Zuora__EffectiveEndDate__c").asOpt[String],
+            activationDate = (records(0) \ "Zuora__Subscription__r" \ "ActivationDate__c").asOpt[String],
+            zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String])
         }
 
         if ((res.json \ "totalSize").as[Int] > 0)
@@ -131,7 +132,6 @@ class Salesforce extends SalesforceService with Logging {
          |      Zuora__EffectiveStartDate__c,
          |      Zuora__EffectiveEndDate__c
          |
-         |
          |  FROM
          |    Zuora__SubscriptionProductCharge__c
          |
@@ -150,13 +150,9 @@ class Salesforce extends SalesforceService with Logging {
         def createMembership(res: WSResponse): MembershipDetails = {
           val records: JsArray = (res.json \ "records").as[JsArray]
 
-          // Friends do not have membership number
-          val memTier = (records(0) \ "Zuora__ProductName__c").as[String]
-          val memNum = if (memTier == "Friend") None else Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String])
-
           MembershipDetails(
-            tier = Some(memTier),
-            membershipNumber = memNum,
+            tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
+            membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").asOpt[String],
             joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
             end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
             zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]))
