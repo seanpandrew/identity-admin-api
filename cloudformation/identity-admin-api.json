@@ -72,6 +72,10 @@
       "Description": "Security group that is allowed SSH access to the instances",
       "Type": "AWS::EC2::SecurityGroup::Id"
     },
+    "VulnerabilityScanningSecurityGroup": {
+      "Description": "Security group that grants access to the account's Vulnerability Scanner",
+      "Type": "AWS::EC2::SecurityGroup::Id"
+    },
     "PrivateVpcSubnets" : {
       "Description": "Private subnets to use in VPC",
       "Type": "List<AWS::EC2::Subnet::Id>"
@@ -333,6 +337,7 @@
         "ImageId": {"Ref": "AmiId"},
         "SecurityGroups": [
           {"Ref": "InstanceSecurityGroup"},
+          {"Ref": "VulnerabilityScanningSecurityGroup"},
           {"Ref": "SshAccessSecurityGroup"}
         ],
         "InstanceType": {"Ref": "InstanceType"},
