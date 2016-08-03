@@ -84,7 +84,11 @@ class Salesforce extends SalesforceService with Logging {
          |
          |WHERE
          |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
+         |  (Subscription_Status__c = 'Active') AND
          |  (Zuora__ProductName__c = 'Digital Pack')
+         |
+         |ORDER BY
+         |  Zuora__EffectiveStartDate__c DESC NULLS LAST
       """.stripMargin
 
     val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
@@ -119,26 +123,30 @@ class Salesforce extends SalesforceService with Logging {
   def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = {
     val sooqlQuery =
       s"""
-         |  SELECT
-         |      Id,
-         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
-         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
-         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
-         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
-         |      Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
-         |      Zuora__ProductName__c,
-         |      Subscription_Status__c,
-         |      Subscription_Name__c,
-         |      Zuora__EffectiveStartDate__c,
-         |      Zuora__EffectiveEndDate__c
+         |SELECT
+         |    Id,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
+         |    Zuora__ProductName__c,
+         |    Subscription_Status__c,
+         |    Subscription_Name__c,
+         |    Zuora__EffectiveStartDate__c,
+         |    Zuora__EffectiveEndDate__c
          |
-         |  FROM
-         |    Zuora__SubscriptionProductCharge__c
+         |FROM
+         |  Zuora__SubscriptionProductCharge__c
          |
-         |  WHERE
-         |    (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
-         |    ((Zuora__ProductName__c = 'Friend') OR (Zuora__ProductName__c = 'Supporter') OR
-         |     (Zuora__ProductName__c = 'Partner') OR (Zuora__ProductName__c = 'Patron') OR (Zuora__ProductName__c = 'Staff Membership'))
+         |WHERE
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
+         |  (Subscription_Status__c = 'Active') AND
+         |  ((Zuora__ProductName__c = 'Friend') OR (Zuora__ProductName__c = 'Supporter') OR
+         |   (Zuora__ProductName__c = 'Partner') OR (Zuora__ProductName__c = 'Patron') OR (Zuora__ProductName__c = 'Staff Membership'))
+         |
+         |ORDER BY
+         |  Zuora__EffectiveStartDate__c DESC NULLS LAST
       """.stripMargin
 
     val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
