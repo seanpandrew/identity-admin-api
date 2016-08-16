@@ -7,6 +7,9 @@ case class UserUpdateRequest(
                             username: String,
                             firstName: Option[String] = None,
                             lastName: Option[String] = None,
+                            location: Option[String] = None,
+                            aboutMe: Option[String] = None,
+                            interests: Option[String] = None,
                             receiveGnmMarketing: Option[Boolean] = None,
                             receive3rdPartyMarketing: Option[Boolean] = None)
 

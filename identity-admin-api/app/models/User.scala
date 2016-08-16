@@ -2,16 +2,18 @@ package models
 
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.json.Json
-import play.api.mvc.{Results, Result}
+import play.api.mvc.{Result, Results}
 import repositories.PersistedUser
+
 import scala.language.implicitConversions
 import MongoJsFormats._
-
 
 case class PersonalDetails(firstName: Option[String] = None,
                            lastName: Option[String] = None,
                            gender: Option[String] = None,
                            dateOfBirth: Option[LocalDate] = None,
+                           aboutMe: Option[String] = None,
+                           interests: Option[String] = None,
                            location: Option[String] = None)
 
 object PersonalDetails {
@@ -122,7 +124,9 @@ object User {
                  lastName = user.privateFields.flatMap(_.secondName),
                  gender = user.privateFields.flatMap(_.gender),
                  dateOfBirth = user.dates.flatMap(_.birthDate.map(_.toLocalDate)),
-                 location = user.publicFields.flatMap(_.location)
+                 location = user.publicFields.flatMap(_.location),
+                 aboutMe = user.publicFields.flatMap(_.aboutMe),
+                 interests = user.publicFields.flatMap(_.interests)
                 ),
                 deliveryAddress = Address(
                   addressLine1 = user.privateFields.flatMap(_.address1),
