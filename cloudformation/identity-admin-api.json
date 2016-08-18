@@ -189,6 +189,11 @@
                 "Effect":"Allow",
                 "Action":["sns:Publish"],
                 "Resource": { "Fn::FindInMap": [ "SNSMap", { "Ref": "Stage" } , "displayNameChangedTopic" ]}
+              },
+              {
+                "Effect": "Allow",
+                "Action": [ "sqs:SendMessage", "sqs:ListQueues", "sqs:GetQueueUrl" ],
+                "Resource": "*"
               }
             ]
           }
