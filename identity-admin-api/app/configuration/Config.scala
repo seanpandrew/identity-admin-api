@@ -45,4 +45,7 @@ object Config {
     val apiToken = config.getString("touchpoint.salesforce.api.token")
   }
 
+  object IdentitySalesforceQueue {
+    val name = config.getString("aws.queue.identity-salesforce")
+  }
 }
