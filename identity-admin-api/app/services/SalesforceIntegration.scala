@@ -10,9 +10,9 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 
-object SqsClient extends Logging {
+object SalesforceIntegration extends Logging {
   private val queueName = Config.IdentitySalesforceQueue.name
-  private val sqsClient = new AmazonSQSClient()
+  private val sqsClient = new AmazonSQSClient(Config.IdentitySalesforceQueue.credentials)
   sqsClient.setRegion(Region.getRegion(Regions.EU_WEST_1))
 
   def enqueueUserUpdate(userId: String, email: String): Future[SendMessageResult] =
