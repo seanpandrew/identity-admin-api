@@ -47,8 +47,10 @@ object Config {
 
   object IdentitySalesforceQueue {
     val name = config.getString("aws.queue.identity-salesforce.name")
+    private val urlPrefix = config.getString("aws.queue.identity-salesforce.urlPrefix")
     private val awsAccessKey = config.getString("aws.queue.identity-salesforce.key")
     private val awsAccessSecret = config.getString("aws.queue.identity-salesforce.secret")
     val credentials = new BasicAWSCredentials(awsAccessKey, awsAccessSecret)
+    val url = s"$urlPrefix$name"
   }
 }

@@ -12,6 +12,7 @@ import scala.util.{Failure, Success}
 
 object SalesforceIntegration extends Logging {
   private val queueName = Config.IdentitySalesforceQueue.name
+  private val queueUrl = Config.IdentitySalesforceQueue.url
   private val sqsClient = new AmazonSQSClient(Config.IdentitySalesforceQueue.credentials)
   sqsClient.setRegion(Region.getRegion(Regions.EU_WEST_1))
 
@@ -24,12 +25,7 @@ object SalesforceIntegration extends Logging {
         )
       ).toString()
 
-      def sendToQueue(msg: String): SendMessageResult = {
-        val queueUrl = sqsClient.createQueue(new CreateQueueRequest(queueName)).getQueueUrl
-        sqsClient.sendMessage(new SendMessageRequest(queueUrl, payload))
-      }
-
-      sendToQueue(payload)
+      sqsClient.sendMessage(new SendMessageRequest(queueUrl, payload))
     }.andThen {
       case Success(_) => logger.info(s"Successfully enqueued $userId user update on $queueName")
       case Failure(e) => logger.error(s"Failed to enqueue $userId user update on $queueName", e)
