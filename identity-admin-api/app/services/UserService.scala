@@ -35,7 +35,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         if(result.isRight && userEmailChanged)
           identityApiClient.sendEmailValidation(user.id)
         if (userEmailChanged)
-          SqsClient.enqueueUserUpdate(user.id, userUpdateRequest.email)
+          SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>
         ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))

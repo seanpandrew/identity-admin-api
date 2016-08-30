@@ -1,7 +1,7 @@
 package configuration
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentialsProvider}
+import com.amazonaws.auth.{AWSCredentialsProviderChain, BasicAWSCredentials, InstanceProfileCredentialsProvider}
 import com.amazonaws.regions.Regions
 import com.typesafe.config.ConfigFactory
 
@@ -46,6 +46,10 @@ object Config {
   }
 
   object IdentitySalesforceQueue {
-    val name = config.getString("aws.queue.identity-salesforce")
+    private val awsAccessKey = config.getString("aws.queue.identity-salesforce.key")
+    private val awsAccessSecret = config.getString("aws.queue.identity-salesforce.secret")
+    val credentials = new BasicAWSCredentials(awsAccessKey, awsAccessSecret)
+    val snsTopic = config.getString("aws.queue.identity-salesforce.sns.arn")
+    val snsEndPoint = config.getString("aws.queue.identity-salesforce.sns.endpoint")
   }
 }
