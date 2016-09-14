@@ -125,10 +125,10 @@
     },
     "CertsMap": {
       "CODE": {
-        "ssl": "arn:aws:iam::942464564246:server-certificate/id-admin-api.code.dev-gutools.co.uk-exp2017-10-26"
+        "ssl": "certificate/4a66464e-3a22-41e8-b1d2-85279cd290d3"
       },
       "PROD": {
-        "ssl": "arn:aws:iam::942464564246:server-certificate/star.gutools.co.uk-exp2018-11-17"
+        "ssl": "certificate/db34d5fa-95af-4674-ad9b-189a52bb37e2"
       }
     },
     "SNSMap": {
@@ -217,7 +217,7 @@
           "LoadBalancerPort": "443",
           "InstancePort": "9500",
           "Protocol": "HTTPS",
-          "SSLCertificateId": { "Fn::FindInMap": [ "CertsMap", { "Ref": "Stage" },"ssl" ]}
+          "SSLCertificateId": {"Fn::Join" : [ ":", ["arn:aws:acm:eu-west-1", { "Ref": "AWS::AccountId" }, { "Fn::FindInMap": [ "CertsMap", { "Ref": "Stage" }, "ssl" ]}] ] }
         }],
         "CrossZone": "true",
         "HealthCheck": {
