@@ -48,10 +48,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   }
 
-  def isUsernameChanged(newUsername: String, existingUsername: Option[String]): Boolean = {
-    existingUsername match {
-      case Some(username) if newUsername.length > 0 => username != newUsername
-      case None if newUsername.length > 0 => true
+  def isUsernameChanged(newUsername: Option[String], existingUsername: Option[String]): Boolean = {
+    (newUsername, existingUsername) match {
+      case (Some(proposedUsername), Some(username)) => proposedUsername != username
+      case (None, Some(_)) => true
+      case (Some(_), None) => true
       case _ => false
     }
   }
@@ -72,11 +73,14 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {
-    def validateUsername(username: String) = UsernamePattern.pattern.matcher(username).matches()
+    def validateUsername(username: Option[String]): Boolean =  username match {
+      case Some(newUsername) => UsernamePattern.pattern.matcher(newUsername).matches()
+      case _ => true
+    }
 
     user.username match {
       case None => validateUsername(userUpdateRequest.username)
-      case Some(existing) => if(!existing.equalsIgnoreCase(userUpdateRequest.username)) validateUsername(userUpdateRequest.username) else true
+      case Some(existing) => if(!existing.equalsIgnoreCase(userUpdateRequest.username.mkString)) validateUsername(userUpdateRequest.username) else true
     }
   }
 

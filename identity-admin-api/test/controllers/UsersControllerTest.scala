@@ -116,7 +116,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 404 when user is not found" in {
       val id = "abc"
-      val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
       when(userService.findById(id)).thenReturn(ApiResponse.Left[User](ApiErrors.notFound))
       val result = controller.update(id)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
       status(result) shouldEqual NOT_FOUND
@@ -124,7 +124,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 200 with updated user when update is successful" in {
       val id = "abc"
-      val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
       val user = User("id", "email")
       when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
       when(userService.update(user, userUpdateRequest)).thenReturn(ApiResponse.Right(user))

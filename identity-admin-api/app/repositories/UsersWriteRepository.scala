@@ -58,10 +58,10 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
 
   private def prepareUserForUpdate(userUpdateRequest: PersistedUserUpdate, persistedUser: PersistedUser): PersistedUser = {
     val publicFields = persistedUser.publicFields.getOrElse(PublicFields()).copy(
-      username = Some(userUpdateRequest.username),
-      usernameLowerCase = Some(userUpdateRequest.username.toLowerCase),
-      displayName = Some(userUpdateRequest.username),
-      vanityUrl = Some(userUpdateRequest.username),
+      username = userUpdateRequest.username,
+      usernameLowerCase = userUpdateRequest.username.map(_.toLowerCase),
+      displayName = userUpdateRequest.displayName,
+      vanityUrl = userUpdateRequest.username,
       location = userUpdateRequest.location,
       aboutMe = userUpdateRequest.aboutMe,
       interests = userUpdateRequest.interests
@@ -77,8 +77,8 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
     )
     val searchFields = persistedUser.searchFields.getOrElse(SearchFields()).copy(
       emailAddress = Some(userUpdateRequest.email.toLowerCase),
-      username = Some(userUpdateRequest.username.toLowerCase),
-      displayName = Some(userUpdateRequest.username.toLowerCase)
+      username = userUpdateRequest.username.map(_.toLowerCase),
+      displayName = userUpdateRequest.displayName
     )
     persistedUser.copy(
       primaryEmailAddress = userUpdateRequest.email.toLowerCase,
