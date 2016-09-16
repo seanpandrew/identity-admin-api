@@ -43,6 +43,25 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     }
   }
 
+  "isDisplayNameChanged" should {
+    "return true if a username is being changed" in {
+      service.isDisplayNameChanged(Some("changedDisplayName"), Some("oldDisplayName")) should be(true)
+    }
+
+    "return false if a username is not being changed" in {
+      service.isDisplayNameChanged(Some("oldDisplayName"), Some("oldDisplayName")) should be(false)
+    }
+
+    "return true if a username is being added" in {
+      service.isDisplayNameChanged(Some("changedDisplayName"), None) should be(true)
+    }
+
+    "return false if a zero length username is being added" in {
+      service.isDisplayNameChanged(None, None) should be(false)
+      service.isDisplayNameChanged(None, Some("existingDisplayName")) should be(true)
+    }
+  }
+
   "isEmailValidationChanged" should {
     "return true if e-mail validation status is changing" in {
       service.isEmailValidationChanged(Some(false), Some(true)) should be(true)

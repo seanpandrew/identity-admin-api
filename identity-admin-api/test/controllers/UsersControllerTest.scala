@@ -132,16 +132,6 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       status(result) shouldEqual BAD_REQUEST
     }
 
-    "return 400 when username and display name differ" in {
-      val id = "abc"
-      val userUpdateRequest = UserUpdateRequest(email = "test@test.com", displayName = Some("displayName"))
-      val user = User(id = "id", email = "email", username = Some("username"))
-      when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
-      when(userService.update(user, userUpdateRequest)).thenReturn(ApiResponse.Right(user))
-      val result = controller.update(id)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
-      status(result) shouldEqual BAD_REQUEST
-    }
-
     "return 200 with updated user when update is successful" in {
       val id = "abc"
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
