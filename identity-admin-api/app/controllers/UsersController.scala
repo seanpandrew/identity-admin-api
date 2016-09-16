@@ -5,9 +5,9 @@ import javax.inject.Inject
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import models._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import services.{SalesforceService, UserService}
 
 import scala.concurrent.Future
@@ -63,8 +63,13 @@ class UsersController @Inject() (
     ApiResponse {
       request.body.validate[UserUpdateRequest] match {
         case JsSuccess(result, path) =>
-          logger.info(s"Updating user id:$id, body: $result")
-          userService.update(request.user, result)
+          UserUpdateRequestValidator.isValid(result) match {
+            case Right(validUserUpdateRequest) => {
+              logger.info(s"Updating user id:$id, body: $result")
+              userService.update(request.user, validUserUpdateRequest)
+            }
+            case Left(e) => ApiResponse.Left(ApiErrors.badRequest(e.message))
+          }
         case JsError(e) => 
           ApiResponse.Left(ApiErrors.badRequest(e.toString()))
       }

@@ -4,7 +4,8 @@ import models.UserUpdateRequest
 
 case class PersistedUserUpdate(
                               email: String,
-                              username: String,
+                              username: Option[String] = None,
+                              displayName: Option[String] = None,
                               firstName: Option[String] = None,
                               lastName: Option[String] = None,
                               location: Option[String] = None,
@@ -19,6 +20,7 @@ object PersistedUserUpdate {
     PersistedUserUpdate(
       email = userUpdateRequest.email,
       username = userUpdateRequest.username,
+      displayName = userUpdateRequest.displayName,
       firstName = userUpdateRequest.firstName,
       lastName = userUpdateRequest.lastName,
       location = userUpdateRequest.location,

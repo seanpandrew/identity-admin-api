@@ -26,21 +26,39 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
   "isUsernameChanged" should {
     "return true if a username is being changed" in {
-      service.isUsernameChanged("changedUsername", Some("oldUsername")) should be(true)
+      service.isUsernameChanged(Some("changedUsername"), Some("oldUsername")) should be(true)
     }
 
     "return false if a username is not being changed" in {
-      service.isUsernameChanged("oldUsername", Some("oldUsername")) should be(false)
+      service.isUsernameChanged(Some("oldUsername"), Some("oldUsername")) should be(false)
     }
 
     "return true if a username is being added" in {
-      service.isUsernameChanged("newUsername", None) should be(true)
+      service.isUsernameChanged(Some("newUsername"), None) should be(true)
     }
 
     "return false if a zero length username is being added" in {
-      service.isUsernameChanged("", None) should be(false)
-      service.isUsernameChanged("", Some("existingUsername")) should be(false)
-      service.isUsernameChanged("", Some("")) should be(false)
+      service.isUsernameChanged(None, None) should be(false)
+      service.isUsernameChanged(None, Some("existingUsername")) should be(true)
+    }
+  }
+
+  "isDisplayNameChanged" should {
+    "return true if a username is being changed" in {
+      service.isDisplayNameChanged(Some("changedDisplayName"), Some("oldDisplayName")) should be(true)
+    }
+
+    "return false if a username is not being changed" in {
+      service.isDisplayNameChanged(Some("oldDisplayName"), Some("oldDisplayName")) should be(false)
+    }
+
+    "return true if a username is being added" in {
+      service.isDisplayNameChanged(Some("changedDisplayName"), None) should be(true)
+    }
+
+    "return false if a zero length username is being added" in {
+      service.isDisplayNameChanged(None, None) should be(false)
+      service.isDisplayNameChanged(None, Some("existingDisplayName")) should be(true)
     }
   }
 
@@ -64,7 +82,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   "update" should {
     "update when email and username are valid" in {
       val user = User("id", "email@theguardian.com")
-      val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = Some("username"))
       val updateRequest = PersistedUserUpdate(userUpdateRequest, Some(false))
       val updatedUser = user.copy(email = updateRequest.email)
 
@@ -80,7 +98,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "not send email validation when email has not changed" in {
       val user = User("id", "email@theguardian.com")
-      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
       val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
       val updatedUser = user.copy(email = updateRequest.email)
 
@@ -96,7 +114,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the username is less than 6 chars" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = user.email, username = "123")
+      val updateRequest = UserUpdateRequest(email = user.email, username = Some("123"))
 
       val result = service.update(user, updateRequest)
 
@@ -106,7 +124,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the username is more than 20 chars" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = user.email, username = "123456789012345678901")
+      val updateRequest = UserUpdateRequest(email = user.email, username = Some("123456789012345678901"))
 
       val result = service.update(user, updateRequest)
 
@@ -116,7 +134,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the username is contains non alpha-numeric chars" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = user.email, username = "abc123$")
+      val updateRequest = UserUpdateRequest(email = user.email, username = Some("abc123$"))
 
       val result = service.update(user, updateRequest)
 
@@ -126,7 +144,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the email is invalid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "invalid", username = "username")
+      val updateRequest = UserUpdateRequest(email = "invalid", username = Some("username"))
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
 
@@ -138,7 +156,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return bad request api error if the email and username are invalid" in {
       val user = User("id", "email@theguardian.com")
-      val updateRequest = UserUpdateRequest(email = "invalid", username = "123")
+      val updateRequest = UserUpdateRequest(email = "invalid", username = Some("123"))
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
 
@@ -150,7 +168,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
     "return internal server api error if an error occurs updating the user" in {
       val user = User("id", "email@theguardian.com")
-      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = "username")
+      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
       val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))

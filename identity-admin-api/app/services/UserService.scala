@@ -1,12 +1,14 @@
 package services
 
 import javax.inject.Inject
-import actors.EventPublishingActor.{EmailValidationChanged, DisplayNameChanged}
+
+import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
-import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
+import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
@@ -29,9 +31,17 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
         val userEmailValidatedChanged = isEmailValidationChanged(userEmailValidated, user.status.userEmailValidated)
         val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
+        val displayNameChanged = isDisplayNameChanged(userUpdateRequest.displayName, user.displayName)
         val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
-        triggerEvents(user.id, usernameChanged, userEmailValidatedChanged)
+
+        triggerEvents(
+          userId = user.id,
+          usernameChanged = usernameChanged,
+          displayNameChanged = displayNameChanged,
+          emailValidatedChanged = userEmailValidatedChanged
+        )
+
         if(result.isRight && userEmailChanged)
           identityApiClient.sendEmailValidation(user.id)
         if (userEmailChanged && eventsEnabled) {
@@ -48,21 +58,21 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   }
 
-  def isUsernameChanged(newUsername: String, existingUsername: Option[String]): Boolean = {
-    existingUsername match {
-      case Some(username) if newUsername.length > 0 => username != newUsername
-      case None if newUsername.length > 0 => true
-      case _ => false
-    }
+  def isDisplayNameChanged(newDisplayName: Option[String], existingDisplayName: Option[String]): Boolean = {
+    newDisplayName != existingDisplayName
+  }
+
+  def isUsernameChanged(newUsername: Option[String], existingUsername: Option[String]): Boolean = {
+    newUsername != existingUsername
   }
 
   def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
     newEmailValidated != existingEmailValidated
   }
 
-  private def triggerEvents(userId: String, usernameChanged: Boolean, emailValidatedChanged: Boolean) = {
+  private def triggerEvents(userId: String, usernameChanged: Boolean, displayNameChanged: Boolean, emailValidatedChanged: Boolean) = {
     if (eventsEnabled) {
-      if (usernameChanged) {
+      if (usernameChanged || displayNameChanged) {
         eventPublishingActorProvider.sendEvent(DisplayNameChanged(userId))
       }
       if (emailValidatedChanged) {
@@ -72,11 +82,14 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {
-    def validateUsername(username: String) = UsernamePattern.pattern.matcher(username).matches()
+    def validateUsername(username: Option[String]): Boolean =  username match {
+      case Some(newUsername) => UsernamePattern.pattern.matcher(newUsername).matches()
+      case _ => true
+    }
 
     user.username match {
       case None => validateUsername(userUpdateRequest.username)
-      case Some(existing) => if(!existing.equalsIgnoreCase(userUpdateRequest.username)) validateUsername(userUpdateRequest.username) else true
+      case Some(existing) => if(!existing.equalsIgnoreCase(userUpdateRequest.username.mkString)) validateUsername(userUpdateRequest.username) else true
     }
   }
 
@@ -114,7 +127,12 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   private def doValidateEmail(user: User, emailValidated: Boolean): Either[ApiError, Boolean] = {
     usersWriteRepository.updateEmailValidationStatus(user, emailValidated) match{
       case Right(r) => {
-        triggerEvents(user.id, usernameChanged = false, emailValidatedChanged = true)
+        triggerEvents(
+          userId = user.id,
+          usernameChanged = false,
+          displayNameChanged = false,
+          emailValidatedChanged = true
+        )
         Right(true)
       }
       case Left(r) => Left(r)
