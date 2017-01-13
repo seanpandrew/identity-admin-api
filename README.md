@@ -1,6 +1,6 @@
 # identity-admin-api
 
-#Application configuration
+# Application configuration
 
 Configuration files:
 - Environment-specific configuration (`identity-admin-api/conf/<ENV>.conf`)
@@ -9,9 +9,14 @@ Configuration files:
 
 # Setting up Identity Admin locally
 
-The Identity database needs to be running. Instructions on how to set this up and run it are on the Identity repo. 
+## Nginx setup
 
-#Running the Application
+1. Clone [identity-platform](https://github.com/guardian/identity-platform) project
+1. Make sure you are in the base `identity-platform` directory
+1. Ensure you have the correct [identity-platform hosts](https://github.com/guardian/identity-platform/blob/master/nginx/hosts) included in the `/etc/hosts` file on your machine
+1. Run `sudo nginix/setup.sh identity`
+
+## Running the Application
 
 ```
 sbt
