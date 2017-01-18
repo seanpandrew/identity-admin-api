@@ -11,10 +11,7 @@ Configuration files:
 
 ## Nginx setup
 
-1. Clone [identity-platform](https://github.com/guardian/identity-platform) project
-1. Make sure you are in the base `identity-platform` directory
-1. Ensure you have the correct [identity-platform hosts](https://github.com/guardian/identity-platform/blob/master/nginx/hosts) included in the `/etc/hosts` file on your machine
-1. Run `sudo nginix/setup.sh identity`
+Clone [identity-platform](https://github.com/guardian/identity-platform) and follow its [README](https://github.com/guardian/identity-platform/blob/master/README.md#setup-nginx-for-local-development)
 
 ## Running the Application
 
