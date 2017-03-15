@@ -108,10 +108,10 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     ApiResponse.Async(result)
   }
 
-  def delete(user: User): ApiResponse[ReservedUsernameList] = {
-    val result = usersWriteRepository.delete(user) match{
-      case Right(r) => 
-        user.username.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
+  def delete(userId: String, usernameToReserve: Option[String]): ApiResponse[ReservedUsernameList] = {
+    val result = usersWriteRepository.delete(userId) match{
+      case Right(r) =>
+        usernameToReserve.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
           reservedUserNameRepository.loadReservedUsernames
         }
       case Left(r) => Left(r)

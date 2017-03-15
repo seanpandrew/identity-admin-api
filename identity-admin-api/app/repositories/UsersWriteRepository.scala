@@ -110,14 +110,14 @@ class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=Sa
       "update could not be performed contact identitydev@guardian.co.uk"
   }
 
-  def delete(user: User): Either[ApiError, Boolean] = {
+  def delete(userId: String): Either[ApiError, Boolean] = {
     Try {
-      removeById(user.id)
+      removeById(userId)
     } match {
       case Success(r) =>
         Right(true)
       case Failure(t) =>
-        logger.error(s"Failed to delete user. id: ${user.id}", t)
+        logger.error(s"Failed to delete user. id: $userId", t)
         Left(ApiErrors.internalError(t.getMessage))
     }
   }
