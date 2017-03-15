@@ -8,7 +8,7 @@ import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc._
-import services.{SalesforceService, UserService}
+import services.{SalesforceService, EmailService, UserService}
 
 import scala.concurrent.Future
 
@@ -79,7 +79,10 @@ class UsersController @Inject() (
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user with id: $id")
     userService.delete(request.user).asFuture.map {
-      case Right(r) => NoContent
+      case Right(r) =>
+        EmailService.sendDeletionConfirmation(request.user.email)
+        NoContent
+
       case Left(r) => ApiError.apiErrorToResult(r)
     }
   }
