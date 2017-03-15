@@ -8,9 +8,12 @@ import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc._
-import services.{SalesforceService, EmailService, UserService}
+import services.{EmailService, SalesforceService, UserService}
 
 import scala.concurrent.Future
+import scala.util.Random
+import scalaz.EitherT
+import scalaz.std.scalaFuture._
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
@@ -78,13 +81,19 @@ class UsersController @Inject() (
 
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user with id: $id")
-    userService.delete(request.user).asFuture.map {
-      case Right(r) =>
-        EmailService.sendDeletionConfirmation(request.user.email)
-        NoContent
 
-      case Left(r) => ApiError.apiErrorToResult(r)
-    }
+    val originalUsername = request.user.username
+    val anonymisedUsername = new Random(System.currentTimeMillis).alphanumeric.take(16).mkString
+
+    val anoymiseUsername = EitherT.fromEither(userService.update(request.user, UserUpdateRequest(request.user.email, Some(anonymisedUsername), Some(anonymisedUsername))).asFuture)
+    val deleteAccount =  EitherT.fromEither(userService.delete(request.user.id, originalUsername).asFuture)
+
+    (for {
+      _ <- anoymiseUsername
+      _ <- deleteAccount
+    } yield EmailService.sendDeletionConfirmation(request.user.email)).fold(
+        error => ApiError.apiErrorToResult(error),
+        _ => NoContent)
   }
   
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
