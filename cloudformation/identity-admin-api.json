@@ -194,6 +194,11 @@
                 "Effect": "Allow",
                 "Action": [ "sqs:SendMessage", "sqs:ListQueues", "sqs:GetQueueUrl" ],
                 "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "ses:SendEmail",
+                "Resource": "*"
               }
             ]
           }
