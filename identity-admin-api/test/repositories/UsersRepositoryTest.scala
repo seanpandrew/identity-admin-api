@@ -231,7 +231,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       val createdUser1 = writeRepo.createUser(user1)
       val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))
 
-      val result  = writeRepo.delete(origUser)
+      val result  = writeRepo.delete(origUser.id)
       result.isRight mustBe true
       Await.result(repo.findById(origUser.id), 1.second) mustEqual None
     }
