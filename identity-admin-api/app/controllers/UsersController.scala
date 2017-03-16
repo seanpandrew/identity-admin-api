@@ -85,8 +85,8 @@ class UsersController @Inject() (
     val originalUsername = request.user.username
     val anonymisedUsername = new Random(System.currentTimeMillis).alphanumeric.take(16).mkString
 
-    val anonymiseUsername = EitherT.fromEither(userService.update(request.user, UserUpdateRequest(request.user.email, Some(anonymisedUsername), Some(anonymisedUsername))).asFuture)
-    val deleteAccount =  EitherT.fromEither(userService.delete(request.user.id, originalUsername).asFuture)
+    def anonymiseUsername() = EitherT.fromEither(userService.update(request.user, UserUpdateRequest(request.user.email, Some(anonymisedUsername), Some(anonymisedUsername))).asFuture)
+    def deleteAccount() = EitherT.fromEither(userService.delete(request.user.id, originalUsername).asFuture)
 
     (for {
       _ <- anonymiseUsername
