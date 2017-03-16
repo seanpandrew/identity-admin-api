@@ -109,6 +109,10 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def delete(userId: String, usernameToReserve: Option[String]): ApiResponse[ReservedUsernameList] = {
+    /* FIXME: give discussion chance to update anonymised username before deletion
+       https://github.com/guardian/discussion-platform/blob/9bd52222c988af50bfbf42fa3a8369048c509114/identitysync/lambda/IdentitySync.js */
+    Thread.sleep(10000)
+
     val result = usersWriteRepository.delete(userId) match{
       case Right(r) =>
         usernameToReserve.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
