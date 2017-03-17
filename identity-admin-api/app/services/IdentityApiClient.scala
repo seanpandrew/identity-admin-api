@@ -1,13 +1,13 @@
 package services
 
-import com.google.inject.ImplementedBy
+import javax.inject.Inject
+
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiErrors}
-import play.api.Play._
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import play.api.libs.ws.{WS, WSRequest}
+import play.api.libs.ws.{WSClient, WSRequest}
 
 import scala.concurrent.Future
 
@@ -23,16 +23,10 @@ object IdentityApiErrorResponse {
   implicit val format = Json.format[IdentityApiErrorResponse]
 }
 
-class IdentityApiClientWithConfig extends IdentityApiClient {
-  override val baseUrl = Config.IdentityApi.baseUrl
-  override val clientToken = Config.IdentityApi.clientToken
-}
+class IdentityApiClient @Inject() (ws: WSClient) extends Logging {
 
-@ImplementedBy(classOf[IdentityApiClientWithConfig])
-trait IdentityApiClient extends Logging {
-  
-  val baseUrl: String
-  val clientToken: String
+  val baseUrl = Config.IdentityApi.baseUrl
+  val clientToken = Config.IdentityApi.clientToken
   private val ClientTokenHeaderName = "X-GU-ID-Client-Access-Token"
   private lazy val clientTokenHeaderValue = s"Bearer $clientToken"
   
@@ -43,7 +37,7 @@ trait IdentityApiClient extends Logging {
   }
   
   def sendEmailValidation(userId: String): Future[Either[ApiError, Boolean]] = {
-    addAuthHeaders(WS.url(sendEmailValidationUrl(userId))).post("").map(
+    addAuthHeaders(ws.url(sendEmailValidationUrl(userId))).post("").map(
       response => 
         if(response.status == 200)
             Right(true)

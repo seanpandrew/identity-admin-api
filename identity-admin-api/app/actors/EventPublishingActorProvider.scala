@@ -1,17 +1,16 @@
 package actors
 
+import javax.inject.Inject
+
 import actors.EventPublishingActor.UserChangedMessage
-import akka.actor.ActorRef
-import com.google.inject.{Provides, Singleton}
-import play.api.libs.concurrent.Akka
+import akka.actor.{ActorRef, ActorSystem}
+import com.google.inject.Provides
 import services.SimpleNotificationService
 
-@Provides @Singleton
-class EventPublishingActorProvider() {
+@Provides
+class EventPublishingActorProvider @Inject() (system: ActorSystem) {
 
-  import play.api.Play.current
-
-  val actor: ActorRef = Akka.system.actorOf(EventPublishingActor.getProps(SimpleNotificationService.client))
+  val actor: ActorRef = system.actorOf(EventPublishingActor.getProps(SimpleNotificationService.client))
 
   def sendEvent(event: UserChangedMessage): Unit = {
     actor ! event

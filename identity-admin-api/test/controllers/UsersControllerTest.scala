@@ -2,7 +2,7 @@ package controllers
 
 import actions.AuthenticatedAction
 import models._
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json

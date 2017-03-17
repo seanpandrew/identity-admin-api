@@ -13,7 +13,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   "add reserved username" should {
     "add a given username to the list and return the updated list" in {
-      val repo = Play.current.injector.instanceOf(classOf[ReservedUserNameWriteRepository])
+      val repo = app.injector.instanceOf(classOf[ReservedUserNameWriteRepository])
       val username = UUID.randomUUID().toString
 
       val result = repo.addReservedUsername(username)
@@ -24,7 +24,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   "remove reserved username" should {
     "remove a given username from the list and return the updated list" in {
-      val repo = Play.current.injector.instanceOf(classOf[ReservedUserNameWriteRepository])
+      val repo = app.injector.instanceOf(classOf[ReservedUserNameWriteRepository])
       val username = UUID.randomUUID().toString
 
       repo.addReservedUsername(username)
@@ -35,7 +35,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
     }
 
     "return not found if the username doesn't exist" in {
-      val repo = Play.current.injector.instanceOf(classOf[ReservedUserNameWriteRepository])
+      val repo = app.injector.instanceOf(classOf[ReservedUserNameWriteRepository])
       val username = UUID.randomUUID().toString
 
       val result = repo.removeReservedUsername(username)

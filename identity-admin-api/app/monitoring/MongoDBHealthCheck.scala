@@ -7,9 +7,12 @@ import repositories.UsersReadRepository
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
+import javax.inject._
 
-class MongoDBHealthCheck(userRepository: UsersReadRepository, actorSystem: ActorSystem, metrics: Metrics) extends Logging {
+import configuration.Config
+import play.api.Environment
 
+class MongoDBHealthCheck @Inject() (environment: Environment, userRepository: UsersReadRepository, actorSystem: ActorSystem, metrics: Metrics) extends Logging {
   private[monitoring] val MetricName = "MongoConnectivity"
 
   private[monitoring] def triggerUpdate() {
@@ -30,12 +33,16 @@ class MongoDBHealthCheck(userRepository: UsersReadRepository, actorSystem: Actor
   }
 
   def start() {
-    // trigger immediately
-    triggerUpdate()
-
-    // trigger every 10 seconds with an initial delay of 30 seconds
-    actorSystem.scheduler.schedule(30.seconds, 10.seconds) {
+    if(Config.Monitoring.mongoEnabled) {
+      // trigger immediately
       triggerUpdate()
+
+      // trigger every 10 seconds with an initial delay of 30 seconds
+      actorSystem.scheduler.schedule(30.seconds, 10.seconds) {
+        triggerUpdate()
+      }
     }
   }
+
+  start()
 }
