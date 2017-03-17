@@ -1,14 +1,13 @@
 package repositories
 
-import javax.inject.Singleton
+import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.MongoCursor
 import com.mongodb.casbah.commons.MongoDBObject
-import com.novus.salat.dao.SalatDAO
-import models.{ApiErrors, ApiError, ReservedUsernameList}
+import models.{ApiError, ApiErrors, ReservedUsernameList}
 import org.bson.types.ObjectId
-import com.novus.salat.global._
+import salat.dao.SalatDAO
 
 import scala.util.{Failure, Success, Try}
 
@@ -16,7 +15,8 @@ case class ReservedUsername(_id: ObjectId, username: String)
 
 
 @Singleton
-class ReservedUserNameWriteRepository extends SalatDAO[ReservedUsername, ObjectId](collection=SalatMongoConnection.db()("reservedUsernames")) with Logging {
+class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environment, salatMongoConnection: SalatMongoConnection)
+  extends SalatDAO[ReservedUsername, ObjectId](collection=salatMongoConnection.db()("reservedUsernames")) with Logging {
 
   private def findReservedUsername(username: String): Either[ApiError, ReservedUsername] =
     Try {

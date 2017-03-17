@@ -1,18 +1,18 @@
 package repositories
 
-import javax.inject.Singleton
+import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.WriteConcern
 import com.mongodb.casbah.commons.MongoDBObject
-import com.novus.salat.dao.SalatDAO
-import com.novus.salat.global._
 import models._
+import salat.dao.SalatDAO
 
 import scala.util.{Failure, Success, Try}
 
 @Singleton
-class UsersWriteRepository extends SalatDAO[PersistedUser, String](collection=SalatMongoConnection.db()("users")) with Logging {
+class UsersWriteRepository @Inject() (salatMongoConnection: SalatMongoConnection)
+  extends SalatDAO[PersistedUser, String](collection=salatMongoConnection.db()("users")) with Logging {
 
   private[repositories] def createUser(user: PersistedUser) = {
     val userToCreate = user.copy(

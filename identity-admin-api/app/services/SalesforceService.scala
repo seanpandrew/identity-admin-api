@@ -1,14 +1,16 @@
 package services
 
+import javax.inject.Inject
+
 import com.gu.identity.util.Logging
 import com.google.inject.ImplementedBy
 import configuration.Config.TouchpointSalesforce._
 import models.{MembershipDetails, SubscriptionDetails}
-import play.api.Play._
 import play.api.libs.json.{JsArray, Json}
-import play.api.libs.ws.{WS, WSResponse}
+import play.api.libs.ws.{WS, WSClient, WSResponse}
 import play.api.http.Status.OK
 import play.api.libs.concurrent.Execution.Implicits._
+
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -34,7 +36,7 @@ trait SalesforceService {
 
 }
 
-class Salesforce extends SalesforceService with Logging {
+class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging {
 
   private lazy val sfAuth: SFAuthentication = {
     val authEndpoint = s"${apiUrl}/services/oauth2/token"
@@ -47,7 +49,7 @@ class Salesforce extends SalesforceService with Logging {
       "grant_type" -> "password"
     ).map { case (k, v) => s"$k=$v" }.mkString("&")
 
-    val request = WS.url(s"$authEndpoint?$param")
+    val request = ws.url(s"$authEndpoint?$param")
 
     val response = Try(Await.result(request.post(""), 10.second))
 
@@ -93,7 +95,7 @@ class Salesforce extends SalesforceService with Logging {
 
     val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
 
-    val request = WS.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
+    val request = ws.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
     request.get().map { res =>
       if (res.status == OK) {
         def createSubscription(res: WSResponse): SubscriptionDetails = {
@@ -151,7 +153,7 @@ class Salesforce extends SalesforceService with Logging {
 
     val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
 
-    val request = WS.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
+    val request = ws.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
     request.get().map { res =>
       if (res.status == OK) {
 

@@ -2,7 +2,7 @@ package controllers
 
 import actions.AuthenticatedAction
 import models.{ApiErrors, ReservedUsernameList}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
 import play.api.mvc.{Result, Request}

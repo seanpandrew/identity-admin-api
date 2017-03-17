@@ -5,7 +5,7 @@ import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import com.amazonaws.services.sns.model.PublishRequest
 import com.amazonaws.services.sns.AmazonSNSAsyncClient
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{WordSpec, Matchers}
 import org.mockito.Mockito._
 

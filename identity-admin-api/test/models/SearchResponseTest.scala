@@ -3,7 +3,7 @@ package models
 import java.util.UUID
 
 import org.scalatest.{Matchers, WordSpec}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.mockito.Mockito._
 import repositories.PersistedUser
 

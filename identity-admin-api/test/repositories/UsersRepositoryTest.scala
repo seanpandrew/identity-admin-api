@@ -1,18 +1,20 @@
 package repositories
 
 import java.util.UUID
+import javax.inject.Inject
 
-import models.{User, UserUpdateRequest, SearchResponse}
+import models.{SearchResponse, User, UserUpdateRequest}
 import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play
+import play.api.Application
 import reactivemongo.bson.BSONObjectID
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 @DoNotDiscover
-class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
+class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with OneServerPerSuite {
 
   def createUser(username: Option[String] = None, postcode: Option[String] = None, registeredIp: Option[String] = None, lastActiveIp: Option[String] = None): PersistedUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
@@ -35,16 +37,16 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
     "search" must {
 
       "return a user when email matches exactly" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val user = createUser()
         val createdUser = writeRepo.createUser(user)
         Await.result(repo.search(user.primaryEmailAddress), 1.second).results.map(_.id) must contain(createdUser.get)
       }
 
       "return a user when username matches exactly" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val username = UUID.randomUUID().toString
         val user = createUser(username = Some(username))
         val createdUser = writeRepo.createUser(user)
@@ -52,8 +54,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       }
 
       "return a user when postcode matches exactly" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val postcode = "N1 9GU"
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
@@ -61,8 +63,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       }
 
       "return a user when postcode prefix matches" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val postcode = "N1 9GU"
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
@@ -70,8 +72,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       }
 
       "return a user when registered ip matches exactly" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val ip = "127.0.0.1"
         val user = createUser(registeredIp = Some(ip))
         val createdUser = writeRepo.createUser(user)
@@ -79,8 +81,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       }
 
       "return a user when last active ip matches exactly" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val ip = "127.0.0.1"
         val user = createUser(lastActiveIp = Some(ip))
         val createdUser = writeRepo.createUser(user)
@@ -88,13 +90,13 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       }
       
       "return Nil when no results are found" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
         Await.result(repo.search("invalid@invalid.com"), 1.second) mustEqual SearchResponse(0, hasMore = false, Nil)
       }
 
       "use offset when provided" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val postcode = UUID.randomUUID().toString
         val user1 = createUser(postcode = Some(postcode))
         val user2 = createUser(postcode = Some(postcode))
@@ -117,8 +119,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
       }
 
       "use limit when provided" in {
-        val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-        val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+        val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+        val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val postcode = UUID.randomUUID().toString
         val user1 = createUser(postcode = Some(postcode))
         val user2 = createUser(postcode = Some(postcode))
@@ -142,8 +144,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   "findById" should {
     "return Some user when user found" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
 
@@ -151,7 +153,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
     }
 
     "return None when user not found" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
 
       Await.result(repo.findById(UUID.randomUUID().toString), 1.second) mustEqual None
     }
@@ -159,8 +161,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
   
   "findByEmail" should {
     "return Some user when user found" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
 
@@ -168,7 +170,7 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
     }
 
     "return None when user not found" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
 
       Await.result(repo.findByEmail(UUID.randomUUID().toString), 1.second) mustEqual None
     }
@@ -176,8 +178,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   "update" should {
     "persist fields" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
       val userUpdateRequest = UserUpdateRequest(
@@ -210,8 +212,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   "updateEmailValidationStatus" should {
     "set user email validated status to value" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
 
@@ -225,8 +227,8 @@ class UsersRepositoryTest extends PlaySpec with OneServerPerSuite {
 
   "delete" should {
     "return true when successful" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
       val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))

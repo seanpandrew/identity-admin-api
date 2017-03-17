@@ -5,7 +5,7 @@ resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/release
 resolvers += Resolver.url("sbt-plugin-releases on bintray", new URL("https://dl.bintray.com/sbt/sbt-plugin-releases/"))(Resolver.ivyStylePatterns)
 
 // Use the Play sbt plugin for Play projects
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.4.3")
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.5.13")
 
 addSbtPlugin("com.gu" % "riffraff-artifact" % "0.7.0")
 
