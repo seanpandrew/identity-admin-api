@@ -1,7 +1,8 @@
 package repositories
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
+import com.gu.identity.util.Logging
 import models.{SearchResponse, User}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
@@ -12,7 +13,8 @@ import reactivemongo.api.{QueryOpts, ReadPreference}
 import scala.concurrent.Future
 
 
-class UsersReadRepository @Inject() (reactiveMongoConnection: ReactiveMongoConnection) {
+@Singleton
+class UsersReadRepository @Inject() (reactiveMongoConnection: ReactiveMongoConnection) extends Logging {
 
   private val MaximumResults = 20
 

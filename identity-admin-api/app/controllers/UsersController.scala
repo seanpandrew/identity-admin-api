@@ -1,6 +1,6 @@
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
@@ -17,6 +17,7 @@ import scalaz.std.scalaFuture._
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
+@Singleton
 class UsersController @Inject() (
     userService: UserService,
     auth: AuthenticatedAction,

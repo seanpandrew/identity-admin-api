@@ -1,6 +1,6 @@
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import actions.AuthenticatedAction
 import play.api.Logger
@@ -9,6 +9,7 @@ import play.api.mvc.{Action, Results}
 
 case class Test(name: String, result: () => Boolean)
 
+@Singleton
 class HealthCheckController @Inject() (auth: AuthenticatedAction) extends Results {
 
   // TODO add a meaningful test

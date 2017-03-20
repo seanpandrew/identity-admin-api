@@ -1,6 +1,6 @@
 package repositories
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
 import configuration.MongoConfig
@@ -9,6 +9,7 @@ import reactivemongo.api.{DefaultDB, MongoConnection, MongoDriver}
 
 import scala.concurrent.Future
 
+@Singleton
 class ReactiveMongoConnection @Inject() (mongoConfig: MongoConfig, app: play.api.Application) extends Logging {
 
   private var mongoDb: Option[DefaultDB] = None
