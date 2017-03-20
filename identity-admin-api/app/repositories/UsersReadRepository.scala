@@ -1,10 +1,12 @@
 package repositories
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
+import com.gu.identity.util.Logging
 import models.{SearchResponse, User}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
+import play.modules.reactivemongo.ReactiveMongoApi
 import play.modules.reactivemongo.json._
 import play.modules.reactivemongo.json.collection._
 import reactivemongo.api.{QueryOpts, ReadPreference}
@@ -12,11 +14,12 @@ import reactivemongo.api.{QueryOpts, ReadPreference}
 import scala.concurrent.Future
 
 
-class UsersReadRepository @Inject() (reactiveMongoConnection: ReactiveMongoConnection) {
+@Singleton
+class UsersReadRepository @Inject() (app: play.api.Application) extends Logging {
 
   private val MaximumResults = 20
 
-  private def jsonCollection = reactiveMongoConnection.db().collection[JSONCollection]("users")
+  lazy val jsonCollection = app.injector.instanceOf[ReactiveMongoApi].db.collection[JSONCollection]("users")
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): Future[SearchResponse] =  {
     val q = buildSearchQuery(query)

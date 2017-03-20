@@ -1,6 +1,6 @@
 package controllers
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
@@ -15,6 +15,7 @@ object ReservedUsernameRequest {
   implicit val format = Json.format[ReservedUsernameRequest]
 }
 
+@Singleton
 class ReservedUsernameController @Inject() (reservedUsernameRepository: ReservedUserNameWriteRepository, auth: AuthenticatedAction) extends Controller with Logging {
 
   def reserveUsername() = auth(parse.json) { request =>
