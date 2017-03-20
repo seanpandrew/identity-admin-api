@@ -52,4 +52,9 @@ object Config {
     val snsTopic = config.getString("aws.queue.identity-salesforce.sns.arn")
     val snsEndPoint = config.getString("aws.queue.identity-salesforce.sns.endpoint")
   }
+
+  object ExactTarget {
+    val clientSecret = config.getString("exacttarget.clientSecret")
+    val clientId = config.getString("exacttarget.clientId")
+  }
 }
