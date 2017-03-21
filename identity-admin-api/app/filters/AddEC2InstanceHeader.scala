@@ -8,7 +8,8 @@ import play.api.libs.ws.WSClient
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
 
 class AddEC2InstanceHeader @Inject() (ws: WSClient, implicit val mat: Materializer) extends Filter {
 

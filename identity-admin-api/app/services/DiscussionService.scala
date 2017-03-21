@@ -7,7 +7,7 @@ import configuration.Config
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 
 case class DiscussionStats(status: String, comments: Int, pickedComments: Int)

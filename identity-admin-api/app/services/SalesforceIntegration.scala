@@ -6,7 +6,7 @@ import com.gu.identity.util.Logging
 import configuration.Config
 import play.api.libs.json.Json
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
