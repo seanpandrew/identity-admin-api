@@ -103,7 +103,8 @@ case class User(id: String,
                 groups: Seq[UserGroup] = Nil,
                 socialLinks: Seq[SocialLink] = Nil,
                 membershipDetails: Option[MembershipDetails] = None,
-                subscriptionDetails: Option[SubscriptionDetails] = None
+                subscriptionDetails: Option[SubscriptionDetails] = None,
+                hasCommented: Boolean = false
                )
 
 object User {
