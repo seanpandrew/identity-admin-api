@@ -1,16 +1,18 @@
 package controllers
 
 import actions.AuthenticatedAction
+import mockws.MockWS
 import models._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Mockito._
 import play.api.libs.json.Json
-import play.api.mvc.{Request, Result}
+import play.api.mvc.{Action, Request, Result}
+import play.api.mvc.Results._
 import play.api.test.FakeRequest
 import repositories.PersistedUser
 import play.api.test.Helpers._
-import services.{Salesforce, SalesforceService, UserService}
+import services.{DiscussionService, SalesforceService, UserService}
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,6 +20,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   val userService = mock[UserService]
+  val dapiWsMockurl = s"/profile/10000001/stats"
+  val dapiWsMock = MockWS { case (GET, dapiWsMockurl) => Action {Ok("""{"status":"ok","comments":0,"pickedComments":0}""")}}
 
   class StubAuthenticatedAction extends AuthenticatedAction {
     val secret = "secret"
@@ -31,8 +35,8 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     override def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = Future(None)
   }
 
-  val controller = new UsersController(userService, new StubAuthenticatedAction, new StubSalesfroce)
-  
+  val controller = new UsersController(userService, new StubAuthenticatedAction, new StubSalesfroce, new DiscussionService(dapiWsMock))
+
   "search" should {
     "return 400 when query string is less than minimum length" in {
       val query = "a"

@@ -8,7 +8,7 @@ import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc._
-import services.{EmailService, ExactTargetService, SalesforceService, UserService}
+import services._
 
 import scala.concurrent.Future
 import scala.util.Random
@@ -21,7 +21,8 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
 class UsersController @Inject() (
     userService: UserService,
     auth: AuthenticatedAction,
-    salesforce: SalesforceService) extends Controller with Logging {
+    salesforce: SalesforceService,
+    discussionService: DiscussionService) extends Controller with Logging {
 
   private val MinimumQueryLength = 2
 
@@ -44,15 +45,22 @@ class UsersController @Inject() (
 
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
+
+      val subscriptionF = salesforce.getSubscriptionByIdentityId(userId)
+      val membershipF = salesforce.getMembershipByIdentityId(userId)
+      val hasCommentedF = discussionService.hasCommented(userId)
+
       for {
         user <- userService.findById(userId).asFuture
-        subscription <- salesforce.getSubscriptionByIdentityId(userId)
-        membership <- salesforce.getMembershipByIdentityId(userId)
+        subscription <- subscriptionF
+        membership <- membershipF
+        hasCommented <- hasCommentedF
       } yield {
         user match {
           case Left(r) => Left(ApiError.apiErrorToResult(r))
           case Right(r) =>
-            val userWithSubscriptions = r.copy(subscriptionDetails = subscription, membershipDetails = membership)
+            val userWithSubscriptions = r.copy(
+              subscriptionDetails = subscription, membershipDetails = membership, hasCommented = hasCommented)
             Right(new UserRequest(userWithSubscriptions, input))
         }
       }

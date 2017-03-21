@@ -57,4 +57,8 @@ object Config {
     val clientSecret = config.getString("exacttarget.clientSecret")
     val clientId = config.getString("exacttarget.clientId")
   }
+
+  object Discussion {
+    val apiUrl = config.getString("discussion.api.url")
+  }
 }
