@@ -6,7 +6,7 @@ import configuration.Config
 
 import scala.concurrent.Future
 import scalaz.\/
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 object ExactTargetService extends Logging {
 

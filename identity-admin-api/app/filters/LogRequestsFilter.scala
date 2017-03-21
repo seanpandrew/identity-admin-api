@@ -5,7 +5,7 @@ import akka.stream.Materializer
 import play.api.Logger
 import play.api.mvc._
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 class LogRequestsFilter @Inject() (implicit val mat: Materializer) extends Filter {
 

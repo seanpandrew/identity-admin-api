@@ -5,7 +5,7 @@ import com.gu.identity.util.Logging
 import repositories.UsersReadRepository
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.util.{Failure, Success}
 import javax.inject._
 

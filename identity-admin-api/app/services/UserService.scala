@@ -9,7 +9,7 @@ import models._
 import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
 

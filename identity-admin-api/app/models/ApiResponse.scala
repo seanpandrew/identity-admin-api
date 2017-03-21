@@ -3,23 +3,23 @@ package models
 import com.gu.identity.util.Logging
 import play.api.libs.json._
 import play.api.mvc.{Result, Results}
-import scala.concurrent.ExecutionContext.Implicits.global
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 
 case class ApiResponse[A] private (underlying: Future[Either[ApiError, A]]) {
-  def map[B](f: A => B)(implicit ec: ExecutionContext): ApiResponse[B] =
+  def map[B](f: A => B): ApiResponse[B] =
     flatMap(a => ApiResponse.Right(f(a)))
 
-  def flatMap[B](f: A => ApiResponse[B])(implicit ec: ExecutionContext): ApiResponse[B] = ApiResponse {
+  def flatMap[B](f: A => ApiResponse[B]): ApiResponse[B] = ApiResponse {
     asFuture.flatMap {
       case Right(a) => f(a).asFuture
       case Left(e) => Future.successful(Left(e))
     }
   }
 
-  def fold[B](failure: ApiError => B, success: A => B)(implicit ec: ExecutionContext): Future[B] = {
+  def fold[B](failure: ApiError => B, success: A => B): Future[B] = {
     asFuture.map(_.fold(failure, success))
   }
 
@@ -29,7 +29,7 @@ case class ApiResponse[A] private (underlying: Future[Either[ApiError, A]]) {
    * logging around it, or you may have an error representation that carries more info
    * for these kinds of issues.
    */
-  def asFuture(implicit ec: ExecutionContext): Future[Either[ApiError, A]] = {
+  def asFuture(): Future[Either[ApiError, A]] = {
     underlying recover { case err =>
       val apiErrors = ApiErrors.internalError(err.getMessage)
       scala.Left(apiErrors)
@@ -69,7 +69,7 @@ object ApiResponse extends Results {
     /**
      * Create an ApiResponse from a Future of a good value.
      */
-    def Right[A](fa: Future[A])(implicit ec: ExecutionContext): ApiResponse[A] =
+    def Right[A](fa: Future[A]): ApiResponse[A] =
       ApiResponse(fa.map(scala.Right(_)))
 
     /**
@@ -77,11 +77,11 @@ object ApiResponse extends Results {
      * if a piece of logic fails but you need to make a Database/API call to
      * get the failure information.
      */
-    def Left[A](ferr: Future[ApiError])(implicit ec: ExecutionContext): ApiResponse[A] =
+    def Left[A](ferr: Future[ApiError]): ApiResponse[A] =
       ApiResponse(ferr.map(scala.Left(_)))
   }
 
-  def apply[T](action: => ApiResponse[T])(implicit tjs: Writes[T], ec: ExecutionContext): Future[Result] = {
+  def apply[T](action: => ApiResponse[T])(implicit tjs: Writes[T]): Future[Result] = {
     action.fold(
       err => err,
       t => Ok { Json.toJson(t) }
