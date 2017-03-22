@@ -39,7 +39,7 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
       val date = request.headers.get(HeaderNames.DATE).getOrElse(throw new scala.IllegalArgumentException("Date header is required."))
       val uri = request.uri
 
-      logger.info(s"path: $uri, date: $date, hmac: $hmac")
+      logger.trace(s"path: $uri, date: $date, hmac: $hmac")
 
       if (isDateValid(date) && isHmacValid(date, uri, hmac)) {
         Success
