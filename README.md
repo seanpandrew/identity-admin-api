@@ -16,9 +16,7 @@ Clone [identity-platform](https://github.com/guardian/identity-platform) and fol
 ## Running the Application
 
 ```
-sbt
-project identity-admin-api
-devrun
+sbt devrun
 ```
 
 #Hitting the API with curl
@@ -29,7 +27,6 @@ The API requires requests to have an authorization header to hit the API. A hmac
 
 ```
 sbt
-project identity-admin-api
 runMain util.HmacGenerator "*date*" "*uri to hit*" "*hmac secret value*"
 ```
 This will generate a hmac token
@@ -37,7 +34,6 @@ This will generate a hmac token
 ###Example
 ```
 sbt
-project identity-admin-api
 runMain util.HmacGenerator "2015-10-26T18:13:04Z" "/v1/user/11111111" "secret"
 ```
 
