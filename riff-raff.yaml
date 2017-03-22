@@ -1,0 +1,9 @@
+stacks:
+- identity
+regions:
+- eu-west-1
+deployments:
+  identity-admin-api:
+    type: autoscaling
+    parameters:
+      bucket: gu-identity-admin-api-dist

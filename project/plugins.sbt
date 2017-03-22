@@ -7,8 +7,8 @@ resolvers += Resolver.url("sbt-plugin-releases on bintray", new URL("https://dl.
 // Use the Play sbt plugin for Play projects
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.5.13")
 
-addSbtPlugin("com.gu" % "riffraff-artifact" % "0.7.0")
+addSbtPlugin("com.gu" % "sbt-riffraff-artifact" % "0.9.7")
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.0.3")
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.2.0-M8")
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.6.1")
