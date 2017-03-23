@@ -1,10 +1,19 @@
-lazy val root = (project in file(".")).enablePlugins(PlayScala, BuildInfoPlugin)
+lazy val root = (project in file(".")).enablePlugins(PlayScala, BuildInfoPlugin, RiffRaffArtifact, UniversalPlugin)
 
 name := "identity-admin-api"
 organization := "com.gu"
 version := "1.0-SNAPSHOT"
 scalaVersion := "2.11.8"
 
+sources in (Compile,doc) := Seq.empty
+publishArtifact in (Compile, packageDoc) := false
+parallelExecution in Global := false
+updateOptions := updateOptions.value.withCachedResolution(true)
+javaOptions in Test += "-Dconfig.resource=TEST.conf"
+
+// *****************************
+// BuildInfo
+// *****************************
 buildInfoKeys := Seq[BuildInfoKey](
   name,
   BuildInfoKey.constant("buildNumber", Option(System.getenv("BUILD_NUMBER")) getOrElse "DEV"),
@@ -18,6 +27,9 @@ buildInfoKeys := Seq[BuildInfoKey](
 buildInfoOptions += BuildInfoOption.ToMap
 buildInfoPackage := "app"
 
+// *****************************
+// Dependencies
+// *****************************
 resolvers ++= Seq(
   "Guardian Github Releases" at "https://guardian.github.io/maven/repo-releases",
   "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-snapshots",
@@ -29,16 +41,19 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases"))
 libraryDependencies ++= Dependencies.apiDependencies
 
-sources in (Compile,doc) := Seq.empty
-publishArtifact in (Compile, packageDoc) := false
-parallelExecution in Global := false
-updateOptions := updateOptions.value.withCachedResolution(true)
-javaOptions in Test += "-Dconfig.resource=TEST.conf"
-
-PlayArtifact.playArtifactDistSettings
+// *****************************
+// Deployment package
+// *****************************
 mappings in Universal ++= (baseDirectory.value / "deploy" * "*" get) map (x => x -> ("deploy/" + x.getName))
-magentaPackageName := name.value
+riffRaffPackageType := (packageBin in Universal).value
+riffRaffUploadArtifactBucket := Option("riffraff-artifact")
+riffRaffUploadManifestBucket := Option("riffraff-builds")
+riffRaffBuildIdentifier := Option(System.getenv("BUILD_NUMBER")).getOrElse("DEV")
+riffRaffManifestBranch := Option(System.getenv("BUILD_VCS_BRANCH")).getOrElse("unknown_branch")
+riffRaffManifestVcsUrl  := "git@github.com:guardian/identity-admin-api.git"
 
-
+// *****************************
+// Command aliases
+// *****************************
 addCommandAlias("devrun", "run -Dconfig.resource=DEV.conf 9500")
 
