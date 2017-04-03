@@ -18,6 +18,7 @@ object Dependencies {
   val salat =               "com.github.salat"              %% "salat"                    % "1.10.0"
   val emailValidation =     "uk.gov.hmrc"                   %% "emailaddress"             % "2.1.0"
   val exactTargetFuel =     "com.exacttarget"               %  "fuelsdk"                  % "1.1.0"
+  val tip =                 "com.gu"                        %% "tip"                      % "0.1.0"
   val scalaTestPlus =       "org.scalatestplus.play"        %% "scalatestplus-play"       % "2.0.0"     % "test"
   val embeddedMongo =       "com.github.simplyscala"        %% "scalatest-embedmongo"     % "0.2.3"     % "test"
   val mockWs =              "de.leanovate.play-mockws"      %% "play-mockws"              % "2.5.1"     % "test"
@@ -28,6 +29,6 @@ object Dependencies {
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo, salat,
     specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, autoMongoDiscovery, akkaSlf4j, akkaTestkit,
-    exactTargetFuel)
+    exactTargetFuel, tip)
 
 }
