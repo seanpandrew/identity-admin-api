@@ -4,6 +4,8 @@ import javax.inject.{Inject, Singleton}
 
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
+import com.gu.tip.Tip
+import configuration.Config
 import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, JsSuccess}
@@ -59,6 +61,7 @@ class UsersController @Inject() (
         user match {
           case Left(r) => Left(ApiError.apiErrorToResult(r))
           case Right(r) =>
+            if (Config.stage == "PROD") Tip.verify()
             val userWithSubscriptions = r.copy(
               subscriptionDetails = subscription, membershipDetails = membership, hasCommented = hasCommented)
             Right(new UserRequest(userWithSubscriptions, input))
