@@ -1,0 +1,5 @@
+- name: User Retrieval
+  description: User is retrieved from the database
+
+- name: User Update
+  description: User is updated in the database
