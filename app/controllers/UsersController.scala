@@ -61,7 +61,7 @@ class UsersController @Inject() (
         user match {
           case Left(r) => Left(ApiError.apiErrorToResult(r))
           case Right(r) =>
-            if (Config.stage == "PROD") Tip.verify()
+            if (Config.stage == "PROD") Tip.verify("User Retrieval")
             val userWithSubscriptions = r.copy(
               subscriptionDetails = subscription, membershipDetails = membership, hasCommented = hasCommented)
             Right(new UserRequest(userWithSubscriptions, input))
@@ -80,6 +80,7 @@ class UsersController @Inject() (
         case JsSuccess(result, path) =>
           UserUpdateRequestValidator.isValid(result) match {
             case Right(validUserUpdateRequest) => {
+              if (Config.stage == "PROD") Tip.verify("User Update")
               logger.info(s"Updating user id:$id, body: $result")
               userService.update(request.user, validUserUpdateRequest)
             }
