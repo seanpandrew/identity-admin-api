@@ -185,27 +185,27 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "remove the given user and reserve username" in {
       val username = "testuser"
       val user = User("id", "email", username = Some(username))
-      when(userWriteRepo.delete(user.id)).thenReturn(Right(true))
+      when(userWriteRepo.delete(user)).thenReturn(Right(true))
       when(reservedUsernameRepo.addReservedUsername(username)).thenReturn(Right(ReservedUsernameList(List(username))))
-      val result = service.delete(user.id, user.username)
+      val result = service.delete(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(ReservedUsernameList(List(username)))
     }
 
     "remove the given user and return existing reserved usernames when user has no username" in {
       val user = User("id", "email", username = None)
-      when(userWriteRepo.delete(user.id)).thenReturn(Right(true))
+      when(userWriteRepo.delete(user)).thenReturn(Right(true))
       when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Right(ReservedUsernameList(Nil)))
-      val result = service.delete(user.id, user.username)
+      val result = service.delete(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(ReservedUsernameList(Nil))
     }
 
     "return internal server api error if an error occurs deleting the user" in {
       val user = User("id", "email")
-      when(userWriteRepo.delete(user.id)).thenReturn(Left(ApiErrors.internalError("boom")))
+      when(userWriteRepo.delete(user)).thenReturn(Left(ApiErrors.internalError("boom")))
 
-      val result = service.delete(user.id, user.username)
+      val result = service.delete(user)
 
       Await.result(result.underlying, 1.second) shouldEqual Left(ApiErrors.internalError("boom"))
     }

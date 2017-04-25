@@ -13,7 +13,6 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
-import scala.util.Random
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
 
@@ -95,26 +94,21 @@ class UsersController @Inject() (
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
-    val originalUsername = request.user.username
-    val anonymisedUsername = new Random(System.currentTimeMillis).alphanumeric.take(16).mkString
-
-    def anonymiseUsername() = EitherT.fromEither(userService.update(request.user, UserUpdateRequest(request.user.email, Some(anonymisedUsername), Some(anonymisedUsername))).asFuture)
     def unsubscribeEmails() = EitherT(ExactTargetService.unsubscribeFromAllLists(request.user.email)).leftMap(error => ApiErrors.internalError(error.toString))
-    def deleteAccount() = EitherT.fromEither(userService.delete(request.user.id, originalUsername).asFuture)
+    def deleteAccount() = EitherT.fromEither(userService.delete(request.user).asFuture)
 
     (for {
-      _ <- anonymiseUsername()
       _ <- unsubscribeEmails()
       _ <- deleteAccount()
     } yield EmailService.sendDeletionConfirmation(request.user.email)).fold(
-        error => {
-          logger.error(s"Error deleting user $id: $error")
-          ApiError.apiErrorToResult(error)
-        },
-        _ => {
-          logger.info(s"Successfuly deleted user $id")
-          NoContent
-        }
+      error => {
+        logger.error(s"Error deleting user $id: $error")
+        ApiError.apiErrorToResult(error)
+      },
+      _ => {
+        logger.info(s"Successfuly deleted user $id")
+        NoContent
+      }
     )
   }
   
