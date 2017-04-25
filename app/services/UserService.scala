@@ -6,19 +6,23 @@ import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
-import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories.{PersistedUserUpdate, DeletedUsersRepository, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
-
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
+
+import scalaz.OptionT
+import scalaz.std.scalaFuture._
 
 @Singleton
 class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              usersWriteRepository: UsersWriteRepository,
                              reservedUserNameRepository: ReservedUserNameWriteRepository,
                              identityApiClient: IdentityApiClient,
-                             eventPublishingActorProvider: EventPublishingActorProvider) extends Logging {
+                             eventPublishingActorProvider: EventPublishingActorProvider,
+                             deletedUsersRepository: DeletedUsersRepository) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -101,12 +105,33 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =
-    ApiResponse.Async.Right(usersReadRepository.search(query, limit, offset))
+  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
+    ApiResponse.Async.Right{
+      for {
+        activeUsers <- usersReadRepository.search(query, limit, offset)
+        deletedUsers <- deletedUsersRepository.search(query)
+      } yield {
+        val combinedTotal = activeUsers.total + deletedUsers.total
+        val combinedResult = activeUsers.results ++ deletedUsers.results
+        activeUsers.copy(total = combinedTotal, results = combinedResult)
+      }
+    }
+  }
 
+
+  /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {
-    val result =  usersReadRepository.findById(id).map(_.toRight(ApiErrors.notFound))
-    ApiResponse.Async(result)
+    ApiResponse.Async {
+      lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
+        user => Right(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
+        Left(ApiErrors.notFound)
+      )
+
+      OptionT(usersReadRepository.findById(id)).fold(
+        activeUser => Future.successful(Right(activeUser)),
+        deletedUserOptT
+      ).flatMap(identity) // F[F] => F
+    }
   }
 
   def delete(user: User): ApiResponse[ReservedUsernameList] = {
