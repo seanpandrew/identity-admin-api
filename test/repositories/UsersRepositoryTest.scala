@@ -227,8 +227,8 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
 
   "delete" should {
     "return true when successful" in {
-      val repo = Play.current.injector.instanceOf(classOf[UsersReadRepository])
-      val writeRepo = Play.current.injector.instanceOf(classOf[UsersWriteRepository])
+      val repo = app.injector.instanceOf(classOf[UsersReadRepository])
+      val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
       val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))

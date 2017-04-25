@@ -155,25 +155,6 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val result = controller.delete(id)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
     }
-
-    "return 204 when user is deleted" in {
-      val id = "abc"
-      val user = User("", "")
-      when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
-      when(userService.delete(user)).thenReturn(ApiResponse.Right(ReservedUsernameList(Nil)))
-      val result = controller.delete(id)(FakeRequest())
-      status(result) shouldEqual NO_CONTENT
-    }
-
-    "return 500 when error occurs" in {
-      val id = "abc"
-      val user = User("", "")
-      when(userService.findById(id)).thenReturn(ApiResponse.Right(user))
-      when(userService.delete(user)).thenReturn(ApiResponse.Left[ReservedUsernameList](ApiErrors.internalError("boom")))
-      val result = controller.delete(id)(FakeRequest())
-      status(result) shouldEqual INTERNAL_SERVER_ERROR
-      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.internalError("boom"))
-    }
   }
   
   "sendEmailValidation" should {
