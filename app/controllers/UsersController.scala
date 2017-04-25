@@ -13,6 +13,8 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
+import scalaz.EitherT
+import scalaz.std.scalaFuture._
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
@@ -90,14 +92,24 @@ class UsersController @Inject() (
   }
 
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
-    logger.info(s"Deleting user with id: $id")
-    userService.delete(request.user).asFuture.map {
-      case Right(r) =>
-        EmailService.sendDeletionConfirmation(request.user.email)
-        NoContent
+    logger.info(s"Deleting user $id")
 
-      case Left(r) => ApiError.apiErrorToResult(r)
-    }
+    def unsubscribeEmails() = EitherT(ExactTargetService.unsubscribeFromAllLists(request.user.email)).leftMap(error => ApiErrors.internalError(error.toString))
+    def deleteAccount() = EitherT.fromEither(userService.delete(request.user).asFuture)
+
+    (for {
+      _ <- unsubscribeEmails()
+      _ <- deleteAccount()
+    } yield EmailService.sendDeletionConfirmation(request.user.email)).fold(
+      error => {
+        logger.error(s"Error deleting user $id: $error")
+        ApiError.apiErrorToResult(error)
+      },
+      _ => {
+        logger.info(s"Successfuly deleted user $id")
+        NoContent
+      }
+    )
   }
   
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
