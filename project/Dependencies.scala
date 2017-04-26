@@ -14,7 +14,7 @@ object Dependencies {
   val awsSns =              "com.amazonaws"                 %  "aws-java-sdk"             % "1.11.105"
   val scalaz =              "org.scalaz"                    %% "scalaz-core"              % "7.2.10"
   val autoMongoDiscovery =  "com.gu"                        %% "mongodb-auto-discovery"   % "1.6"
-  val reactiveMongo =       "org.reactivemongo"             %% "play2-reactivemongo"      % "0.11.14"
+  val reactiveMongo =       "org.reactivemongo"             %% "play2-reactivemongo"      % "0.12.2"
   val salat =               "com.github.salat"              %% "salat"                    % "1.10.0"
   val emailValidation =     "uk.gov.hmrc"                   %% "emailaddress"             % "2.1.0"
   val exactTargetFuel =     "com.exacttarget"               %  "fuelsdk"                  % "1.1.0"
