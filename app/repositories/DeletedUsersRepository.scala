@@ -16,8 +16,11 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
 
+import DeletedUser._
+
 @Singleton
 class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) extends Logging {
+
   private lazy val reservedEmailsF = reactiveMongoApi.database.map(_.collection("reservedEmails"))
 
   def findBy(query: String): Future[Option[DeletedUser]] =
@@ -33,14 +36,15 @@ class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) exten
       SearchResponse.create(0, 0, Nil)
     )
 
-  private def buildSearchQuery(query: String): JsObject = {
-    val queryLowerCase = query.toLowerCase
+  def insert(id: String, email: String, username: String) =
+    reservedEmailsF.flatMap(_.insert[DeletedUser](DeletedUser(id, email, username)))
+
+  private def buildSearchQuery(query: String) =
     Json.obj(
       "$or" -> Json.arr(
-        Json.obj("_id" -> queryLowerCase),
-        Json.obj("email" -> queryLowerCase),
-        Json.obj("username" -> queryLowerCase)
+        Json.obj("_id" -> query.toLowerCase),
+        Json.obj("email" -> query.toLowerCase),
+        Json.obj("username" -> query)
       )
     )
-  }
 }

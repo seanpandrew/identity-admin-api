@@ -1,6 +1,6 @@
 package repositories
 
-import play.api.libs.json.{Format, JsPath, Reads, Writes}
+import play.api.libs.json._
 import play.api.libs.functional.syntax._
 
 case class DeletedUser(
@@ -15,12 +15,12 @@ object DeletedUser {
     (JsPath \ "username").read[String]
   )(DeletedUser.apply _)
 
-  val deletedUserWrites: Writes[DeletedUser] = (
+  val deletedUserWrites: OWrites[DeletedUser] = (
     (JsPath \ "_id").write[String] and
     (JsPath \ "email").write[String] and
     (JsPath \ "username").write[String]
   )(unlift(DeletedUser.unapply))
 
-  implicit val format: Format[DeletedUser] =
-    Format(deletedUserReads, deletedUserWrites)
+  implicit val format: OFormat[DeletedUser] =
+    OFormat(deletedUserReads, deletedUserWrites)
 }

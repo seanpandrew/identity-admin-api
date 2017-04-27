@@ -11,7 +11,9 @@ import salat.dao.SalatDAO
 import scala.util.{Failure, Success, Try}
 
 @Singleton
-class UsersWriteRepository @Inject() (salatMongoConnection: SalatMongoConnection)
+class UsersWriteRepository @Inject() (
+    salatMongoConnection: SalatMongoConnection,
+    deletedUsersRepository: DeletedUsersRepository)
   extends SalatDAO[PersistedUser, String](collection=salatMongoConnection.db()("users")) with Logging {
 
   private[repositories] def createUser(user: PersistedUser) = {
@@ -115,6 +117,7 @@ class UsersWriteRepository @Inject() (salatMongoConnection: SalatMongoConnection
       removeById(user.id)
     } match {
       case Success(r) =>
+        deletedUsersRepository.insert(user.id, user.email, user.username.getOrElse(""))
         Right(true)
       case Failure(t) =>
         logger.error(s"Failed to delete user. id: ${user.id}", t)
