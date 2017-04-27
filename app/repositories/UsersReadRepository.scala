@@ -58,7 +58,7 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
       )
     )
   }
-  
+
   private def findBy(field: String, value: String): Future[Option[User]] =
     usersCollectionF.flatMap { usersCollection =>
       usersCollection.find(Json.obj(field -> value))
@@ -67,7 +67,7 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
     }
 
   def findById(id: String): Future[Option[User]] = findBy("_id", id)
-  
+
   def findByEmail(email: String): Future[Option[User]] = findBy("primaryEmailAddress", email.toLowerCase)
   def findByUsername(username: String): Future[Option[User]] = findBy("publicFields.usernameLowerCase", username.toLowerCase)
   def findByVanityUrl(vanityUrl: String): Future[Option[User]] = findBy("publicFields.vanityUrl", vanityUrl)

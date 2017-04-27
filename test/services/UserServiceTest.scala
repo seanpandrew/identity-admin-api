@@ -5,10 +5,11 @@ import models._
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mockito.MockitoSugar
-import repositories.{PersistedUserUpdate, ReservedUserNameWriteRepository, UsersWriteRepository, UsersReadRepository}
+import repositories.{DeletedUsersRepository, PersistedUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 
 import scala.concurrent.{Await, Future}
 import org.mockito.Mockito._
+
 import scala.concurrent.duration._
 
 class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter {
@@ -18,7 +19,8 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
   val identityApiClient = mock[IdentityApiClient]
   val eventPublishingActorProvider = mock[EventPublishingActorProvider]
-  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider))
+  val deletedUsersRepository = mock[DeletedUsersRepository]
+  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, deletedUsersRepository))
 
   before {
     Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service)
