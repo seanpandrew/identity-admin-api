@@ -41,6 +41,15 @@ object ExactTargetService extends Logging {
     ).fold(createAndUnsubscribe)(result => unsubscribe(result.getObject))
   }
 
+  def updateEmailAddress(oldEmail: String, newEmail: String) = Future {
+    logger.info("Updating user's email address in ExactTarget")
+    Option(etClient.retrieve(classOf[ETSubscriber], s"emailAddress=$oldEmail").getResult).map { result =>
+      val subscriber = result.getObject
+      subscriber.setEmailAddress(newEmail)
+      etClient.update(subscriber)
+    }
+  }
+
   private lazy val etClient = {
     val etConf = new ETConfiguration()
     etConf.set("clientId", Config.ExactTarget.clientId)

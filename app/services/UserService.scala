@@ -47,8 +47,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
           emailValidatedChanged = userEmailValidatedChanged
         )
 
-        if(result.isRight && userEmailChanged)
+        if(result.isRight && userEmailChanged) {
           identityApiClient.sendEmailValidation(user.id)
+          ExactTargetService.updateEmailAddress(user.email, userUpdateRequest.email)
+        }
+
         if (userEmailChanged && eventsEnabled) {
           SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
         }
