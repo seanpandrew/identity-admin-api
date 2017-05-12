@@ -87,7 +87,12 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
          |WHERE
          |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
          |  (Subscription_Status__c = 'Active') AND
-         |  (Zuora__ProductName__c = 'Digital Pack')
+         |  (
+         |    (Zuora__ProductName__c = 'Digital Pack') OR
+         |    (Zuora__ProductName__c = 'Newspaper Voucher') OR
+         |    (Zuora__ProductName__c = 'Newspaper Delivery') OR
+         |    (Zuora__ProductName__c LIKE 'Guardian Weekly%')
+         |  )
          |
          |ORDER BY
          |  Zuora__EffectiveStartDate__c DESC NULLS LAST
