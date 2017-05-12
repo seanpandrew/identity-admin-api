@@ -5,7 +5,7 @@ import models._
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mockito.MockitoSugar
-import repositories.{DeletedUsersRepository, PersistedUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories.{DeletedUsersRepository, IdentityUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 
 import scala.concurrent.{Await, Future}
 import org.mockito.Mockito._
@@ -20,7 +20,9 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val identityApiClient = mock[IdentityApiClient]
   val eventPublishingActorProvider = mock[EventPublishingActorProvider]
   val deletedUsersRepository = mock[DeletedUsersRepository]
-  val service = spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, deletedUsersRepository))
+  val salesforceService = mock[SalesforceService]
+  val service =
+    spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, deletedUsersRepository, salesforceService))
 
   before {
     Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service)
@@ -85,7 +87,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "update when email and username are valid" in {
       val user = User("id", "email@theguardian.com")
       val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com", username = Some("username"))
-      val updateRequest = PersistedUserUpdate(userUpdateRequest, Some(false))
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, Some(false))
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
@@ -101,7 +103,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "not send email validation when email has not changed" in {
       val user = User("id", "email@theguardian.com")
       val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
-      val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, None)
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
@@ -171,7 +173,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "return internal server api error if an error occurs updating the user" in {
       val user = User("id", "email@theguardian.com")
       val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
-      val updateRequest = PersistedUserUpdate(userUpdateRequest, None)
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, None)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Left(ApiErrors.internalError("boom")))

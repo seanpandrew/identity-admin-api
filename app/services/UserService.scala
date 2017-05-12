@@ -6,7 +6,7 @@ import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
-import repositories.{PersistedUserUpdate, DeletedUsersRepository, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories.{DeletedUsersRepository, Orphan, IdentityUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
@@ -22,7 +22,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              reservedUserNameRepository: ReservedUserNameWriteRepository,
                              identityApiClient: IdentityApiClient,
                              eventPublishingActorProvider: EventPublishingActorProvider,
-                             deletedUsersRepository: DeletedUsersRepository) extends Logging {
+                             deletedUsersRepository: DeletedUsersRepository,
+                             salesforceService: SalesforceService) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -37,7 +38,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         val userEmailValidatedChanged = isEmailValidationChanged(userEmailValidated, user.status.userEmailValidated)
         val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
         val displayNameChanged = isDisplayNameChanged(userUpdateRequest.displayName, user.displayName)
-        val update = PersistedUserUpdate(userUpdateRequest, userEmailValidated)
+        val update = IdentityUserUpdate(userUpdateRequest, userEmailValidated)
         val result = usersWriteRepository.update(user, update)
 
         triggerEvents(
@@ -110,15 +111,34 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
     ApiResponse.Async.Right{
+
+      val orphansF = searchOrphan(query)
+      val activeUsersF = usersReadRepository.search(query, limit, offset)
+      val deletedUsersF = deletedUsersRepository.search(query)
+
       for {
-        activeUsers <- usersReadRepository.search(query, limit, offset)
-        deletedUsers <- deletedUsersRepository.search(query)
+        activeUsers <- activeUsersF
+        deletedUsers <- deletedUsersF
+        orphans <- orphansF
       } yield {
         val combinedTotal = activeUsers.total + deletedUsers.total
-        val combinedResult = activeUsers.results ++ deletedUsers.results
-        activeUsers.copy(total = combinedTotal, results = combinedResult)
+        val combinedResults = activeUsers.results ++ deletedUsers.results
+
+        logger.info(combinedTotal.toString)
+
+        if (combinedTotal > 0)
+          activeUsers.copy(total = combinedTotal, results = combinedResults)
+         else
+          orphans
       }
     }
+  }
+
+  def searchOrphan(email: String): Future[SearchResponse] = {
+    OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
+      sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email.getOrElse("")))),
+      SearchResponse.create(0, 0, Nil)
+    )
   }
 
 

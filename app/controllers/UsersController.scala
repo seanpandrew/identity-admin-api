@@ -13,8 +13,9 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
-import scalaz.EitherT
+import scalaz.{EitherT, OptionT}
 import scalaz.std.scalaFuture._
+
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
@@ -69,7 +70,21 @@ class UsersController @Inject() (
     }
   }
 
+
+  private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
+    override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
+      OptionT(salesforce.getSubscriptionByEmail(email)).fold(
+        sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email.getOrElse(""), subscriptionDetails = Some(sub)), input)),
+        Left(ApiError.apiErrorToResult(ApiErrors.notFound))
+      )
+    }
+  }
+
   def findById(id: String) = (auth andThen UserAction(id)) { request =>
+    request.user
+  }
+
+  def findOrphanByEmail(email: String) = (auth andThen OrphanUserAction(email)) { request =>
     request.user
   }
 

@@ -31,8 +31,8 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
       val results = usersCollection
         .find(q)
         .options(QueryOpts(o, l))
-        .cursor[PersistedUser](ReadPreference.primaryPreferred)
-        .collect[List](l, Cursor.FailOnError[List[PersistedUser]]())
+        .cursor[IdentityUser](ReadPreference.primaryPreferred)
+        .collect[List](l, Cursor.FailOnError[List[IdentityUser]]())
 
       for {
         t <- total
@@ -62,8 +62,8 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
   private def findBy(field: String, value: String): Future[Option[User]] =
     usersCollectionF.flatMap { usersCollection =>
       usersCollection.find(Json.obj(field -> value))
-        .cursor[PersistedUser](ReadPreference.primaryPreferred)
-        .headOption.map(_.map(User.fromPersistedUser))
+        .cursor[IdentityUser](ReadPreference.primaryPreferred)
+        .headOption.map(_.map(User.fromIdentityUser))
     }
 
   def findById(id: String): Future[Option[User]] = findBy("_id", id)

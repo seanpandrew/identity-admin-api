@@ -3,7 +3,7 @@ package models
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.json.Json
 import play.api.mvc.{Result, Results}
-import repositories.PersistedUser
+import repositories.IdentityUser
 
 import scala.language.implicitConversions
 import MongoJsFormats._
@@ -66,7 +66,9 @@ case class MembershipDetails(
   membershipNumber: Option[String] = None,
   joinDate: Option[String] = None,
   end: Option[String] = None,
-  zuoraSubscriptionName: Option[String] = None
+  zuoraSubscriptionName: Option[String] = None,
+  identityId: Option[String] = None,
+  email: Option[String] = None
 )
 
 object MembershipDetails {
@@ -79,7 +81,9 @@ case class SubscriptionDetails(
   joinDate: Option[String] = None,
   end: Option[String] = None,
   activationDate: Option[String] = None,
-  zuoraSubscriptionName: Option[String] = None
+  zuoraSubscriptionName: Option[String] = None,
+  identityId: Option[String] = None,
+  email: Option[String] = None
 )
 
 object SubscriptionDetails {
@@ -105,7 +109,8 @@ case class User(id: String,
                 membershipDetails: Option[MembershipDetails] = None,
                 subscriptionDetails: Option[SubscriptionDetails] = None,
                 hasCommented: Boolean = false,
-                deleted: Boolean = false
+                deleted: Boolean = false,
+                orphan: Boolean = false
                )
 
 object User {
@@ -114,7 +119,7 @@ object User {
   implicit def userResponseToResult(userResponse: User): Result =
     Results.Ok(Json.toJson(userResponse))
 
-  def fromPersistedUser(user: PersistedUser): User =
+  def fromIdentityUser(user: IdentityUser): User =
     User(
                 id = user._id.getOrElse(throw new IllegalStateException("User must have an id")),
                 email = user.primaryEmailAddress,

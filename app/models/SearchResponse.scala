@@ -1,8 +1,9 @@
 package models
 
 import play.api.libs.json.Json
-import play.api.mvc.{Results, Result}
+import play.api.mvc.{Result, Results}
 import repositories.PersistedUser
+
 import scala.language.implicitConversions
 
 case class SearchResponse(total: Int,
@@ -17,6 +18,6 @@ object SearchResponse {
 
   def create(total: Int, offset: Int, results: Seq[PersistedUser]): SearchResponse = {
     val hasMore = (offset + results.size) < total
-    SearchResponse(total, hasMore, results.map(UserSummary.fromUser))
+    SearchResponse(total, hasMore, results.map(UserSummary.fromPersistedUser))
   }
 }

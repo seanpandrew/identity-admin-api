@@ -10,7 +10,7 @@ import play.api.libs.json.Json
 import play.api.mvc.{Action, Request, Result}
 import play.api.mvc.Results._
 import play.api.test.FakeRequest
-import repositories.PersistedUser
+import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, SalesforceService, UserService}
 
@@ -32,6 +32,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   class StubSalesfroce extends SalesforceService {
     override def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]] = Future(None)
+    override def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]] = Future(None)
     override def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = Future(None)
   }
 
@@ -79,10 +80,10 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 200 with user list as json when found" in {
       val email = "test@test.com"
       val query = email
-      val user = PersistedUser(email)
+      val user = IdentityUser(email)
       val limit = Some(10)
       val offset = Some(0)
-      val response = SearchResponse(10, hasMore = true, Seq(UserSummary.fromUser(user)))
+      val response = SearchResponse(10, hasMore = true, Seq(UserSummary.fromPersistedUser(user)))
       when(userService.search(query, limit, offset)).thenReturn(ApiResponse.Right(response))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK

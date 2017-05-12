@@ -32,7 +32,7 @@ class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) exten
 
   def search(query: String): Future[SearchResponse] =
     OptionT(findBy(query)).fold(
-      user => SearchResponse.create(1, 0, List(PersistedUser(user.email, _id = Some(user.id)))),
+      user => SearchResponse.create(1, 0, List(IdentityUser(user.email, _id = Some(user.id)))),
       SearchResponse.create(0, 0, Nil)
     )
 
