@@ -91,7 +91,9 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
          |    (Zuora__ProductName__c = 'Digital Pack') OR
          |    (Zuora__ProductName__c = 'Newspaper Voucher') OR
          |    (Zuora__ProductName__c = 'Newspaper Delivery') OR
-         |    (Zuora__ProductName__c LIKE 'Guardian Weekly%')
+         |    (Zuora__ProductName__c = 'Guardian Weekly Zone A') OR
+         |    (Zuora__ProductName__c = 'Guardian Weekly Zone B') OR
+         |    (Zuora__ProductName__c = 'Guardian Weekly Zone C')
          |  )
          |
          |ORDER BY
