@@ -45,6 +45,12 @@ class UsersController @Inject() (
     }
   }
 
+  import play.api.libs.json._
+
+  def unreserveEmail(id: String) = auth.async { request =>
+    userService.unreserveEmail(id).map(_ => NoContent)
+  }
+
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
 

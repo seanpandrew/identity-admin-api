@@ -132,6 +132,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     }
   }
 
+  def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
+
   def searchOrphan(email: String): Future[SearchResponse] = {
     OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
       sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email.getOrElse("")))),
