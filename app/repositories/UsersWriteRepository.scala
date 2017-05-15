@@ -14,16 +14,16 @@ import scala.util.{Failure, Success, Try}
 class UsersWriteRepository @Inject() (
     salatMongoConnection: SalatMongoConnection,
     deletedUsersRepository: DeletedUsersRepository)
-  extends SalatDAO[PersistedUser, String](collection=salatMongoConnection.db()("users")) with Logging {
+  extends SalatDAO[IdentityUser, String](collection=salatMongoConnection.db()("users")) with Logging {
 
-  private[repositories] def createUser(user: PersistedUser) = {
+  private[repositories] def createUser(user: IdentityUser) = {
     val userToCreate = user.copy(
       primaryEmailAddress = user.primaryEmailAddress.toLowerCase,
       publicFields = user.publicFields.map(pf => pf.copy(usernameLowerCase = pf.username.map(_.toLowerCase))))
     insert(userToCreate)
   }
   
-  def update(user: User, userUpdateRequest: PersistedUserUpdate): Either[ApiError, User] = {
+  def update(user: User, userUpdateRequest: IdentityUserUpdate): Either[ApiError, User] = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
         prepareUserForUpdate(userUpdateRequest, persistedUser)
@@ -58,8 +58,8 @@ class UsersWriteRepository @Inject() (
     }
   }
 
-  private def prepareUserForUpdate(userUpdateRequest: PersistedUserUpdate, persistedUser: PersistedUser): PersistedUser = {
-    val publicFields = persistedUser.publicFields.getOrElse(PublicFields()).copy(
+  private def prepareUserForUpdate(userUpdateRequest: IdentityUserUpdate, identityUser: IdentityUser): IdentityUser = {
+    val publicFields = identityUser.publicFields.getOrElse(PublicFields()).copy(
       username = userUpdateRequest.username,
       usernameLowerCase = userUpdateRequest.username.map(_.toLowerCase),
       displayName = userUpdateRequest.displayName,
@@ -68,21 +68,21 @@ class UsersWriteRepository @Inject() (
       aboutMe = userUpdateRequest.aboutMe,
       interests = userUpdateRequest.interests
     )
-    val privateFields = persistedUser.privateFields.getOrElse(PrivateFields()).copy(
+    val privateFields = identityUser.privateFields.getOrElse(PrivateFields()).copy(
       firstName = userUpdateRequest.firstName,
       secondName = userUpdateRequest.lastName
     )
-    val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
+    val statusFields = identityUser.statusFields.getOrElse(StatusFields()).copy(
       receive3rdPartyMarketing = userUpdateRequest.receive3rdPartyMarketing,
       receiveGnmMarketing = userUpdateRequest.receiveGnmMarketing,
       userEmailValidated = userUpdateRequest.userEmailValidated
     )
-    val searchFields = persistedUser.searchFields.getOrElse(SearchFields()).copy(
+    val searchFields = identityUser.searchFields.getOrElse(SearchFields()).copy(
       emailAddress = Some(userUpdateRequest.email.toLowerCase),
       username = userUpdateRequest.username.map(_.toLowerCase),
       displayName = userUpdateRequest.displayName
     )
-    persistedUser.copy(
+    identityUser.copy(
       primaryEmailAddress = userUpdateRequest.email.toLowerCase,
       publicFields = Some(publicFields),
       privateFields = Some(privateFields),
@@ -91,12 +91,12 @@ class UsersWriteRepository @Inject() (
     )
   }
 
-  private def doUpdate(userToSave: PersistedUser): Either[ApiError, User] = {
+  private def doUpdate(userToSave: IdentityUser): Either[ApiError, User] = {
     Try {
       update(MongoDBObject("_id" -> userToSave._id), userToSave, upsert = false, multi = false, wc = WriteConcern.Safe)
     } match {
       case Success(_) =>
-        Right(User.fromPersistedUser(userToSave))
+        Right(User.fromIdentityUser(userToSave))
       case Failure(t) =>
         logger.error(s"Failed to update user. id: ${userToSave._id}", t)
         val errorMessage = generateErrorMessage(t)

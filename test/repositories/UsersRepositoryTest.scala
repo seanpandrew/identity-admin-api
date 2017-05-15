@@ -16,9 +16,9 @@ import scala.concurrent.duration._
 @DoNotDiscover
 class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with OneServerPerSuite {
 
-  def createUser(username: Option[String] = None, postcode: Option[String] = None, registeredIp: Option[String] = None, lastActiveIp: Option[String] = None): PersistedUser = {
+  def createUser(username: Option[String] = None, postcode: Option[String] = None, registeredIp: Option[String] = None, lastActiveIp: Option[String] = None): IdentityUser = {
     val email = s"${UUID.randomUUID().toString}@test.com"
-    PersistedUser(email,
+    IdentityUser(email,
       Some(BSONObjectID.generate.toString()),
       publicFields = Some(PublicFields(username = username)),
       privateFields = Some(
@@ -190,9 +190,9 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         receiveGnmMarketing = Some(true),
         receive3rdPartyMarketing = Some(false))
 
-      val updateRequest = PersistedUserUpdate(userUpdateRequest, Some(false))
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, Some(false))
 
-      val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))
+      val origUser = User.fromIdentityUser(user1.copy(_id = createdUser1))
 
       val result  = writeRepo.update(origUser, updateRequest)
       result.isRight mustBe true
@@ -217,7 +217,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
 
-      val result  = writeRepo.updateEmailValidationStatus(User.fromPersistedUser(user1), true)
+      val result  = writeRepo.updateEmailValidationStatus(User.fromIdentityUser(user1), true)
       result.isRight mustBe true
 
       val updatedUser = Await.result(repo.findById(createdUser1.get), 1.second).get
@@ -231,7 +231,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
       val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
       val user1 = createUser()
       val createdUser1 = writeRepo.createUser(user1)
-      val origUser = User.fromPersistedUser(user1.copy(_id = createdUser1))
+      val origUser = User.fromIdentityUser(user1.copy(_id = createdUser1))
 
       val result  = writeRepo.delete(origUser)
       result.isRight mustBe true

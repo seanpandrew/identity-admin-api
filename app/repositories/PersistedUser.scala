@@ -113,21 +113,23 @@ object SearchFields {
   implicit val format = Json.format[SearchFields]
 }
 
-case class PersistedUser(primaryEmailAddress: String,
-                _id: Option[String] = None,
-                publicFields: Option[PublicFields] = None,
-                privateFields: Option[PrivateFields] = None,
-                statusFields: Option[StatusFields] = None,
-                dates: Option[UserDates] = Some(new UserDates()),
-                password: Option[String] = None,
-                userGroups: List[GroupMembership] = Nil,
-                socialLinks: List[SocialLink] = Nil,
-                adData: Map[String, Any] = Map.empty,
-                searchFields: Option[SearchFields] = None
-                 )
+sealed trait PersistedUser
 
-object PersistedUser {
-  val persistedUserReads: Reads[PersistedUser] = (
+case class IdentityUser(primaryEmailAddress: String,
+                        _id: Option[String] = None,
+                        publicFields: Option[PublicFields] = None,
+                        privateFields: Option[PrivateFields] = None,
+                        statusFields: Option[StatusFields] = None,
+                        dates: Option[UserDates] = Some(new UserDates()),
+                        password: Option[String] = None,
+                        userGroups: List[GroupMembership] = Nil,
+                        socialLinks: List[SocialLink] = Nil,
+                        adData: Map[String, Any] = Map.empty,
+                        searchFields: Option[SearchFields] = None
+                 ) extends PersistedUser
+
+object IdentityUser {
+  val identityUserReads: Reads[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").read[String] and
   (JsPath \ "_id").readNullable[String] and
   (JsPath \ "publicFields").readNullable[PublicFields] and
@@ -139,9 +141,9 @@ object PersistedUser {
   (JsPath \ "socialLinks").readNullable[List[SocialLink]].map(_.getOrElse(Nil)) and
   (JsPath \ "adData").readNullable[Map[String, Any]].map(_.getOrElse(Map.empty)) and
   (JsPath \ "searchFields").readNullable[SearchFields]
-)(PersistedUser.apply _)
+)(IdentityUser.apply _)
 
-  val persistedUserWrites: Writes[PersistedUser] = (
+  val identityUserWrites: Writes[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").write[String] and
   (JsPath \ "_id").writeNullable[String] and
   (JsPath \ "publicFields").writeNullable[PublicFields] and
@@ -153,8 +155,10 @@ object PersistedUser {
   (JsPath \ "socialLinks").write[List[SocialLink]] and
   (JsPath \ "adData").write[Map[String, Any]] and
   (JsPath \ "searchFields").writeNullable[SearchFields]
-)(unlift(PersistedUser.unapply))
+)(unlift(IdentityUser.unapply))
 
-  implicit val format: Format[PersistedUser] =
-    Format(persistedUserReads, persistedUserWrites)
+  implicit val format: Format[IdentityUser] =
+    Format(identityUserReads, identityUserWrites)
 }
+
+case class Orphan(id: String = "orphan", email: String) extends PersistedUser

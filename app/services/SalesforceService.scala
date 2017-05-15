@@ -32,6 +32,7 @@ object SFContact {
 @ImplementedBy(classOf[Salesforce])
 trait SalesforceService {
   def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]]
+  def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]]
   def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]]
 
 }
@@ -114,7 +115,9 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
             joinDate = (records(0) \ "Zuora__EffectiveStartDate__c").asOpt[String],
             end = (records(0) \ "Zuora__EffectiveEndDate__c").asOpt[String],
             activationDate = (records(0) \ "Zuora__Subscription__r" \ "ActivationDate__c").asOpt[String],
-            zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String])
+            zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String],
+            identityId = (records(0) \ "Subscription_Name__c").asOpt[String],
+            email = (records(0) \ "Subscription_Name__c").asOpt[String])
         }
 
         if ((res.json \ "totalSize").as[Int] > 0)
@@ -124,6 +127,74 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
       }
       else {
         logger.error(s"Salesforce error. Could not get digital pack for user $id: ${res.body.toString}")
+        None
+      }
+    }
+  }
+
+  def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]] = {
+
+    val sooqlQuery =
+      s"""
+         |SELECT
+         |    Id,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
+         |    Zuora__ProductName__c,
+         |    Subscription_Status__c,
+         |    Subscription_Name__c,
+         |    Zuora__EffectiveStartDate__c,
+         |    Zuora__EffectiveEndDate__c,
+         |    Zuora__Subscription__r.ActivationDate__c
+         |
+         |FROM
+         |  Zuora__SubscriptionProductCharge__c
+         |
+         |WHERE
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email  = '$email') AND
+         |  (Subscription_Status__c = 'Active') AND
+         |  (
+         |    (Zuora__ProductName__c = 'Digital Pack') OR
+         |    (Zuora__ProductName__c = 'Newspaper Voucher') OR
+         |    (Zuora__ProductName__c = 'Newspaper Delivery') OR
+         |    (Zuora__ProductName__c = 'Guardian Weekly Zone A') OR
+         |    (Zuora__ProductName__c = 'Guardian Weekly Zone B') OR
+         |    (Zuora__ProductName__c = 'Guardian Weekly Zone C')
+         |  )
+         |
+         |ORDER BY
+         |  Zuora__EffectiveStartDate__c DESC NULLS LAST
+      """.stripMargin
+
+    val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
+
+    val request = ws.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
+    request.get().map { res =>
+      if (res.status == OK) {
+        def createSubscription(res: WSResponse): SubscriptionDetails = {
+          val records: JsArray = (res.json \ "records").as[JsArray]
+
+          SubscriptionDetails(
+            tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
+            subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
+            joinDate = (records(0) \ "Zuora__EffectiveStartDate__c").asOpt[String],
+            end = (records(0) \ "Zuora__EffectiveEndDate__c").asOpt[String],
+            activationDate = (records(0) \ "Zuora__Subscription__r" \ "ActivationDate__c").asOpt[String],
+            zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String],
+            identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityId__c").asOpt[String],
+            email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").asOpt[String])
+        }
+
+        if ((res.json \ "totalSize").as[Int] > 0)
+          Some(createSubscription(res))
+        else
+          None
+      }
+      else {
+        logger.error(s"Salesforce error. Could not get digital pack for user $email: ${res.body.toString}")
         None
       }
     }

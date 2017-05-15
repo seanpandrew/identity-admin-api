@@ -2,7 +2,7 @@ package repositories
 
 import models.UserUpdateRequest
 
-case class PersistedUserUpdate(
+case class IdentityUserUpdate(
                               email: String,
                               username: Option[String] = None,
                               displayName: Option[String] = None,
@@ -15,9 +15,9 @@ case class PersistedUserUpdate(
                               receive3rdPartyMarketing: Option[Boolean] = None,
                               userEmailValidated: Option[Boolean] = None)
 
-object PersistedUserUpdate {
-  def apply(userUpdateRequest: UserUpdateRequest, userEmailValidated: Option[Boolean]): PersistedUserUpdate =
-    PersistedUserUpdate(
+object IdentityUserUpdate {
+  def apply(userUpdateRequest: UserUpdateRequest, userEmailValidated: Option[Boolean]): IdentityUserUpdate =
+    IdentityUserUpdate(
       email = userUpdateRequest.email,
       username = userUpdateRequest.username,
       displayName = userUpdateRequest.displayName,
