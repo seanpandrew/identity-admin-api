@@ -16,7 +16,7 @@ case class UserSummary(id: String,
                        lastActivityDate: Option[DateTime] = None,
                        registrationIp: Option[String] = None,
                        lastActiveIpAddress: Option[String] = None,
-                       orphan: Boolean = false)
+                       orphan: Boolean)
 
 object UserSummary {
   implicit val format = Json.format[UserSummary]
@@ -33,7 +33,8 @@ object UserSummary {
           creationDate = user.dates.flatMap(_.accountCreatedDate),
           lastActivityDate = user.dates.flatMap(_.lastActivityDate),
           registrationIp = user.privateFields.flatMap(_.registrationIp),
-          lastActiveIpAddress= user.privateFields.flatMap(_.lastActiveIpAddress)
+          lastActiveIpAddress= user.privateFields.flatMap(_.lastActiveIpAddress),
+          orphan = false
         )
 
       case user: Orphan => UserSummary(id = user.id, email = user.email, orphan = true)

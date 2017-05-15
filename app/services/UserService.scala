@@ -124,8 +124,6 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         val combinedTotal = activeUsers.total + deletedUsers.total
         val combinedResults = activeUsers.results ++ deletedUsers.results
 
-        logger.info(combinedTotal.toString)
-
         if (combinedTotal > 0)
           activeUsers.copy(total = combinedTotal, results = combinedResults)
          else

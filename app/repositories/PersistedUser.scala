@@ -129,7 +129,7 @@ case class IdentityUser(primaryEmailAddress: String,
                  ) extends PersistedUser
 
 object IdentityUser {
-  val persistedUserReads: Reads[IdentityUser] = (
+  val identityUserReads: Reads[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").read[String] and
   (JsPath \ "_id").readNullable[String] and
   (JsPath \ "publicFields").readNullable[PublicFields] and
@@ -143,7 +143,7 @@ object IdentityUser {
   (JsPath \ "searchFields").readNullable[SearchFields]
 )(IdentityUser.apply _)
 
-  val persistedUserWrites: Writes[IdentityUser] = (
+  val identityUserWrites: Writes[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").write[String] and
   (JsPath \ "_id").writeNullable[String] and
   (JsPath \ "publicFields").writeNullable[PublicFields] and
@@ -158,7 +158,7 @@ object IdentityUser {
 )(unlift(IdentityUser.unapply))
 
   implicit val format: Format[IdentityUser] =
-    Format(persistedUserReads, persistedUserWrites)
+    Format(identityUserReads, identityUserWrites)
 }
 
 case class Orphan(id: String = "orphan", email: String) extends PersistedUser

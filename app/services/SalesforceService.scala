@@ -177,8 +177,6 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
         def createSubscription(res: WSResponse): SubscriptionDetails = {
           val records: JsArray = (res.json \ "records").as[JsArray]
 
-          logger.info((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").asOpt[String].toString)
-
           SubscriptionDetails(
             tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
             subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
