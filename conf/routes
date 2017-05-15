@@ -7,6 +7,7 @@ PUT        /v1/user/:id                             @controllers.UsersController
 DELETE     /v1/user/:id                             @controllers.UsersController.delete(id: String)
 POST       /v1/user/:id/send-validation-email       @controllers.UsersController.sendEmailValidation(id: String)
 POST       /v1/user/:id/validate-email              @controllers.UsersController.validateEmail(id: String)
+POST       /v1/user/:id/unreserve-email             @controllers.UsersController.unreserveEmail(id: String)
 
 GET        /v1/orphan/:email                        @controllers.UsersController.findOrphanByEmail(email: String)
 

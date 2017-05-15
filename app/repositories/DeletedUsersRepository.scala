@@ -15,8 +15,8 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
-
 import DeletedUser._
+import reactivemongo.bson.BSONDocument
 
 @Singleton
 class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) extends Logging {
@@ -38,6 +38,9 @@ class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) exten
 
   def insert(id: String, email: String, username: String) =
     reservedEmailsF.flatMap(_.insert[DeletedUser](DeletedUser(id, email, username)))
+
+  def remove(id: String) =
+    reservedEmailsF.flatMap(_.remove(BSONDocument("_id" -> id), firstMatchOnly = true))
 
   private def buildSearchQuery(query: String) =
     Json.obj(
