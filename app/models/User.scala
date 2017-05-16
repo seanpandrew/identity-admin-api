@@ -67,8 +67,8 @@ case class MembershipDetails(
   joinDate: Option[String] = None,
   end: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None,
-  identityId: Option[String] = None,
-  email: Option[String] = None
+  identityId: String,
+  email: String
 )
 
 object MembershipDetails {

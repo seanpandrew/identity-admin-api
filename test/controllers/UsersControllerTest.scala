@@ -13,6 +13,7 @@ import play.api.test.FakeRequest
 import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, SalesforceService, UserService}
+import util.QueryAnalyser
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -34,6 +35,8 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     override def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]] = Future(None)
     override def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]] = Future(None)
     override def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = Future(None)
+    override def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[MembershipDetails]] = Future(None)
+    override def getMembershipByEmail(email: String): Future[Option[MembershipDetails]] = Future(None)
   }
 
   val controller = new UsersController(userService, new StubAuthenticatedAction, new StubSalesfroce, new DiscussionService(dapiWsMock))
@@ -71,7 +74,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(0, hasMore = false, Nil)
-      when(userService.search(query, limit, offset)).thenReturn(ApiResponse.Right(response))
+      when(userService.search(QueryAnalyser(query), limit, offset)).thenReturn(ApiResponse.Right(response))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)
@@ -84,7 +87,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(10, hasMore = true, Seq(UserSummary.fromPersistedUser(user)))
-      when(userService.search(query, limit, offset)).thenReturn(ApiResponse.Right(response))
+      when(userService.search(QueryAnalyser(query), limit, offset)).thenReturn(ApiResponse.Right(response))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)

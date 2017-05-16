@@ -6,12 +6,13 @@ import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
-import repositories.{DeletedUsersRepository, Orphan, IdentityUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories.{DeletedUsersRepository, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
+import util.QueryAnalyser._
 
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
@@ -109,26 +110,47 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
-    ApiResponse.Async.Right{
+  def search(query: Query, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
+    ApiResponse.Async.Right {
 
-      val orphansF = searchOrphan(query)
-      val activeUsersF = usersReadRepository.search(query, limit, offset)
-      val deletedUsersF = deletedUsersRepository.search(query)
+      query match {
+        case IdentityQuery(query) =>
+          val orphansF = searchOrphan(query)
+          val activeUsersF = usersReadRepository.search(query, limit, offset)
+          val deletedUsersF = deletedUsersRepository.search(query)
 
-      for {
-        activeUsers <- activeUsersF
-        deletedUsers <- deletedUsersF
-        orphans <- orphansF
-      } yield {
-        val combinedTotal = activeUsers.total + deletedUsers.total
-        val combinedResults = activeUsers.results ++ deletedUsers.results
+          for {
+            activeUsers <- activeUsersF
+            deletedUsers <- deletedUsersF
+            orphans <- orphansF
+          } yield {
+            val combinedTotal = activeUsers.total + deletedUsers.total
+            val combinedResults = activeUsers.results ++ deletedUsers.results
 
-        if (combinedTotal > 0)
-          activeUsers.copy(total = combinedTotal, results = combinedResults)
-         else
-          orphans
+            if (combinedTotal > 0)
+              activeUsers.copy(total = combinedTotal, results = combinedResults)
+            else
+              orphans
+          }
+
+        case MembershipNumberQuery(membershipNumber) =>
+          OptionT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).fold(
+            membershipDetails => {
+              for {
+                activeUsers <- usersReadRepository.search(membershipDetails.identityId, limit, offset)
+                deletedUsers <- deletedUsersRepository.search(membershipDetails.identityId)
+              } yield {
+                val combinedTotal = activeUsers.total + deletedUsers.total
+                val combinedResults = activeUsers.results ++ deletedUsers.results
+                activeUsers.copy(total = combinedTotal, results = combinedResults)
+              }
+
+            },
+
+            Future(SearchResponse.create(0, 0, Nil))
+          ).flatMap(identity)
       }
+
     }
   }
 
