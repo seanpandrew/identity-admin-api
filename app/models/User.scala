@@ -63,12 +63,12 @@ object LastActiveLocation {
 
 case class MembershipDetails(
   tier: Option[String] = None,
-  membershipNumber: Option[String] = None,
+  membershipNumber: String,
   joinDate: Option[String] = None,
   end: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None,
-  identityId: Option[String] = None,
-  email: Option[String] = None
+  identityId: String,
+  email: String
 )
 
 object MembershipDetails {

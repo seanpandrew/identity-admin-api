@@ -11,6 +11,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc._
 import services._
+import util.QueryAnalyser
 
 import scala.concurrent.Future
 import scalaz.{EitherT, OptionT}
@@ -40,7 +41,7 @@ class UsersController @Inject() (
         ApiResponse.Left(ApiErrors.badRequest(s"query must be a minimum of $MinimumQueryLength characters"))
       }
       else {
-        userService.search(query, limit, offset)
+        userService.search(QueryAnalyser(query), limit, offset)
       }
     }
   }

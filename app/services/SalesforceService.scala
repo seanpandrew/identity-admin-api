@@ -29,12 +29,22 @@ object SFContact {
   implicit val format = Json.format[SFContact]
 }
 
+
+trait UniqueIdentifier {
+  val value: String
+  val fieldName: String
+}
+case class MembershipNumber(value: String, fieldName: String = "Membership_Number__c") extends UniqueIdentifier
+case class IdentityId(value: String, fieldName: String = "IdentityID__c") extends UniqueIdentifier
+case class Email(value: String, fieldName: String = "Email") extends UniqueIdentifier
+
 @ImplementedBy(classOf[Salesforce])
 trait SalesforceService {
   def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]]
   def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]]
   def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]]
-
+  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[MembershipDetails]]
+  def getMembershipByEmail(email: String): Future[Option[MembershipDetails]]
 }
 
 class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging {
@@ -70,7 +80,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
       s"""
          |SELECT
          |    Id,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
@@ -86,7 +96,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
          |  Zuora__SubscriptionProductCharge__c
          |
          |WHERE
-         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c  = '$id') AND
          |  (Subscription_Status__c = 'Active') AND
          |  (
          |    (Zuora__ProductName__c = 'Digital Pack') OR
@@ -138,7 +148,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
       s"""
          |SELECT
          |    Id,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
@@ -184,7 +194,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
             end = (records(0) \ "Zuora__EffectiveEndDate__c").asOpt[String],
             activationDate = (records(0) \ "Zuora__Subscription__r" \ "ActivationDate__c").asOpt[String],
             zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String],
-            identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityId__c").asOpt[String],
+            identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").asOpt[String],
             email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").asOpt[String])
         }
 
@@ -200,12 +210,13 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
     }
   }
 
-  def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = {
+
+  private def getMembershipBy(uniqueIdentifier: UniqueIdentifier): Future[Option[MembershipDetails]] = {
     val sooqlQuery =
       s"""
          |SELECT
          |    Id,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c,
+         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
          |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
@@ -220,10 +231,17 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
          |  Zuora__SubscriptionProductCharge__c
          |
          |WHERE
-         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityId__c  = '$id') AND
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.${uniqueIdentifier.fieldName}  = '${uniqueIdentifier.value}') AND
          |  (Subscription_Status__c = 'Active') AND
-         |  ((Zuora__ProductName__c = 'Friend') OR (Zuora__ProductName__c = 'Supporter') OR
-         |   (Zuora__ProductName__c = 'Partner') OR (Zuora__ProductName__c = 'Patron') OR (Zuora__ProductName__c = 'Staff Membership'))
+         |  (
+         |    (Zuora__ProductName__c = 'Friend') OR
+         |    (Zuora__ProductName__c = 'Supporter') OR
+         |    (Zuora__ProductName__c = 'Partner') OR
+         |    (Zuora__ProductName__c = 'Patron') OR
+         |    (Zuora__ProductName__c = 'Staff Membership')
+         |  ) AND
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c  != null) AND
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email  != null)
          |
          |ORDER BY
          |  Zuora__EffectiveStartDate__c DESC NULLS LAST
@@ -240,10 +258,12 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
 
           MembershipDetails(
             tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
-            membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").asOpt[String],
+            membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String],
             joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
             end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
-            zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]))
+            zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),
+            identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").as[String],
+            email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String])
         }
 
         if ((res.json \ "totalSize").as[Int] > 0)
@@ -252,9 +272,18 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
           None
       }
       else {
-        logger.error(s"Salesforce error. Could not get membership for user $id: ${res.body.toString}")
+        logger.error(s"Salesforce error. Could not get membership for user ${uniqueIdentifier.toString}: ${res.body.toString}")
         None
       }
     }
   }
+
+  def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] =
+    getMembershipBy(IdentityId(id))
+
+  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[MembershipDetails]] =
+    getMembershipBy(MembershipNumber(membershipNumber))
+
+  def getMembershipByEmail(email: String): Future[Option[MembershipDetails]] =
+    getMembershipBy(Email(email))
 }
