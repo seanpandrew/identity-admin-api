@@ -258,7 +258,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
 
           MembershipDetails(
             tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
-            membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").as[String],
+            membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").asOpt[String],
             joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
             end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
             zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),

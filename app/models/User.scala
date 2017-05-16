@@ -63,7 +63,7 @@ object LastActiveLocation {
 
 case class MembershipDetails(
   tier: Option[String] = None,
-  membershipNumber: String,
+  membershipNumber: Option[String] = None,
   joinDate: Option[String] = None,
   end: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None,
