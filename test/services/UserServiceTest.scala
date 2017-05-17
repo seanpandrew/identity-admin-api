@@ -21,8 +21,10 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val eventPublishingActorProvider = mock[EventPublishingActorProvider]
   val deletedUsersRepository = mock[DeletedUsersRepository]
   val salesforceService = mock[SalesforceService]
+  val madgexService = mock[MadgexService]
   val service =
-    spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, deletedUsersRepository, salesforceService))
+    spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient,
+      eventPublishingActorProvider, deletedUsersRepository, salesforceService, madgexService))
 
   before {
     Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service)
@@ -63,6 +65,18 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "return false if a zero length username is being added" in {
       service.isDisplayNameChanged(None, None) should be(false)
       service.isDisplayNameChanged(None, Some("existingDisplayName")) should be(true)
+    }
+  }
+
+  "isJobsUser" should {
+    "return true for a jobs user" in {
+      val user = User("id", "email@theguardian.com",groups = Seq(UserGroup( "GRS", "/sys/policies/guardian-jobs")))
+      service.isJobsUser(user) should be(true)
+    }
+
+    "return true for a non-jobs user" in {
+      val user = User("id", "email@theguardian.com")
+      service.isJobsUser(user) should be(false)
     }
   }
 
