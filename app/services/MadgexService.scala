@@ -4,6 +4,7 @@ import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
 import configuration.Config
+import util.UserConverter._
 import models.{GNMMadgexUser, MadgexUser, User}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
@@ -33,15 +34,8 @@ import play.api.libs.json.Json
     }
   }
 
-  def update(user: User): Future[Boolean] = {
+  def update(user: GNMMadgexUser): Future[Boolean] = {
     sendUpdate(user)
   }
-
-  implicit def toMadgexUser(user: User): GNMMadgexUser = {
-    GNMMadgexUser(user.id, MadgexUser(user.email, user.personalDetails.firstName, user.personalDetails.lastName,
-      user.status.receive3rdPartyMarketing.getOrElse(false), user.status.receiveGnmMarketing.getOrElse(false))
-    )
-  }
-
 }
 

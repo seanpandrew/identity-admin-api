@@ -5,6 +5,7 @@ import javax.inject.{Inject, Singleton}
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
+import util.UserConverter._
 import models._
 import repositories.{DeletedUsersRepository, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
@@ -58,9 +59,12 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         if (userEmailChanged && eventsEnabled) {
           SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
         }
-        if (isJobsUser(user)) {
-          madgexService.update(user)
+
+        if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {
+          val gNMMadgexUser = GNMMadgexUser(user.id, userUpdateRequest)
+          madgexService.update(gNMMadgexUser)
         }
+
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>
         ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
@@ -87,6 +91,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
     newEmailValidated != existingEmailValidated
   }
+
+  def isJobsUserChanged(user: MadgexUser, userUpdateRequest: MadgexUser): Boolean = !user.equals(userUpdateRequest)
 
   private def triggerEvents(userId: String, usernameChanged: Boolean, displayNameChanged: Boolean, emailValidatedChanged: Boolean) = {
     if (eventsEnabled) {

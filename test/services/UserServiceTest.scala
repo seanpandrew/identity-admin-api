@@ -2,6 +2,7 @@ package services
 
 import actors.EventPublishingActorProvider
 import models._
+import util.UserConverter._
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mockito.MockitoSugar
@@ -13,6 +14,8 @@ import org.mockito.Mockito._
 import scala.concurrent.duration._
 
 class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter {
+
+  val jobsGroup = Seq(UserGroup( "GRS", "/sys/policies/guardian-jobs"))
 
   val userReadRepo = mock[UsersReadRepository]
   val userWriteRepo = mock[UsersWriteRepository]
@@ -27,7 +30,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       eventPublishingActorProvider, deletedUsersRepository, salesforceService, madgexService))
 
   before {
-    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service)
+    Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service, madgexService)
   }
 
   "isUsernameChanged" should {
@@ -70,7 +73,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
   "isJobsUser" should {
     "return true for a jobs user" in {
-      val user = User("id", "email@theguardian.com",groups = Seq(UserGroup( "GRS", "/sys/policies/guardian-jobs")))
+      val user = User("id", "email@theguardian.com", groups = jobsGroup)
       service.isJobsUser(user) should be(true)
     }
 
@@ -114,6 +117,24 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       verify(identityApiClient).sendEmailValidation(user.id)
     }
 
+    "update madgex when jobs user changed" in {
+      val user = User("id", "email@theguardian.com", groups = jobsGroup)
+      val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com")
+      val gNMMadgexUser = GNMMadgexUser(user.id, userUpdateRequest)
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, Some(false))
+      val updatedUser = user.copy(email = updateRequest.email)
+
+      when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
+      when(madgexService.update(gNMMadgexUser)).thenReturn(Future.successful(true))
+
+      val result = service.update(user, userUpdateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
+      verify(madgexService).update(gNMMadgexUser)
+    }
+
     "not send email validation when email has not changed" in {
       val user = User("id", "email@theguardian.com")
       val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
@@ -122,12 +143,27 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
 
       val result = service.update(user, userUpdateRequest)
 
       Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
       verifyZeroInteractions(identityApiClient)
+    }
+
+    "not update madgex when jobs user as not changed" in {
+      val user = User("id", "email@theguardian.com")
+      val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
+      val gNMMadgexUser = GNMMadgexUser(user.id, userUpdateRequest)
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, None)
+      val updatedUser = user.copy(email = updateRequest.email)
+
+      when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+
+      val result = service.update(user, userUpdateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
+      verifyZeroInteractions(madgexService)
     }
 
     "return bad request api error if the username is less than 6 chars" in {
