@@ -17,7 +17,7 @@ import play.api.libs.json.Json
 
   implicit val format = Json.format[MadgexUser]
 
-  def sendUpdate(user: GNMMadgexUser): Future[Boolean] = {
+  def update(user: GNMMadgexUser): Future[Boolean] = {
     val id = user.id
     requestSigner.sign(ws.url(s"${Config.Madgex.apiUrl}/updatessouser/$id"))
       .post(Json.toJson(user.madgexUser))
@@ -32,10 +32,6 @@ import play.api.libs.json.Json
       }.recover { case t: Throwable => logger.error("Error when updating Madgex", t)
       false
     }
-  }
-
-  def update(user: GNMMadgexUser): Future[Boolean] = {
-    sendUpdate(user)
   }
 }
 

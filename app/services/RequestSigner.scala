@@ -2,18 +2,20 @@ package services
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+import javax.inject.{Inject, Singleton}
 
 import com.google.inject.ImplementedBy
 import com.gu.identity.util.Logging
 import org.apache.commons.codec.binary.Base64
 import org.joda.time.DateTime
+import play.api.Configuration
 import play.api.Play._
 import play.api.http.HeaderNames
-import play.api.libs.ws.WSRequest
+import play.api.libs.ws.{WSClient, WSRequest}
 import util.Formats
 
-class RequestSignerWithSecret extends RequestSigner {
-  val secret = current.configuration.getString("identity-admin.adminApi.secret").get
+@Singleton class RequestSignerWithSecret @Inject()(configuration: Configuration) extends RequestSigner {
+  val secret = configuration.getString("identity-admin.adminApi.secret").get
 }
 
 @ImplementedBy(classOf[RequestSignerWithSecret])
@@ -40,7 +42,7 @@ trait RequestSigner extends Logging {
 
   private[services] def getDateHeaderValue: String = {
     val now = DateTime.now()
-    Formats.toHttpDateTimeString(now)
+    Formats.toMadgexDateTimeString(now)
   }
 
   private[services] def sign(date: String, path: String): String = {
