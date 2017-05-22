@@ -50,6 +50,7 @@ trait SalesforceService {
 class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging {
 
   private lazy val sfAuth: SFAuthentication = {
+    logger.info("Authenticating with Salesforce...")
     val authEndpoint = s"${apiUrl}/services/oauth2/token"
 
     val param = Map(
