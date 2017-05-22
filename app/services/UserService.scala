@@ -6,13 +6,12 @@ import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import models._
-import repositories.{DeletedUsersRepository, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories.{DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
-import util.QueryAnalyser._
 
 import scalaz.OptionT
 import scalaz.std.scalaFuture._
@@ -110,47 +109,29 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  def search(query: Query, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
+  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
     ApiResponse.Async.Right {
+      val orphansF = searchOrphan(query)
+      val activeUsersF = usersReadRepository.search(query, limit, offset)
+      val deletedUsersF = deletedUsersRepository.search(query)
+      val membersF = searchIdentityByMembership(query)
 
-      query match {
-        case IdentityQuery(query) =>
-          val orphansF = searchOrphan(query)
-          val activeUsersF = usersReadRepository.search(query, limit, offset)
-          val deletedUsersF = deletedUsersRepository.search(query)
+      for {
+        activeUsers <- activeUsersF
+        deletedUsers <- deletedUsersF
+        orphans <- orphansF
+        members <- membersF
+      } yield {
+        val combinedTotal = activeUsers.total + deletedUsers.total
+        val combinedResults = activeUsers.results ++ deletedUsers.results
 
-          for {
-            activeUsers <- activeUsersF
-            deletedUsers <- deletedUsersF
-            orphans <- orphansF
-          } yield {
-            val combinedTotal = activeUsers.total + deletedUsers.total
-            val combinedResults = activeUsers.results ++ deletedUsers.results
-
-            if (combinedTotal > 0)
-              activeUsers.copy(total = combinedTotal, results = combinedResults)
-            else
-              orphans
-          }
-
-        case MembershipNumberQuery(membershipNumber) =>
-          OptionT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).fold(
-            membershipDetails => {
-              for {
-                activeUsers <- usersReadRepository.search(membershipDetails.identityId, limit, offset)
-                deletedUsers <- deletedUsersRepository.search(membershipDetails.identityId)
-              } yield {
-                val combinedTotal = activeUsers.total + deletedUsers.total
-                val combinedResults = activeUsers.results ++ deletedUsers.results
-                activeUsers.copy(total = combinedTotal, results = combinedResults)
-              }
-
-            },
-
-            Future(SearchResponse.create(0, 0, Nil))
-          ).flatMap(identity)
+        if (combinedTotal > 0)
+          activeUsers.copy(total = combinedTotal, results = combinedResults)
+        else if (members.total > 0) {
+          members
+        } else
+          orphans
       }
-
     }
   }
 
@@ -159,6 +140,13 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   def searchOrphan(email: String): Future[SearchResponse] = {
     OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
       sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email.getOrElse("")))),
+      SearchResponse.create(0, 0, Nil)
+    )
+  }
+
+  def searchIdentityByMembership(membershipNumber: String): Future[SearchResponse] = {
+    OptionT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).fold(
+      mem => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email))),
       SearchResponse.create(0, 0, Nil)
     )
   }
