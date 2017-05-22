@@ -13,7 +13,6 @@ import play.api.test.FakeRequest
 import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, SalesforceService, UserService}
-import util.QueryAnalyser
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -74,7 +73,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(0, hasMore = false, Nil)
-      when(userService.search(QueryAnalyser(query), limit, offset)).thenReturn(ApiResponse.Right(response))
+      when(userService.search(query, limit, offset)).thenReturn(ApiResponse.Right(response))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)
@@ -87,7 +86,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(10, hasMore = true, Seq(UserSummary.fromPersistedUser(user)))
-      when(userService.search(QueryAnalyser(query), limit, offset)).thenReturn(ApiResponse.Right(response))
+      when(userService.search(query, limit, offset)).thenReturn(ApiResponse.Right(response))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)
