@@ -109,42 +109,49 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  /* The logic here is first try searching identity and if nothing found search salesforce. */
+  /* This will become cleaner once membership number in Salesforce is indexed. Currently searching
+   * by membership number takes 10 seconds, thus the ugliness with Future.successful and flatMap(identity),
+   * because we want this slow call to resolve only in the very last case when nothing else is found.
+   */
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =
     ApiResponse.Async.Right {
-      def searchIdentity(activeUsersF: Future[SearchResponse], deletedUsersF: Future[SearchResponse]) = {
-        for {
-          activeUsers <- activeUsersF
-          deletedUsers <- deletedUsersF
-        } yield {
-          val combinedTotal = activeUsers.total + deletedUsers.total
-          val combinedResults = activeUsers.results ++ deletedUsers.results
-          activeUsers.copy(total = combinedTotal, results = combinedResults)
-        }
-      }
 
-      def searchSalesforce(orphansF: Future[SearchResponse], membersF: Future[SearchResponse]) =
-        membersF.map(membersResults =>
-          if (membersResults.total > 0)
-            Future.successful(membersResults)
-          else
-            orphansF.map(identity)
-        ).flatMap(identity) // F[F[_]] => F[_]
-
-      val membersF = searchIdentityByMembership(query)
+      // execute all these in parallel
+      val usersByMemNumF = searchIdentityByMembership(query)
       val orphansF = searchOrphan(query)
+      val usersBySubIdF = searchIdentityBySubscriptionId(query)
       val activeUsersF = usersReadRepository.search(query, limit, offset)
       val deletedUsersF = deletedUsersRepository.search(query)
 
-      searchIdentity(activeUsersF, deletedUsersF).map(identityResults =>
-        if(identityResults.total > 0)
-          Future.successful(identityResults)
+      (for {
+        orphans <- orphansF
+        usersBySubId <- usersBySubIdF
+        idUsers <- searchIdentity(activeUsersF, deletedUsersF)
+      } yield {
+
+        if (idUsers.results.size > 0)
+          Future.successful(idUsers)
+        else if (usersBySubId.results.size > 0)
+          Future.successful(usersBySubId)
+        else if (orphans.results.size > 0)
+          Future.successful(orphans)
         else
-          searchSalesforce(orphansF, membersF)
-      ).flatMap(identity)// F[F[_]] => F[_]
+          usersByMemNumF // NOTE: very slow request (~10s) because Membership_Number__c is currently not indexed in SF
+      }).flatMap(identity) // F[F[_]] => F[_]
     }
 
   def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
+
+  def searchIdentity(activeUsersF: Future[SearchResponse], deletedUsersF: Future[SearchResponse]) = {
+    for {
+      activeUsers <- activeUsersF
+      deletedUsers <- deletedUsersF
+    } yield {
+      val combinedTotal = activeUsers.total + deletedUsers.total
+      val combinedResults = activeUsers.results ++ deletedUsers.results
+      activeUsers.copy(total = combinedTotal, results = combinedResults)
+    }
+  }
 
   def searchOrphan(email: String): Future[SearchResponse] = {
     def isEmail(query: String) = query.matches("""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r.toString())
@@ -169,28 +176,21 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def searchIdentityBySubscriptionId(subscriberId: String): Future[SearchResponse] = {
-    def isSubscriberId(query: String) = List("S-A", "GA0").contains(query.take(3))
+    def isSubscriberId(query: String) = List("A-S", "GA0").contains(query.take(3))
 
-    if (isSubscriberId(subscriberId)) {
+    def salesforceSubscriptionToIdentityUser(sfSub: SalesforceSubscription) =
+          SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sfSub.identityId), primaryEmailAddress = sfSub.email)))
+
+    if (isSubscriberId(subscriberId))
       OptionT(salesforceService.getMembershipBySubscriptionId(subscriberId)).fold(
-        mem => Future.successful(SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email)))),
+        sfSub => Future.successful(salesforceSubscriptionToIdentityUser(sfSub)),
         OptionT(salesforceService.getSubscriptionBySubscriptionId(subscriberId)).fold(
-          sub => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sub.identityId), primaryEmailAddress = sub.email))),
+          sfSub => salesforceSubscriptionToIdentityUser(sfSub),
           SearchResponse.create(0, 0, Nil)
         )
       ).flatMap(identity)
-    } else Future.successful(SearchResponse.create(0, 0, Nil))
+    else Future.successful(SearchResponse.create(0, 0, Nil))
   }
-
-//  private def futureOr[A, B](a: Future[Option[A]], b: Future[Option[B]], default: SearchResponse = SearchResponse.create(0, 0, Nil)): Future[SearchResponse] = {
-//    OptionT(a).fold(
-//      mem => Future.successful(SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email)))),
-//      OptionT(salesforceService.getSubscriptionBySubscriptionId(subscriberId)).fold(
-//        sub => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sub.identityId.getOrElse("orphan")), primaryEmailAddress = sub.email))),
-//        SearchResponse.create(0, 0, Nil)
-//      )
-//    ).flatMap(identity)
-//  }
 
   /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {
