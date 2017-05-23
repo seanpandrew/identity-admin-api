@@ -31,11 +31,13 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   }
 
   class StubSalesfroce extends SalesforceService {
-    override def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]] = Future(None)
-    override def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]] = Future(None)
-    override def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] = Future(None)
-    override def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[MembershipDetails]] = Future(None)
-    override def getMembershipByEmail(email: String): Future[Option[MembershipDetails]] = Future(None)
+    override def getSubscriptionByIdentityId(id: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getSubscriptionByEmail(email: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getSubscriptionBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getMembershipByIdentityId(id: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getMembershipByEmail(email: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getMembershipBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] = Future(None)
   }
 
   val controller = new UsersController(userService, new StubAuthenticatedAction, new StubSalesfroce, new DiscussionService(dapiWsMock))

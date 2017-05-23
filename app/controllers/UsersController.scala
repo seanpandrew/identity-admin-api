@@ -80,7 +80,7 @@ class UsersController @Inject() (
   private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
       OptionT(salesforce.getSubscriptionByEmail(email)).fold(
-        sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email.getOrElse(""), subscriptionDetails = Some(sub)), input)),
+        sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)),
         Left(ApiError.apiErrorToResult(ApiErrors.notFound))
       )
     }

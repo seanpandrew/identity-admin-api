@@ -61,33 +61,20 @@ object LastActiveLocation {
   implicit val format = Json.format[LastActiveLocation]
 }
 
-case class MembershipDetails(
-  tier: Option[String] = None,
-  membershipNumber: Option[String] = None,
-  joinDate: Option[String] = None,
-  end: Option[String] = None,
-  zuoraSubscriptionName: Option[String] = None,
-  identityId: String,
-  email: String
-)
-
-object MembershipDetails {
-  implicit val format = Json.format[MembershipDetails]
-}
-
-case class SubscriptionDetails(
+case class SalesforceSubscription(
   tier: Option[String] = None,
   subscriberId: Option[String] = None,
+  membershipNumber: Option[String] = None,
   joinDate: Option[String] = None,
   end: Option[String] = None,
   activationDate: Option[String] = None,
   zuoraSubscriptionName: Option[String] = None,
-  identityId: Option[String] = None,
-  email: Option[String] = None
+  identityId: String = "orphan",
+  email: String
 )
 
-object SubscriptionDetails {
-  implicit val format = Json.format[SubscriptionDetails]
+object SalesforceSubscription {
+  implicit val format = Json.format[SalesforceSubscription]
 }
 
 case class User(id: String,
@@ -106,8 +93,8 @@ case class User(id: String,
                 status: UserStatus = UserStatus(),
                 groups: Seq[UserGroup] = Nil,
                 socialLinks: Seq[SocialLink] = Nil,
-                membershipDetails: Option[MembershipDetails] = None,
-                subscriptionDetails: Option[SubscriptionDetails] = None,
+                membershipDetails: Option[SalesforceSubscription] = None,
+                subscriptionDetails: Option[SalesforceSubscription] = None,
                 hasCommented: Boolean = false,
                 deleted: Boolean = false,
                 orphan: Boolean = false

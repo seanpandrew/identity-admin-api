@@ -151,7 +151,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
     if (isEmail(email)) {
       OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
-        sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email.getOrElse("")))),
+        sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email))),
         SearchResponse.create(0, 0, Nil)
       )
     } else Future.successful(SearchResponse.create(0, 0, Nil))
@@ -167,6 +167,30 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       )
     } else Future.successful(SearchResponse.create(0, 0, Nil))
   }
+
+  def searchIdentityBySubscriptionId(subscriberId: String): Future[SearchResponse] = {
+    def isSubscriberId(query: String) = List("S-A", "GA0").contains(query.take(3))
+
+    if (isSubscriberId(subscriberId)) {
+      OptionT(salesforceService.getMembershipBySubscriptionId(subscriberId)).fold(
+        mem => Future.successful(SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email)))),
+        OptionT(salesforceService.getSubscriptionBySubscriptionId(subscriberId)).fold(
+          sub => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sub.identityId), primaryEmailAddress = sub.email))),
+          SearchResponse.create(0, 0, Nil)
+        )
+      ).flatMap(identity)
+    } else Future.successful(SearchResponse.create(0, 0, Nil))
+  }
+
+//  private def futureOr[A, B](a: Future[Option[A]], b: Future[Option[B]], default: SearchResponse = SearchResponse.create(0, 0, Nil)): Future[SearchResponse] = {
+//    OptionT(a).fold(
+//      mem => Future.successful(SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email)))),
+//      OptionT(salesforceService.getSubscriptionBySubscriptionId(subscriberId)).fold(
+//        sub => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sub.identityId.getOrElse("orphan")), primaryEmailAddress = sub.email))),
+//        SearchResponse.create(0, 0, Nil)
+//      )
+//    ).flatMap(identity)
+//  }
 
   /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {

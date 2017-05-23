@@ -5,9 +5,9 @@ import javax.inject.Inject
 import com.gu.identity.util.Logging
 import com.google.inject.ImplementedBy
 import configuration.Config.TouchpointSalesforce._
-import models.{MembershipDetails, SubscriptionDetails}
+import models.SalesforceSubscription
 import play.api.libs.json.{JsArray, Json}
-import play.api.libs.ws.{WS, WSClient, WSResponse}
+import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.http.Status.OK
 import play.api.libs.concurrent.Execution.Implicits._
 
@@ -34,17 +34,20 @@ trait UniqueIdentifier {
   val value: String
   val fieldName: String
 }
-case class MembershipNumber(value: String, fieldName: String = "Membership_Number__c") extends UniqueIdentifier
-case class IdentityId(value: String, fieldName: String = "IdentityID__c") extends UniqueIdentifier
-case class Email(value: String, fieldName: String = "Email") extends UniqueIdentifier
+case class MembershipNumber(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c") extends UniqueIdentifier
+case class IdentityId(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c") extends UniqueIdentifier
+case class Email(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email") extends UniqueIdentifier
+case class SubscriptionId(value: String, fieldName: String = "Subscription_Name__c") extends UniqueIdentifier
 
 @ImplementedBy(classOf[Salesforce])
 trait SalesforceService {
-  def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]]
-  def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]]
-  def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]]
-  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[MembershipDetails]]
-  def getMembershipByEmail(email: String): Future[Option[MembershipDetails]]
+  def getSubscriptionByIdentityId(id: String): Future[Option[SalesforceSubscription]]
+  def getSubscriptionByEmail(email: String): Future[Option[SalesforceSubscription]]
+  def getSubscriptionBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]]
+  def getMembershipByIdentityId(id: String): Future[Option[SalesforceSubscription]]
+  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[SalesforceSubscription]]
+  def getMembershipByEmail(email: String): Future[Option[SalesforceSubscription]]
+  def getMembershipBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]]
 }
 
 class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging {
@@ -75,29 +78,74 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
 
   private val authHeader = ("Authorization", s"Bearer ${sfAuth.access_token}")
 
-  def getSubscriptionByIdentityId(id: String): Future[Option[SubscriptionDetails]] = {
+  private def extractSubscription(res: WSResponse): SalesforceSubscription = {
+    val records: JsArray = (res.json \ "records").as[JsArray]
+
+    SalesforceSubscription(
+      tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
+      subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
+      membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").asOpt[String],
+      joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
+      end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
+      zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),
+      identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").asOpt[String].getOrElse("orphan"),
+      email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String])
+  }
+
+  private def querySalesforce(soql: String): Future[Option[SalesforceSubscription]] =
+    ws.url(s"${sfAuth.instance_url}/services/data/v29.0/query?q=$soql").withHeaders(authHeader).get().map { response =>
+      if (response.status == OK) {
+        if ((response.json \ "totalSize").as[Int] > 0)
+          Some(extractSubscription(response))
+        else
+          None
+      }
+      else {
+        logger.error(s"Could not get subscriptions from Salesforce: ${response.body.toString}")
+        None
+      }
+    }
+
+  private val selectQuerySection: String =
+    """
+      |SELECT
+      |    Id,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
+      |    Zuora__ProductName__c,
+      |    Subscription_Status__c,
+      |    Subscription_Name__c,
+      |    Zuora__EffectiveStartDate__c,
+      |    Zuora__EffectiveEndDate__c,
+      |    Zuora__Subscription__r.ActivationDate__c
+    """.stripMargin
+
+  private val fromQuerySection: String =
+    """
+      |FROM
+      |  Zuora__SubscriptionProductCharge__c
+    """.stripMargin
+
+  private val orderByQuerySection: String =
+    """
+      |ORDER BY
+      |  Zuora__EffectiveStartDate__c DESC NULLS LAST
+    """.stripMargin
+
+
+  private def getSubscriptionBy(uniqueIdentifier: UniqueIdentifier): Future[Option[SalesforceSubscription]] = {
 
     val sooqlQuery =
       s"""
-         |SELECT
-         |    Id,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
-         |    Zuora__ProductName__c,
-         |    Subscription_Status__c,
-         |    Subscription_Name__c,
-         |    Zuora__EffectiveStartDate__c,
-         |    Zuora__EffectiveEndDate__c,
-         |    Zuora__Subscription__r.ActivationDate__c
+         |$selectQuerySection
          |
-         |FROM
-         |  Zuora__SubscriptionProductCharge__c
+         |$fromQuerySection
          |
          |WHERE
-         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c  = '$id') AND
+         |  (${uniqueIdentifier.fieldName}  = '${uniqueIdentifier.value}') AND
          |  (Subscription_Status__c = 'Active') AND
          |  (
          |    (Zuora__ProductName__c = 'Digital Pack') OR
@@ -106,133 +154,26 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
          |    (Zuora__ProductName__c = 'Guardian Weekly Zone A') OR
          |    (Zuora__ProductName__c = 'Guardian Weekly Zone B') OR
          |    (Zuora__ProductName__c = 'Guardian Weekly Zone C')
-         |  )
+         |  ) AND
+         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email  != null)
          |
-         |ORDER BY
-         |  Zuora__EffectiveStartDate__c DESC NULLS LAST
+         |$orderByQuerySection
       """.stripMargin
 
-    val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
-
-    val request = ws.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
-    request.get().map { res =>
-      if (res.status == OK) {
-        def createSubscription(res: WSResponse): SubscriptionDetails = {
-          val records: JsArray = (res.json \ "records").as[JsArray]
-
-          SubscriptionDetails(
-            tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
-            subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
-            joinDate = (records(0) \ "Zuora__EffectiveStartDate__c").asOpt[String],
-            end = (records(0) \ "Zuora__EffectiveEndDate__c").asOpt[String],
-            activationDate = (records(0) \ "Zuora__Subscription__r" \ "ActivationDate__c").asOpt[String],
-            zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String],
-            identityId = (records(0) \ "Subscription_Name__c").asOpt[String],
-            email = (records(0) \ "Subscription_Name__c").asOpt[String])
-        }
-
-        if ((res.json \ "totalSize").as[Int] > 0)
-          Some(createSubscription(res))
-        else
-          None
-      }
-      else {
-        logger.error(s"Salesforce error. Could not get digital pack for user $id: ${res.body.toString}")
-        None
-      }
-    }
-  }
-
-  def getSubscriptionByEmail(email: String): Future[Option[SubscriptionDetails]] = {
-
-    val sooqlQuery =
-      s"""
-         |SELECT
-         |    Id,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
-         |    Zuora__ProductName__c,
-         |    Subscription_Status__c,
-         |    Subscription_Name__c,
-         |    Zuora__EffectiveStartDate__c,
-         |    Zuora__EffectiveEndDate__c,
-         |    Zuora__Subscription__r.ActivationDate__c
-         |
-         |FROM
-         |  Zuora__SubscriptionProductCharge__c
-         |
-         |WHERE
-         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email  = '$email') AND
-         |  (Subscription_Status__c = 'Active') AND
-         |  (
-         |    (Zuora__ProductName__c = 'Digital Pack') OR
-         |    (Zuora__ProductName__c = 'Newspaper Voucher') OR
-         |    (Zuora__ProductName__c = 'Newspaper Delivery') OR
-         |    (Zuora__ProductName__c = 'Guardian Weekly Zone A') OR
-         |    (Zuora__ProductName__c = 'Guardian Weekly Zone B') OR
-         |    (Zuora__ProductName__c = 'Guardian Weekly Zone C')
-         |  )
-         |
-         |ORDER BY
-         |  Zuora__EffectiveStartDate__c DESC NULLS LAST
-      """.stripMargin
-
-    val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
-
-    val request = ws.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
-    request.get().map { res =>
-      if (res.status == OK) {
-        def createSubscription(res: WSResponse): SubscriptionDetails = {
-          val records: JsArray = (res.json \ "records").as[JsArray]
-
-          SubscriptionDetails(
-            tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
-            subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
-            joinDate = (records(0) \ "Zuora__EffectiveStartDate__c").asOpt[String],
-            end = (records(0) \ "Zuora__EffectiveEndDate__c").asOpt[String],
-            activationDate = (records(0) \ "Zuora__Subscription__r" \ "ActivationDate__c").asOpt[String],
-            zuoraSubscriptionName = (records(0) \ "Subscription_Name__c").asOpt[String],
-            identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").asOpt[String],
-            email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").asOpt[String])
-        }
-
-        if ((res.json \ "totalSize").as[Int] > 0)
-          Some(createSubscription(res))
-        else
-          None
-      }
-      else {
-        logger.error(s"Salesforce error. Could not get digital pack for user $email: ${res.body.toString}")
-        None
-      }
-    }
+    querySalesforce(sooqlQuery)
   }
 
 
-  private def getMembershipBy(uniqueIdentifier: UniqueIdentifier): Future[Option[MembershipDetails]] = {
+
+  private def getMembershipBy(uniqueIdentifier: UniqueIdentifier): Future[Option[SalesforceSubscription]] = {
     val sooqlQuery =
       s"""
-         |SELECT
-         |    Id,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
-         |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
-         |    Zuora__ProductName__c,
-         |    Subscription_Status__c,
-         |    Subscription_Name__c,
-         |    Zuora__EffectiveStartDate__c,
-         |    Zuora__EffectiveEndDate__c
+         |$selectQuerySection
          |
-         |FROM
-         |  Zuora__SubscriptionProductCharge__c
+         |$fromQuerySection
          |
          |WHERE
-         |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.${uniqueIdentifier.fieldName}  = '${uniqueIdentifier.value}') AND
+         |  (${uniqueIdentifier.fieldName} = '${uniqueIdentifier.value}') AND
          |  (Subscription_Status__c = 'Active') AND
          |  (
          |    (Zuora__ProductName__c = 'Friend') OR
@@ -244,47 +185,30 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
          |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c  != null) AND
          |  (Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email  != null)
          |
-         |ORDER BY
-         |  Zuora__EffectiveStartDate__c DESC NULLS LAST
+         |$orderByQuerySection
       """.stripMargin
 
-    val endpoint = s"${sfAuth.instance_url}/services/data/v29.0/query"
-
-    val request = ws.url(s"$endpoint?q=$sooqlQuery").withHeaders(authHeader)
-    request.get().map { res =>
-      if (res.status == OK) {
-
-        def createMembership(res: WSResponse): MembershipDetails = {
-          val records: JsArray = (res.json \ "records").as[JsArray]
-
-          MembershipDetails(
-            tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
-            membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").asOpt[String],
-            joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
-            end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
-            zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),
-            identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").as[String],
-            email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String])
-        }
-
-        if ((res.json \ "totalSize").as[Int] > 0)
-          Some(createMembership(res))
-        else
-          None
-      }
-      else {
-        logger.error(s"Salesforce error. Could not get membership for user ${uniqueIdentifier.toString}: ${res.body.toString}")
-        None
-      }
-    }
+    querySalesforce(sooqlQuery)
   }
 
-  def getMembershipByIdentityId(id: String): Future[Option[MembershipDetails]] =
+  def getMembershipByIdentityId(id: String): Future[Option[SalesforceSubscription]] =
     getMembershipBy(IdentityId(id))
 
-  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[MembershipDetails]] =
+  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[SalesforceSubscription]] =
     getMembershipBy(MembershipNumber(membershipNumber))
 
-  def getMembershipByEmail(email: String): Future[Option[MembershipDetails]] =
+  def getMembershipByEmail(email: String): Future[Option[SalesforceSubscription]] =
     getMembershipBy(Email(email))
+
+  def getMembershipBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] =
+    getMembershipBy(SubscriptionId(subscriptionId))
+
+  def getSubscriptionByIdentityId(id: String): Future[Option[SalesforceSubscription]] =
+    getSubscriptionBy(IdentityId(id))
+
+  def getSubscriptionByEmail(email: String): Future[Option[SalesforceSubscription]] =
+    getSubscriptionBy(Email(email))
+
+  def getSubscriptionBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] =
+    getSubscriptionBy(SubscriptionId(subscriptionId))
 }
