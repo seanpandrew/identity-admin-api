@@ -109,48 +109,64 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
+  /* The logic here is first try searching identity and if nothing found search salesforce. */
+  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =
     ApiResponse.Async.Right {
+      def searchIdentity(activeUsersF: Future[SearchResponse], deletedUsersF: Future[SearchResponse]) = {
+        for {
+          activeUsers <- activeUsersF
+          deletedUsers <- deletedUsersF
+        } yield {
+          val combinedTotal = activeUsers.total + deletedUsers.total
+          val combinedResults = activeUsers.results ++ deletedUsers.results
+          activeUsers.copy(total = combinedTotal, results = combinedResults)
+        }
+      }
+
+      def searchSalesforce(orphansF: Future[SearchResponse], membersF: Future[SearchResponse]) =
+        membersF.map(membersResults =>
+          if (membersResults.total > 0)
+            Future.successful(membersResults)
+          else
+            orphansF.map(identity)
+        ).flatMap(identity) // F[F[_]] => F[_]
+
+      val membersF = searchIdentityByMembership(query)
       val orphansF = searchOrphan(query)
       val activeUsersF = usersReadRepository.search(query, limit, offset)
       val deletedUsersF = deletedUsersRepository.search(query)
-      val membersF = searchIdentityByMembership(query)
 
-      for {
-        activeUsers <- activeUsersF
-        deletedUsers <- deletedUsersF
-        orphans <- orphansF
-        members <- membersF
-      } yield {
-        val combinedTotal = activeUsers.total + deletedUsers.total
-        val combinedResults = activeUsers.results ++ deletedUsers.results
-
-        if (combinedTotal > 0)
-          activeUsers.copy(total = combinedTotal, results = combinedResults)
-        else if (members.total > 0) {
-          members
-        } else
-          orphans
-      }
+      searchIdentity(activeUsersF, deletedUsersF).map(identityResults =>
+        if(identityResults.total > 0)
+          Future.successful(identityResults)
+        else
+          searchSalesforce(orphansF, membersF)
+      ).flatMap(identity)// F[F[_]] => F[_]
     }
-  }
 
   def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
 
   def searchOrphan(email: String): Future[SearchResponse] = {
-    OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
-      sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email.getOrElse("")))),
-      SearchResponse.create(0, 0, Nil)
-    )
+    def isEmail(query: String) = query.matches("""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r.toString())
+
+    if (isEmail(email)) {
+      OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
+        sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email.getOrElse("")))),
+        SearchResponse.create(0, 0, Nil)
+      )
+    } else Future.successful(SearchResponse.create(0, 0, Nil))
   }
 
   def searchIdentityByMembership(membershipNumber: String): Future[SearchResponse] = {
-    OptionT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).fold(
-      mem => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email))),
-      SearchResponse.create(0, 0, Nil)
-    )
-  }
+    def couldBeMembershipNumber(query: String) = query forall Character.isDigit
 
+    if (couldBeMembershipNumber(membershipNumber)) {
+      OptionT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).fold(
+        mem => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email))),
+        SearchResponse.create(0, 0, Nil)
+      )
+    } else Future.successful(SearchResponse.create(0, 0, Nil))
+  }
 
   /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {
