@@ -135,6 +135,21 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       verify(madgexService).update(gNMMadgexUser)
     }
 
+    "not update madgex when non-jobs user changed" in {
+      val user = User("id", "email@theguardian.com")
+      val userUpdateRequest = UserUpdateRequest(email = "changedEmail@theguardian.com")
+      val updateRequest = IdentityUserUpdate(userUpdateRequest, Some(false))
+      val updatedUser = user.copy(email = updateRequest.email)
+
+      when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+
+      val result = service.update(user, userUpdateRequest)
+
+      Await.result(result.underlying, 1.second) shouldEqual Right(updatedUser)
+      verifyZeroInteractions(madgexService)
+    }
+
     "not send email validation when email has not changed" in {
       val user = User("id", "email@theguardian.com")
       val userUpdateRequest = UserUpdateRequest(email = "email@theguardian.com", username = Some("username"))
