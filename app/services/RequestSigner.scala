@@ -15,7 +15,7 @@ import play.api.libs.ws.{WSClient, WSRequest}
 import util.Formats
 
 @Singleton class RequestSignerWithSecret @Inject()(configuration: Configuration) extends RequestSigner {
-  val secret = configuration.getString("identity-admin.adminApi.secret").get
+  val secret = configuration.getString("madgex.secret").get
 }
 
 @ImplementedBy(classOf[RequestSignerWithSecret])

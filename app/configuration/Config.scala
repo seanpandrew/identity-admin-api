@@ -63,6 +63,6 @@ object Config {
   }
 
   object Madgex {
-    val apiUrl = config.getString("madgex.api.url")
+    val apiUrl = config.getString("madgex.host")
   }
 }
