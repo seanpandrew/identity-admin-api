@@ -5,7 +5,7 @@ import javax.inject.{Inject, Singleton}
 import com.gu.identity.util.Logging
 import configuration.Config
 import util.UserConverter._
-import models.{GNMMadgexUser, MadgexUser, User}
+import models.{GNMMadgexUser, MadgexUser}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 
@@ -17,20 +17,17 @@ import play.api.libs.json.Json
 
   implicit val format = Json.format[MadgexUser]
 
-  def update(user: GNMMadgexUser): Future[Boolean] = {
+  def update(user: GNMMadgexUser): Future[Unit] = {
     val id = user.id
     requestSigner.sign(ws.url(s"${Config.Madgex.apiUrl}/updatessouser/$id"))
       .post(Json.toJson(user.madgexUser))
-      .map { response =>
-        response.status match {
-          case 200 => true
-          case 401 => logger.error("Failed to authenticate with Madgex API.")
-            false
-          case status => logger.error(s"Unexpected status code:  $status from Madgex API")
-            false
-        }
-      }.recover { case t: Throwable => logger.error("Error when updating Madgex", t)
-      false
+      .map { _.status match {
+        case 200 =>
+        case 401 => logger.error("Failed to authenticate with Madgex API.")
+        case status => logger.error(s"Unexpected status code:  $status from Madgex API")
+      }
+      }.recover {
+      case t: Throwable => logger.error("Error when updating Madgex", t)
     }
   }
 }

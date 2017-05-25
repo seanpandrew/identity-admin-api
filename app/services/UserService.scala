@@ -61,8 +61,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         }
 
         if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {
-          val gNMMadgexUser = GNMMadgexUser(user.id, userUpdateRequest)
-          madgexService.update(gNMMadgexUser)
+          madgexService.update(GNMMadgexUser(user.id, userUpdateRequest))
         }
 
         ApiResponse.Async(Future.successful(result))
