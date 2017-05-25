@@ -34,7 +34,7 @@ trait UniqueIdentifier {
   val value: String
   val fieldName: String
 }
-case class MembershipNumber(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c") extends UniqueIdentifier
+case class MembershipNumber(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Contact_Number__c") extends UniqueIdentifier
 case class IdentityId(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c") extends UniqueIdentifier
 case class Email(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email") extends UniqueIdentifier
 case class SubscriptionId(value: String, fieldName: String = "Subscription_Name__c") extends UniqueIdentifier
@@ -84,7 +84,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
     SalesforceSubscription(
       tier = (records(0) \ "Zuora__ProductName__c").asOpt[String],
       subscriberId = (records(0) \ "Subscription_Name__c").asOpt[String],
-      membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Membership_Number__c").asOpt[String],
+      membershipNumber = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Contact_Number__c").asOpt[String],
       joinDate = Some((records(0) \ "Zuora__EffectiveStartDate__c").as[String]),
       end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
       zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),
@@ -112,6 +112,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
       |    Id,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.IdentityID__c,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Membership_Number__c,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Contact_Number__c,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
