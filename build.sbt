@@ -48,9 +48,6 @@ mappings in Universal ++= (baseDirectory.value / "deploy" * "*" get) map (x => x
 riffRaffPackageType := (packageBin in Universal).value
 riffRaffUploadArtifactBucket := Option("riffraff-artifact")
 riffRaffUploadManifestBucket := Option("riffraff-builds")
-riffRaffBuildIdentifier := Option(System.getenv("BUILD_NUMBER")).getOrElse("DEV")
-riffRaffManifestBranch := Option(System.getenv("BUILD_VCS_BRANCH")).getOrElse("unknown_branch")
-riffRaffManifestVcsUrl := "git@github.com:guardian/identity-admin-api.git"
 riffRaffManifestProjectName := s"identity:${name.value}"
 
 // *****************************
