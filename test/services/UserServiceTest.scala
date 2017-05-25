@@ -127,7 +127,6 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
       when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
-      when(madgexService.update(gNMMadgexUser)).thenReturn(Future.successful(true))
 
       val result = service.update(user, userUpdateRequest)
 
