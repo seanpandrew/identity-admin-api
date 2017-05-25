@@ -122,10 +122,6 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  /* This will become cleaner once membership number in Salesforce is indexed. Currently searching
-   * by membership number takes 10 seconds, thus the ugliness with Future.successful and flatMap(identity),
-   * because we want this slow call to resolve only in the very last case when nothing else is found.
-   */
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =
     ApiResponse.Async.Right {
 
@@ -136,21 +132,22 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       val activeUsersF = usersReadRepository.search(query, limit, offset)
       val deletedUsersF = deletedUsersRepository.search(query)
 
-      (for {
+      for {
+        usersByMemNum <- usersByMemNumF
         orphans <- orphansF
         usersBySubId <- usersBySubIdF
         idUsers <- searchIdentity(activeUsersF, deletedUsersF)
       } yield {
 
         if (idUsers.results.size > 0)
-          Future.successful(idUsers)
+          idUsers
         else if (usersBySubId.results.size > 0)
-          Future.successful(usersBySubId)
+          usersBySubId
         else if (orphans.results.size > 0)
-          Future.successful(orphans)
+          orphans
         else
-          usersByMemNumF // NOTE: very slow request (~10s) because Membership_Number__c is currently not indexed in SF
-      }).flatMap(identity) // F[F[_]] => F[_]
+          usersByMemNum
+      }
     }
 
   def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
