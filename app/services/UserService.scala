@@ -5,6 +5,7 @@ import javax.inject.{Inject, Singleton}
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
+import util.UserConverter._
 import models._
 import repositories.{DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
@@ -23,7 +24,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              identityApiClient: IdentityApiClient,
                              eventPublishingActorProvider: EventPublishingActorProvider,
                              deletedUsersRepository: DeletedUsersRepository,
-                             salesforceService: SalesforceService) extends Logging {
+                             salesforceService: SalesforceService,
+                             madgexService: MadgexService) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -56,6 +58,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         if (userEmailChanged && eventsEnabled) {
           SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
         }
+
+        if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {
+          madgexService.update(GNMMadgexUser(user.id, userUpdateRequest))
+        }
+
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>
         ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
@@ -75,9 +82,15 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     newUsername != existingUsername
   }
 
+  def isJobsUser(user: User) = isAMemberOfGroup("/sys/policies/guardian-jobs", user)
+
+  def isAMemberOfGroup(groupPath: String, user: User): Boolean = user.groups.filter(_.path == groupPath).size > 0
+
   def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
     newEmailValidated != existingEmailValidated
   }
+
+  def isJobsUserChanged(user: MadgexUser, userUpdateRequest: MadgexUser): Boolean = !user.equals(userUpdateRequest)
 
   private def triggerEvents(userId: String, usernameChanged: Boolean, displayNameChanged: Boolean, emailValidatedChanged: Boolean) = {
     if (eventsEnabled) {

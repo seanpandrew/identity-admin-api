@@ -61,4 +61,8 @@ object Config {
   object Discussion {
     val apiUrl = config.getString("discussion.api.url")
   }
+
+  object Madgex {
+    val apiUrl = config.getString("madgex.host")
+  }
 }

@@ -41,7 +41,7 @@ object UserStatus {
 
 case class UserGroup(packageCode: String,
                      path:String,
-                     joinDate: Option[DateTime])
+                     joinDate: Option[DateTime] = None)
 
 object UserGroup {
   implicit val format = Json.format[UserGroup]
@@ -152,3 +152,14 @@ object User {
                 socialLinks = user.socialLinks.map(s => SocialLink(s.socialId, s.network))
     )
 }
+
+case class GNMMadgexUser(id: String,
+                         madgexUser: MadgexUser
+                        )
+
+case class MadgexUser(primaryEmailAddress: String,
+                      firstName: Option[String] = None,
+                      secondName: Option[String] = None,
+                      receive3rdPartyMarketing: Boolean = false,
+                      receiveGnmMarketing: Boolean = false
+                     )

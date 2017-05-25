@@ -1,7 +1,8 @@
 package util
 
 import com.github.nscala_time.time.Imports._
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.format.DateTimeFormat
 
 object Formats {
 
@@ -10,4 +11,10 @@ object Formats {
 
   def toHttpDateTimeString(dateTime: DateTime): String = dateTime.withZone(DateTimeZone.forID("GMT")).toString(Formats.HTTPDateFormat)
   def toDateTime(date: String): DateTime = HTTPDateFormat.parseDateTime(date)
+
+  val MadgexDateFormat = DateTimeFormat.forPattern("EEE, dd MMM yyyy HH:mm:ss").withZone(DateTimeZone.forID("Europe/London"))
+
+  def toMadgexDateTimeString(dateTime: DateTime): String = dateTime.withZone(DateTimeZone.forID("Europe/London")).toString(Formats.MadgexDateFormat)
+  def toMadgexDateTime(date: String): DateTime = MadgexDateFormat.parseDateTime(date)
 }
+
