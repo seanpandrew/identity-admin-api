@@ -54,8 +54,14 @@ object Config {
   }
 
   object ExactTarget {
-    val clientSecret = config.getString("exacttarget.clientSecret")
-    val clientId = config.getString("exacttarget.clientId")
+    object Admin {
+      val clientSecret = config.getString("exacttarget.admin.clientSecret")
+      val clientId = config.getString("exacttarget.admin.clientId")
+    }
+    object Editorial {
+      val clientSecret = config.getString("exacttarget.editorial.clientSecret")
+      val clientId = config.getString("exacttarget.editorial.clientId")
+    }
   }
 
   object Discussion {
