@@ -24,7 +24,8 @@ class UsersController @Inject() (
     userService: UserService,
     auth: AuthenticatedAction,
     salesforce: SalesforceService,
-    discussionService: DiscussionService) extends Controller with Logging {
+    discussionService: DiscussionService,
+    exactTargetService: ExactTargetService) extends Controller with Logging {
 
   private val MinimumQueryLength = 2
 
@@ -57,19 +58,27 @@ class UsersController @Inject() (
       val subscriptionF = salesforce.getSubscriptionByIdentityId(userId)
       val membershipF = salesforce.getMembershipByIdentityId(userId)
       val hasCommentedF = discussionService.hasCommented(userId)
+      val emailSubsF = exactTargetService.listOfSubscriptions(userId)
 
       for {
         user <- userService.findById(userId).asFuture
         subscription <- subscriptionF
         membership <- membershipF
         hasCommented <- hasCommentedF
+        emailSubs <- emailSubsF
       } yield {
         user match {
           case Left(r) => Left(ApiError.apiErrorToResult(r))
+
           case Right(r) =>
             if (Config.stage == "PROD") Tip.verify("User Retrieval")
+
             val userWithSubscriptions = r.copy(
-              subscriptionDetails = subscription, membershipDetails = membership, hasCommented = hasCommented)
+              subscriptionDetails = subscription,
+              membershipDetails = membership,
+              hasCommented = hasCommented,
+              emailSubscriptions = emailSubs)
+
             Right(new UserRequest(userWithSubscriptions, input))
         }
       }
@@ -115,7 +124,7 @@ class UsersController @Inject() (
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
-    def unsubscribeEmails() = EitherT(ExactTargetService.unsubscribeFromAllLists(request.user.email)).leftMap(error => ApiErrors.internalError(error.toString))
+    def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email)).leftMap(error => ApiErrors.internalError(error.toString))
     def deleteAccount() = EitherT.fromEither(userService.delete(request.user).asFuture)
 
     (for {

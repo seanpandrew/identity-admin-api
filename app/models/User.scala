@@ -95,6 +95,7 @@ case class User(id: String,
                 socialLinks: Seq[SocialLink] = Nil,
                 membershipDetails: Option[SalesforceSubscription] = None,
                 subscriptionDetails: Option[SalesforceSubscription] = None,
+                emailSubscriptions: List[String] = Nil,
                 hasCommented: Boolean = false,
                 deleted: Boolean = false,
                 orphan: Boolean = false

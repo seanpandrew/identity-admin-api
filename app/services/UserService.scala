@@ -25,7 +25,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
                              eventPublishingActorProvider: EventPublishingActorProvider,
                              deletedUsersRepository: DeletedUsersRepository,
                              salesforceService: SalesforceService,
-                             madgexService: MadgexService) extends Logging {
+                             madgexService: MadgexService,
+                             exactTargetService: ExactTargetService) extends Logging {
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
@@ -52,7 +53,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
         if(result.isRight && userEmailChanged) {
           identityApiClient.sendEmailValidation(user.id)
-          ExactTargetService.updateEmailAddress(user.email, userUpdateRequest.email)
+          exactTargetService.updateEmailAddress(user.email, userUpdateRequest.email)
         }
 
         if (userEmailChanged && eventsEnabled) {
