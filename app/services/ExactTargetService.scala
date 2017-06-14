@@ -57,7 +57,7 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
     }
   }
 
-  def listOfSubscriptions(identityId: String): Future[List[String]] =
+  def newsletterSubscriptions(identityId: String): Future[List[String]] =
     OptionT(usersReadRepository.findById(identityId)).fold(
       user => {
         val response = etClientEditorial.retrieve(classOf[ETSubscriber], s"key=${user.email}")

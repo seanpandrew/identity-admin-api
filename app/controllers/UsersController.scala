@@ -58,14 +58,14 @@ class UsersController @Inject() (
       val subscriptionF = salesforce.getSubscriptionByIdentityId(userId)
       val membershipF = salesforce.getMembershipByIdentityId(userId)
       val hasCommentedF = discussionService.hasCommented(userId)
-      val emailSubsF = exactTargetService.listOfSubscriptions(userId)
+      val newsletterSubsF = exactTargetService.newsletterSubscriptions(userId)
 
       for {
         user <- userService.findById(userId).asFuture
         subscription <- subscriptionF
         membership <- membershipF
         hasCommented <- hasCommentedF
-        emailSubs <- emailSubsF
+        newsletterSubs <- newsletterSubsF
       } yield {
         user match {
           case Left(r) => Left(ApiError.apiErrorToResult(r))
@@ -77,7 +77,7 @@ class UsersController @Inject() (
               subscriptionDetails = subscription,
               membershipDetails = membership,
               hasCommented = hasCommented,
-              emailSubscriptions = emailSubs)
+              newsletterSubscriptions = newsletterSubs)
 
             Right(new UserRequest(userWithSubscriptions, input))
         }
