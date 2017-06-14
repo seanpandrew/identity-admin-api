@@ -63,7 +63,7 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
         val response = etClientEditorial.retrieve(classOf[ETSubscriber], s"key=${user.email}")
         Option(response.getResult).fold[List[String]]
           { Nil }
-          { result => result.getObject.getSubscriptions.toList.map(_.getListId) }
+          { _.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId) }
       },
       Nil
     )
