@@ -136,7 +136,27 @@ class UsersController @Inject() (
         ApiError.apiErrorToResult(error)
       },
       _ => {
-        logger.info(s"Successfuly deleted user $id")
+        logger.info(s"Successfully deleted user $id")
+        NoContent
+      }
+    )
+  }
+
+  def unsubcribeFromAllEmailLists(email: String) = auth.async { request =>
+    logger.info("Unsubscribing from all email lists (marketing and editorial)")
+    val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email)).leftMap(error => ApiErrors.internalError(error.toString))
+    val unsubcribeAllEmailsInExactTarget = EitherT.fromEither(userService.unsubscribeFromMarketingEmails(email).asFuture())
+
+    (for {
+      _ <- unsubscribeMarketingEmailsInIdentity
+      _ <- unsubcribeAllEmailsInExactTarget
+    } yield ()).fold(
+      error => {
+        logger.error(s"Failed to unsubscribe from all email lists: $error")
+        ApiError.apiErrorToResult(error)
+      },
+      _ => {
+        logger.info(s"Successfully unsubscribed from all email lists")
         NoContent
       }
     )
