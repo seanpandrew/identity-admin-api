@@ -257,4 +257,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     ApiResponse.Async(result)
   }
 
+  def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] = {
+    val result = usersWriteRepository.unsubscribeFromMarketingEmails(email)
+    ApiResponse.Async(Future.successful(result))
+  }
 }

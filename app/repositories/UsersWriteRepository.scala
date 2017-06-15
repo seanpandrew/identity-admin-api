@@ -124,4 +124,22 @@ class UsersWriteRepository @Inject() (
         Left(ApiErrors.internalError(t.getMessage))
     }
   }
+
+  def unsubscribeFromMarketingEmails(email: String) = {
+    Try {
+      findOne(MongoDBObject("primaryEmailAddress" -> email)).map { persistedUser =>
+        val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
+          receive3rdPartyMarketing = Some(false),
+          receiveGnmMarketing = Some(false)
+        )
+        persistedUser.copy(statusFields = Some(statusFields))
+      }
+    } match {
+      case Success(Some(userToSave)) => doUpdate(userToSave)
+      case Success(None) => Left(ApiErrors.notFound)
+      case Failure(t) =>
+        logger.error(s"Failed to unsubscribe from marketing emails:", t)
+        Left(ApiErrors.internalError(t.getMessage))
+    }
+  }
 }
