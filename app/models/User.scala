@@ -77,6 +77,12 @@ object SalesforceSubscription {
   implicit val format = Json.format[SalesforceSubscription]
 }
 
+case class NewslettersSubscription(status: String, list: List[String])
+
+object NewslettersSubscription {
+  implicit val format = Json.format[NewslettersSubscription]
+}
+
 case class User(id: String,
                 email: String,
                 displayName: Option[String] = None,
@@ -95,7 +101,7 @@ case class User(id: String,
                 socialLinks: Seq[SocialLink] = Nil,
                 membershipDetails: Option[SalesforceSubscription] = None,
                 subscriptionDetails: Option[SalesforceSubscription] = None,
-                newsletterSubscriptions: List[String] = Nil,
+                newslettersSubscription: Option[NewslettersSubscription] = None,
                 hasCommented: Boolean = false,
                 deleted: Boolean = false,
                 orphan: Boolean = false

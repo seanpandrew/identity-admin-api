@@ -25,7 +25,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   val dapiWsMockurl = s"/profile/10000001/stats"
   val dapiWsMock = MockWS { case (GET, dapiWsMockurl) => Action {Ok("""{"status":"ok","comments":0,"pickedComments":0}""")}}
   val exactTargetServiceMock = mock[ExactTargetService]
-  when(exactTargetServiceMock.newsletterSubscriptions("abc")).thenReturn(Future.successful(Nil))
+  when(exactTargetServiceMock.newslettersSubscription("abc")).thenReturn(Future.successful(None))
 
   class StubAuthenticatedAction extends AuthenticatedAction {
     val secret = "secret"
