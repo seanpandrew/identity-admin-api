@@ -5,6 +5,7 @@ import javax.inject.{Inject, Singleton}
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
+import models.NewslettersSubscription
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
@@ -57,15 +58,19 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
     }
   }
 
-  def newsletterSubscriptions(identityId: String): Future[List[String]] =
+  def newslettersSubscription(identityId: String): Future[Option[NewslettersSubscription]] =
     OptionT(usersReadRepository.findById(identityId)).fold(
       user => {
         val response = etClientEditorial.retrieve(classOf[ETSubscriber], s"key=${user.email}")
-        Option(response.getResult).fold[List[String]]
-          { Nil }
-          { _.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId) }
+        Option(response.getResult).fold[Option[NewslettersSubscription]]
+          { None }
+          { result =>
+              Some(NewslettersSubscription(
+                status = result.getObject.getStatus.value(),
+                list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)))
+          }
       },
-      Nil
+      None
     )
 
   private lazy val etClientAdmin = {
