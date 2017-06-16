@@ -18,35 +18,50 @@ import scala.collection.JavaConversions._
 @Singleton
 class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
 
-  type UnsubscribeError = ETResponse[ETSubscriber]
+  type SubscriberUpdateError = ETResponse[ETSubscriber]
 
-  def unsubscribeFromAllLists(email: String): Future[UnsubscribeError \/ ETSubscriber] = Future {
-    logger.info("Unsubscribing user from all emailing lists")
+  /**
+    * Unsubscribe this subscriber from all current and future subscriber lists.
+    */
+  def unsubscribeFromAllLists(email: String): Future[SubscriberUpdateError \/ ETSubscriber] = {
+    logger.info("Unsubscribe from all email lists")
+    updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED)
+  }
 
-    def unsubscribe(subscriber: ETSubscriber) = {
-      subscriber.setStatus(ETSubscriber.Status.UNSUBSCRIBED)
+  /**
+    * Allows this subscriber to subscribe to lists in the future. This will only activate the subscriber
+    * on the All Subscribers list, and not on any specific lists.
+    */
+  def activateEmailSubscription(email: String): Future[SubscriberUpdateError \/ ETSubscriber] = {
+    logger.info("Activate email subscriptions")
+    updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE)
+  }
+
+  private def updateSubscriptionStatus(email: String, status: ETSubscriber.Status): Future[SubscriberUpdateError \/ ETSubscriber] = Future {
+    def updateStatus(subscriber: ETSubscriber) = {
+      subscriber.setStatus(status)
       val response = etClientAdmin.update(subscriber)
 
-      Option(response.getResult).fold[UnsubscribeError \/ ETSubscriber]
+      Option(response.getResult).fold[SubscriberUpdateError \/ ETSubscriber]
         {\/.left(response)}
         {result => \/.right(result.getObject)}
     }
 
-    def createAndUnsubscribe() = {
+    def createAndUpdateStatus() = {
       val subscriber = new ETSubscriber()
       subscriber.setEmailAddress(email)
       subscriber.setKey(email)
       subscriber.setStatus(ETSubscriber.Status.UNSUBSCRIBED)
       val response = etClientAdmin.create(subscriber)
 
-      Option(response.getResult).fold[UnsubscribeError \/ ETSubscriber]
+      Option(response.getResult).fold[SubscriberUpdateError \/ ETSubscriber]
         {\/.left(response)}
         {result => \/.right(result.getObject)}
     }
 
     Option(
       etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult
-    ).fold(createAndUnsubscribe)(result => unsubscribe(result.getObject))
+    ).fold(createAndUpdateStatus)(result => updateStatus(result.getObject))
   }
 
   def updateEmailAddress(oldEmail: String, newEmail: String) = Future {
