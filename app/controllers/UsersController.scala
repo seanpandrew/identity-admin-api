@@ -124,7 +124,7 @@ class UsersController @Inject() (
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
-    def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email)).leftMap(error => ApiErrors.internalError(error.toString))
+    def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email))
     def deleteAccount() = EitherT.fromEither(userService.delete(request.user).asFuture)
 
     (for {
@@ -144,7 +144,7 @@ class UsersController @Inject() (
 
   def unsubcribeFromAllEmailLists(email: String) = auth.async { request =>
     logger.info("Unsubscribing from all email lists (marketing and editorial)")
-    val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email)).leftMap(error => ApiErrors.internalError(error.toString))
+    val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email))
     val unsubcribeAllEmailsInExactTarget = EitherT.fromEither(userService.unsubscribeFromMarketingEmails(email).asFuture())
 
     (for {
@@ -164,10 +164,8 @@ class UsersController @Inject() (
 
   def activateEmailSubscriptions(email: String) = auth.async { request =>
     logger.info("Activate email address in ExactTarget")
-    val activateEmailSubscriptions =
-      EitherT(exactTargetService.activateEmailSubscription(email)).leftMap(error => ApiErrors.internalError(error.toString))
 
-    activateEmailSubscriptions.fold(
+      EitherT(exactTargetService.activateEmailSubscription(email)).fold(
       error => {
         logger.error(s"Failed to activate email subscriptions: $error")
         ApiError.apiErrorToResult(error)

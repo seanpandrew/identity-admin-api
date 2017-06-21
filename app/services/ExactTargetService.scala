@@ -5,7 +5,7 @@ import javax.inject.{Inject, Singleton}
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
-import models.NewslettersSubscription
+import models.{ApiError, ApiErrors, NewslettersSubscription}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
@@ -18,12 +18,10 @@ import scala.collection.JavaConversions._
 @Singleton
 class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
 
-  type SubscriberUpdateError = ETResponse[ETSubscriber]
-
   /**
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */
-  def unsubscribeFromAllLists(email: String): Future[SubscriberUpdateError \/ ETSubscriber] = {
+  def unsubscribeFromAllLists(email: String): Future[ApiError \/ ETSubscriber] = {
     logger.info("Unsubscribe from all email lists")
     updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED)
   }
@@ -32,18 +30,20 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
     * Allows this subscriber to subscribe to lists in the future. This will only activate the subscriber
     * on the All Subscribers list, and not on any specific lists.
     */
-  def activateEmailSubscription(email: String): Future[SubscriberUpdateError \/ ETSubscriber] = {
+  def activateEmailSubscription(email: String): Future[ApiError \/ ETSubscriber] = {
     logger.info("Activate email subscriptions")
     updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE)
   }
 
-  private def updateSubscriptionStatus(email: String, status: ETSubscriber.Status): Future[SubscriberUpdateError \/ ETSubscriber] = Future {
+  private def updateSubscriptionStatus(
+      email: String, status: ETSubscriber.Status): Future[ApiError \/ ETSubscriber] = Future {
+
     def updateStatus(subscriber: ETSubscriber) = {
       subscriber.setStatus(status)
       val response = etClientAdmin.update(subscriber)
 
-      Option(response.getResult).fold[SubscriberUpdateError \/ ETSubscriber]
-        {\/.left(response)}
+      Option(response.getResult).fold[ApiError \/ ETSubscriber]
+        {\/.left(ApiErrors.internalError(response.getResponseMessage))}
         {result => \/.right(result.getObject)}
     }
 
@@ -54,8 +54,8 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
       subscriber.setStatus(ETSubscriber.Status.UNSUBSCRIBED)
       val response = etClientAdmin.create(subscriber)
 
-      Option(response.getResult).fold[SubscriberUpdateError \/ ETSubscriber]
-        {\/.left(response)}
+      Option(response.getResult).fold[ApiError \/ ETSubscriber]
+        {\/.left(ApiErrors.internalError(response.getResponseMessage))}
         {result => \/.right(result.getObject)}
     }
 
