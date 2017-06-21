@@ -161,7 +161,24 @@ class UsersController @Inject() (
       }
     )
   }
-  
+
+  def activateEmailSubscriptions(email: String) = auth.async { request =>
+    logger.info("Activate email address in ExactTarget")
+    val activateEmailSubscriptions =
+      EitherT(exactTargetService.activateEmailSubscription(email)).leftMap(error => ApiErrors.internalError(error.toString))
+
+    activateEmailSubscriptions.fold(
+      error => {
+        logger.error(s"Failed to activate email subscriptions: $error")
+        ApiError.apiErrorToResult(error)
+      },
+      _ => {
+        logger.info(s"Successfully activated email subscriptions")
+        NoContent
+      }
+    )
+  }
+
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Sending email validation for user with id: $id")
     userService.sendEmailValidation(request.user).asFuture.map {
