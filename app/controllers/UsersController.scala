@@ -68,7 +68,7 @@ class UsersController @Inject() (
         newslettersSub <- newslettersSubF
       } yield {
         user match {
-          case Left(error) => Left(InternalServerError(error))
+          case Left(error) => Left(NotFound)
 
           case Right(r) =>
             if (Config.stage == "PROD") Tip.verify("User Retrieval")

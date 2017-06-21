@@ -2,7 +2,7 @@ package repositories
 
 import java.util.UUID
 
-import models.ApiErrors
+import models.ApiError
 import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play
@@ -39,7 +39,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
       val username = UUID.randomUUID().toString
 
       val result = repo.removeReservedUsername(username)
-      result mustEqual Left(ApiErrors.notFound)
+      result mustEqual Left(ApiError("User not found"))
     }
   }
 }
