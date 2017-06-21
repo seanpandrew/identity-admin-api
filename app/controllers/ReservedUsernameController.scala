@@ -26,7 +26,7 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
           case Left(error) => InternalServerError(error)
           case Right(success) => NoContent
         }
-      case JsError(e) => BadRequest(ApiError("", e.toString()))
+      case JsError(e) => BadRequest(ApiError("Failed to reserve username", e.toString))
     }
   }
 
@@ -45,7 +45,7 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
           case Left(error) => InternalServerError(error)
           case Right(success) => NoContent
         }
-      case JsError(e) => BadRequest(ApiError("", e.toString()))
+      case JsError(error) => BadRequest(ApiError("Failed to unreserve username", error.toString))
     }
   }
 

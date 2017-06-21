@@ -30,7 +30,6 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
 
-//  def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     val emailValid = isEmailValid(user, userUpdateRequest)
     val usernameValid = isUsernameValid(user, userUpdateRequest)
@@ -67,18 +66,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
             }
 
             result
-          case (false, true) =>
-            //        ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
-            Left(ApiError("", "Email is invalid"))
-          case (true, false) =>
-            //        ApiResponse.Left(ApiErrors.badRequest("Username is invalid"))
-            Left(ApiError("", "Username is invalid"))
-          case _ =>
-            Left(ApiError("", "Email and username are invalid"))
+          case (false, true) => Left(ApiError("Email is invalid"))
+          case (true, false) => Left(ApiError("Username is invalid"))
+          case _ => Left(ApiError("Email and username are invalid"))
         }
       }
-
-
   }
 
   def isDisplayNameChanged(newDisplayName: Option[String], existingDisplayName: Option[String]): Boolean = {
@@ -212,8 +204,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   def findById(id: String): ApiResponse[User] = {
     lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
       user => Right(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
-//        Left(ApiErrors.notFound)
-        Left(ApiError("", ""))
+      Left(ApiError("User not found"))
     )
 
     OptionT(usersReadRepository.findById(id)).fold(

@@ -63,8 +63,9 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
         logger.info(s"Reserving username: $reservedUsername")
         loadReservedUsernames
       case Failure(t) =>
-        logger.error("Could not add to reserved username list", t)
-        Left(ApiError("", t.getMessage))
+        val title = s"Could not add $reservedUsername to reserved username list"
+        logger.error(title, t)
+        Left(ApiError(title, t.getMessage))
     }
   }
 

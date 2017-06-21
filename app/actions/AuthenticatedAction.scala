@@ -7,12 +7,10 @@ import com.google.inject.ImplementedBy
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.ApiError
-//import models.ApiErrors
 import org.apache.commons.codec.binary.Base64
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.http.HeaderNames
-import play.api.libs.json.Json
-import play.api.mvc.{Request, Result, Results, _}
+import play.api.mvc.{Request, Result, _}
 import play.api.mvc.Results._
 import util.Formats
 
@@ -51,8 +49,8 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
       }
     } match {
       case Success(r) => block(request)
-      case Failure(t) =>
-        Future.successful(Unauthorized(Json.toJson(ApiError("", t.getMessage))))
+      case Failure(error) =>
+        Future.successful(Unauthorized(ApiError("Authorization failure", error.getMessage)))
     }
   }
 

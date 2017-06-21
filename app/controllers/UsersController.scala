@@ -1,17 +1,15 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
-
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import com.gu.tip.Tip
 import configuration.Config
 import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.{JsError, JsSuccess, Json}
+import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-
 import scala.concurrent.Future
 import scalaz.{EitherT, OptionT}
 import scalaz.std.scalaFuture._
@@ -32,13 +30,13 @@ class UsersController @Inject() (
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     if (offset.getOrElse(0) < 0) {
-      Future.successful(BadRequest(ApiError("", "offset must be a positive integer")))
+      Future.successful(BadRequest(ApiError("offset must be a positive integer")))
     }
     else if (limit.getOrElse(0) < 0) {
-      Future.successful(BadRequest(ApiError("", "limit must be a positive integer")))
+      Future.successful(BadRequest(ApiError("limit must be a positive integer")))
     }
     else if (query.length < MinimumQueryLength) {
-      Future.successful(BadRequest(ApiError("", s"query must be a minimum of $MinimumQueryLength characters")))
+      Future.successful(BadRequest(ApiError(s"query must be a minimum of $MinimumQueryLength characters")))
     }
     else {
       EitherT.fromEither(userService.search(query, limit, offset)).fold(
@@ -117,9 +115,9 @@ class UsersController @Inject() (
                 user => Ok(Json.toJson(user))
               )
             }
-            case Left(e) => Future(BadRequest(ApiError("", e.message)))
+            case Left(e) => Future(BadRequest(ApiError("Failed to update user", e.message)))
           }
-        case JsError(e) => Future(BadRequest(ApiError("", e.toString())))
+        case JsError(e) => Future(BadRequest(ApiError("Failed to update user", e.toString)))
       }
   }
 

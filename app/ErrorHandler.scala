@@ -11,7 +11,7 @@ class ErrorHandler extends HttpErrorHandler with Logging {
   def onClientError(request: RequestHeader, statusCode: Int, message: String) = {
     if(statusCode == play.mvc.Http.Status.BAD_REQUEST) {
       logger.debug(s"Bad request: $request, error: $message")
-      Future.successful(BadRequest(ApiError("", message)))
+      Future.successful(BadRequest(ApiError("Client error", message)))
     } else if(statusCode == play.mvc.Http.Status.NOT_FOUND) {
         logger.debug(s"Handler not found for request: $request")
         Future.successful(NotFound)
@@ -21,6 +21,6 @@ class ErrorHandler extends HttpErrorHandler with Logging {
 
   def onServerError(request: RequestHeader, exception: Throwable) = {
     logger.error(s"Error handling request request: $request", exception)
-    Future.successful(InternalServerError(ApiError("", exception.getMessage)))
+    Future.successful(InternalServerError(ApiError("Server error", exception.getMessage)))
   }
 }
