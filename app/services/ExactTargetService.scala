@@ -5,7 +5,7 @@ import javax.inject.{Inject, Singleton}
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
-import models.{ApiError, ApiErrors, NewslettersSubscription}
+import models.{ApiError, NewslettersSubscription}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
@@ -43,8 +43,9 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
       val response = etClientAdmin.update(subscriber)
 
       Option(response.getResult).fold[ApiError \/ ETSubscriber]
-        {\/.left(ApiErrors.internalError(response.getResponseMessage))}
-        {result => \/.right(result.getObject)}
+        {\/.left(ApiError("Failed to update email status", response.getResponseMessage))}
+//        {result => \/.right(result.getObject)}
+        {result => \/.left(ApiError(response.getResponseMessage, ""))}
     }
 
     def createAndUpdateStatus() = {
@@ -55,7 +56,7 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
       val response = etClientAdmin.create(subscriber)
 
       Option(response.getResult).fold[ApiError \/ ETSubscriber]
-        {\/.left(ApiErrors.internalError(response.getResponseMessage))}
+        {\/.left(ApiError("Failed to update email status", response.getResponseMessage))}
         {result => \/.right(result.getObject)}
     }
 

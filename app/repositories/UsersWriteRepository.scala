@@ -32,10 +32,12 @@ class UsersWriteRepository @Inject() (
       case Success(Some(userToSave)) =>
           doUpdate(userToSave)
       case Success(None) =>
-        Left(ApiErrors.notFound)
+//        Left(ApiErrors.notFound)
+        Left(ApiError("", "User not found"))
        case Failure(t) =>
         logger.error(s"Failed to update user. id: ${user.id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+         Left(ApiError("", t.getMessage))
     }
   }
 
@@ -51,10 +53,12 @@ class UsersWriteRepository @Inject() (
       case Success(Some(userToSave)) =>
           doUpdate(userToSave)
       case Success(None) =>
-        Left(ApiErrors.notFound)
+        //        Left(ApiErrors.notFound)
+        Left(ApiError("", "User not found"))
        case Failure(t) =>
         logger.error(s"Failed to update email validation status to $emailValidated for user id: ${user.id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+         Left(ApiError("Email Validation Error", t.getMessage))
     }
   }
 
@@ -100,7 +104,8 @@ class UsersWriteRepository @Inject() (
       case Failure(t) =>
         logger.error(s"Failed to update user. id: ${userToSave._id}", t)
         val errorMessage = generateErrorMessage(t)
-        Left(ApiErrors.internalError(errorMessage))
+//        Left(ApiErrors.internalError(errorMessage))
+        Left(ApiError("User update error", errorMessage))
     }
   }
 
@@ -121,7 +126,8 @@ class UsersWriteRepository @Inject() (
         Right(true)
       case Failure(t) =>
         logger.error(s"Failed to delete user. id: ${user.id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+        Left(ApiError("", t.getMessage))
     }
   }
 
@@ -136,10 +142,12 @@ class UsersWriteRepository @Inject() (
       }
     } match {
       case Success(Some(userToSave)) => doUpdate(userToSave)
-      case Success(None) => Left(ApiErrors.notFound)
+//      case Success(None) => Left(ApiErrors.notFound)
+      case Success(None) => Left(ApiError("", ""))
       case Failure(t) =>
         logger.error(s"Failed to unsubscribe from marketing emails:", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+        Left(ApiError("", t.getMessage))
     }
   }
 }

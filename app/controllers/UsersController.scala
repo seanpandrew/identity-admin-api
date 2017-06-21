@@ -15,6 +15,7 @@ import services._
 import scala.concurrent.Future
 import scalaz.{EitherT, OptionT}
 import scalaz.std.scalaFuture._
+import models.ApiError._
 
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
@@ -32,13 +33,14 @@ class UsersController @Inject() (
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     ApiResponse {
       if (offset.getOrElse(0) < 0) {
-        ApiResponse.Left(ApiErrors.badRequest("offset must be a positive integer"))
+//        ApiResponse.Left(ApiErrors.badRequest("offset must be a positive integer"))
+        ApiResponse.Left(ApiError("", "offset must be a positive integer"))
       }
       else if (limit.getOrElse(0) < 0) {
-        ApiResponse.Left(ApiErrors.badRequest("limit must be a positive integer"))
+        ApiResponse.Left(ApiError("", "limit must be a positive integer"))
       }
       else if (query.length < MinimumQueryLength) {
-        ApiResponse.Left(ApiErrors.badRequest(s"query must be a minimum of $MinimumQueryLength characters"))
+        ApiResponse.Left(ApiError("", s"query must be a minimum of $MinimumQueryLength characters"))
       }
       else {
         userService.search(query, limit, offset)
@@ -68,7 +70,9 @@ class UsersController @Inject() (
         newslettersSub <- newslettersSubF
       } yield {
         user match {
-          case Left(r) => Left(ApiError.apiErrorToResult(r))
+          case Left(r) =>
+//            Left(ApiError.apiErrorToResult(r))
+            Left(InternalServerError(Json.toJson(r)))
 
           case Right(r) =>
             if (Config.stage == "PROD") Tip.verify("User Retrieval")
@@ -90,7 +94,8 @@ class UsersController @Inject() (
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
       OptionT(salesforce.getSubscriptionByEmail(email)).fold(
         sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)),
-        Left(ApiError.apiErrorToResult(ApiErrors.notFound))
+//        Left(ApiError.apiErrorToResult(ApiErrors.notFound))
+          Left(NotFound)
       )
     }
   }
@@ -113,10 +118,14 @@ class UsersController @Inject() (
               logger.info(s"Updating user id:$id, body: $result")
               userService.update(request.user, validUserUpdateRequest)
             }
-            case Left(e) => ApiResponse.Left(ApiErrors.badRequest(e.message))
+            case Left(e) =>
+//              ApiResponse.Left(ApiErrors.badRequest(e.message))
+              ApiResponse.Left(ApiError("", ""))
+
           }
         case JsError(e) => 
-          ApiResponse.Left(ApiErrors.badRequest(e.toString()))
+//          ApiResponse.Left(ApiErrors.badRequest(e.toString()))
+          ApiResponse.Left(ApiError("",""))
       }
     }
   }
@@ -133,7 +142,8 @@ class UsersController @Inject() (
     } yield EmailService.sendDeletionConfirmation(request.user.email)).fold(
       error => {
         logger.error(s"Error deleting user $id: $error")
-        ApiError.apiErrorToResult(error)
+//        ApiError.apiErrorToResult(error)
+        InternalServerError(Json.toJson(error))
       },
       _ => {
         logger.info(s"Successfully deleted user $id")
@@ -153,7 +163,8 @@ class UsersController @Inject() (
     } yield ()).fold(
       error => {
         logger.error(s"Failed to unsubscribe from all email lists: $error")
-        ApiError.apiErrorToResult(error)
+//        ApiError.apiErrorToResult(error)
+        InternalServerError(Json.toJson(error))
       },
       _ => {
         logger.info(s"Successfully unsubscribed from all email lists")
@@ -163,12 +174,17 @@ class UsersController @Inject() (
   }
 
   def activateEmailSubscriptions(email: String) = auth.async { request =>
+    import models.ApiError._
     logger.info("Activate email address in ExactTarget")
 
       EitherT(exactTargetService.activateEmailSubscription(email)).fold(
       error => {
         logger.error(s"Failed to activate email subscriptions: $error")
-        ApiError.apiErrorToResult(error)
+//        InternalServerError("hello world")
+//        ApiError.apiErrorToResult(error)
+//        InternalServerError("hello world")
+//        InternalServerError(Json.toJson(ApiError("hello message", "googbye detials", 555)))
+        InternalServerError(Json.toJson(error))
       },
       _ => {
         logger.info(s"Successfully activated email subscriptions")
@@ -181,7 +197,7 @@ class UsersController @Inject() (
     logger.info(s"Sending email validation for user with id: $id")
     userService.sendEmailValidation(request.user).asFuture.map {
       case Right(r) => NoContent
-      case Left(r) => ApiError.apiErrorToResult(r)
+      case Left(error) => InternalServerError(Json.toJson(error))
     }
   }
 
@@ -189,7 +205,7 @@ class UsersController @Inject() (
     logger.info(s"Validating email for user with id: $id")
     userService.validateEmail(request.user).asFuture.map {
       case Right(r) => NoContent
-      case Left(r) => ApiError.apiErrorToResult(r)
+      case Left(error) => InternalServerError(Json.toJson(error))
     }
   }
 }

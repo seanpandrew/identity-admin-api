@@ -66,11 +66,13 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
         ApiResponse.Async(Future.successful(result))
       case (false, true) =>
-        ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
+//        ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
+        ApiResponse.Left(ApiError("", "Email is invalid"))
       case (true, false) =>
-        ApiResponse.Left(ApiErrors.badRequest("Username is invalid"))
+//        ApiResponse.Left(ApiErrors.badRequest("Username is invalid"))
+        ApiResponse.Left(ApiError("", "Username is invalid"))
       case _ =>
-        ApiResponse.Left(ApiErrors.badRequest("Email and username are invalid"))
+        ApiResponse.Left(ApiError("", "Email and username are invalid"))
     }
 
   }
@@ -208,7 +210,8 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     ApiResponse.Async {
       lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
         user => Right(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
-        Left(ApiErrors.notFound)
+//        Left(ApiErrors.notFound)
+          Left(ApiError("", ""))
       )
 
       OptionT(usersReadRepository.findById(id)).fold(

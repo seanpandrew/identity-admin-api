@@ -6,7 +6,9 @@ import scala.concurrent._
 import javax.inject.Singleton
 
 import com.gu.identity.util.Logging
-import models.ApiErrors.{badRequest, internalError, notFound}
+import models.ApiError
+import play.api.libs.json.Json
+//import models.ApiErrors.{badRequest, internalError, notFound}
 
 @Singleton
 class ErrorHandler extends HttpErrorHandler with Logging {
@@ -15,10 +17,12 @@ class ErrorHandler extends HttpErrorHandler with Logging {
 
     if(statusCode == play.mvc.Http.Status.BAD_REQUEST) {
       logger.debug(s"Bad request: $request, error: $message")
-      Future.successful(badRequest(message))
+//      Future.successful(badRequest(message))
+      Future.successful(BadRequest(Json.toJson(ApiError("", message))))
     } else if(statusCode == play.mvc.Http.Status.NOT_FOUND) {
       logger.debug(s"Handler not found for request: $request")
-      Future.successful(notFound)
+//      Future.successful(notFound)
+      Future.successful(NotFound)
     } else
       Future.successful(
         Status(statusCode)("A client error occurred: " + message)
@@ -29,6 +33,7 @@ class ErrorHandler extends HttpErrorHandler with Logging {
 
   def onServerError(request: RequestHeader, exception: Throwable) = {
     logger.error(s"Error handling request request: $request", exception)
-    Future.successful(internalError(exception.getMessage))
+//    Future.successful(internalError(exception.getMessage))
+    Future.successful(InternalServerError(Json.toJson(ApiError("", exception.getMessage))))
   }
 }

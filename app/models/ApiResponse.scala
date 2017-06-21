@@ -4,6 +4,7 @@ import com.gu.identity.util.Logging
 import play.api.libs.json._
 import play.api.mvc.{Result, Results}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import models.ApiError._
 
 import scala.concurrent.Future
 
@@ -31,8 +32,7 @@ case class ApiResponse[A] private (underlying: Future[Either[ApiError, A]]) {
    */
   def asFuture(): Future[Either[ApiError, A]] = {
     underlying recover { case err =>
-      val apiErrors = ApiErrors.internalError(err.getMessage)
-      scala.Left(apiErrors)
+      scala.Left(ApiError("Internal Error", err.getMessage))
     }
   }
 }
@@ -57,9 +57,9 @@ object ApiResponse extends Results {
   object Async extends Logging {
 
     def handleError[T]: PartialFunction[Throwable, Either[ApiError, T]] = {
-      case t: Throwable =>
-        logger.error("Unexpected error", t)
-        scala.Left(ApiErrors.internalError(t.getMessage))
+      case error: Throwable =>
+        logger.error("Unexpected error", error)
+        scala.Left(ApiError("Internal Error", error.getMessage))
     }
 
 
@@ -83,7 +83,7 @@ object ApiResponse extends Results {
 
   def apply[T](action: => ApiResponse[T])(implicit tjs: Writes[T]): Future[Result] = {
     action.fold(
-      err => err,
+      err => InternalServerError(Json.toJson(err)),
       t => Ok { Json.toJson(t) }
     )
   }

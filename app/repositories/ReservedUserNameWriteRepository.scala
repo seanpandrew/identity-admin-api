@@ -5,7 +5,8 @@ import javax.inject.{Inject, Singleton}
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.MongoCursor
 import com.mongodb.casbah.commons.MongoDBObject
-import models.{ApiError, ApiErrors, ReservedUsernameList}
+//import models.{ApiError, ApiErrors, ReservedUsernameList}
+import models.{ApiError, ReservedUsernameList}
 import org.bson.types.ObjectId
 import salat.dao.SalatDAO
 
@@ -23,10 +24,12 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
       findOne(MongoDBObject("username" -> username))
     } match {
       case Success(Some(r)) => Right(r)
-      case Success(None) => Left(ApiErrors.notFound)
+//      case Success(None) => Left(ApiErrors.notFound)
+      case Success(None) => Left(ApiError("", ""))
       case Failure(t) =>
         logger.error(s"Could find reserved username: $username", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+        Left(ApiError("", t.getMessage))
     }
 
   def removeReservedUsername(username: String): Either[ApiError, ReservedUsernameList] =
@@ -38,7 +41,8 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
             loadReservedUsernames
           case Failure(t) =>
             logger.error(s"Could remove reserved username: $username", t)
-            Left(ApiErrors.internalError(t.getMessage))
+//            Left(ApiErrors.internalError(t.getMessage))
+            Left(ApiError("", t.getMessage))
         }
         case Left(l) => Left(l)
       }
@@ -50,7 +54,8 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
       case Success(r) => Right(r)
       case Failure(t) =>
         logger.error("Could not load reserved usernames", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+        Left(ApiError("", t.getMessage))
     }
 
   private def cursorToReservedUsernameList(col: MongoCursor): ReservedUsernameList = ReservedUsernameList(col.map(dbObject => dbObject.get("username").asInstanceOf[String]).toList)
@@ -64,7 +69,8 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
         loadReservedUsernames
       case Failure(t) =>
         logger.error("Could not add to reserved username list", t)
-        Left(ApiErrors.internalError(t.getMessage))
+//        Left(ApiErrors.internalError(t.getMessage))
+        Left(ApiError("", t.getMessage))
     }
   }
 
