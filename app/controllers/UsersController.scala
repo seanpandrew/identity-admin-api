@@ -29,21 +29,26 @@ class UsersController @Inject() (
   private val MinimumQueryLength = 2
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
-    if (offset.getOrElse(0) < 0) {
-      Future.successful(BadRequest(ApiError("offset must be a positive integer")))
-    }
-    else if (limit.getOrElse(0) < 0) {
-      Future.successful(BadRequest(ApiError("limit must be a positive integer")))
-    }
-    else if (query.length < MinimumQueryLength) {
-      Future.successful(BadRequest(ApiError(s"query must be a minimum of $MinimumQueryLength characters")))
-    }
-    else {
+    def validateSearchQuery() =
+      if (!offset.forall(_ >= 0))
+        Left("offset must be a positive integer")
+      else if (!limit.forall(_ >= 0))
+        Left("limit must be a positive integer")
+      else if (query.length < MinimumQueryLength)
+        Left(s"query must be a minimum of $MinimumQueryLength characters")
+      else
+        Right(())
+
+    def doSearch() =
       EitherT.fromEither(userService.search(query, limit, offset)).fold(
         error => InternalServerError(error),
         response => Ok(Json.toJson(response))
       )
-    }
+
+    validateSearchQuery().fold(
+      error => Future.successful(BadRequest(ApiError(error))),
+      _ => doSearch()
+    )
   }
 
   import play.api.libs.json._
