@@ -25,7 +25,7 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
       case Success(Some(r)) => Right(r)
       case Success(None) => Left(ApiError("Username not found"))
       case Failure(error) =>
-        val title = s"Could find reserved username $username"
+        val title = s"Failed to find reserved username $username"
         logger.error(title, error)
         Left(ApiError(title, error.getMessage))
     }
@@ -37,7 +37,7 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
         } match {
           case Success(success) => loadReservedUsernames
           case Failure(t) =>
-            val title = s"Could remove reserved username $username"
+            val title = s"Failed to remove reserved username $username"
             logger.error(title, t)
             Left(ApiError(title, t.getMessage))
         }
@@ -50,7 +50,7 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
     } match {
       case Success(r) => Right(r)
       case Failure(t) =>
-        val title = "Could not load reserved usernames"
+        val title = "Failed to load reserved usernames"
         logger.error(title, t)
         Left(ApiError(title, t.getMessage))
     }
@@ -65,7 +65,7 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
         logger.info(s"Reserving username: $reservedUsername")
         loadReservedUsernames
       case Failure(t) =>
-        val title = s"Could not add $reservedUsername to reserved username list"
+        val title = s"Failed to add $reservedUsername to reserved username list"
         logger.error(title, t)
         Left(ApiError(title, t.getMessage))
     }
