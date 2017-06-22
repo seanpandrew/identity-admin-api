@@ -4,7 +4,6 @@ import javax.inject.Inject
 
 import com.gu.identity.util.Logging
 import configuration.Config
-//import models.{ApiError, ApiErrors}
 import models.ApiError
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
@@ -45,13 +44,12 @@ class IdentityApiClient @Inject() (ws: WSClient) extends Logging {
         else {
           val errorResponse = Json.parse(response.body).as[IdentityApiErrorResponse]
           val errorMessage = errorResponse.errors.headOption.map(x => x.message).getOrElse("Unknown error")
-//          Left(ApiErrors.internalError(errorMessage))
           Left(ApiError("Send Email Validation Error", errorMessage))
         }
     ).recover { case e: Any =>
-      logger.error("Could not send email validation", e.getMessage)
-//      Left(ApiErrors.internalError(e.getMessage))
-      Left(ApiError("", e.getMessage))
+      val title = "Could not send email validation"
+      logger.error(title, e.getMessage)
+      Left(ApiError(title, e.getMessage))
     }
   }
 

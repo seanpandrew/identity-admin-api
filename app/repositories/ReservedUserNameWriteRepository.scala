@@ -23,10 +23,11 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
       findOne(MongoDBObject("username" -> username))
     } match {
       case Success(Some(r)) => Right(r)
-      case Success(None) => Left(ApiError("", ""))
-      case Failure(t) =>
-        logger.error(s"Could find reserved username: $username", t)
-        Left(ApiError("", t.getMessage))
+      case Success(None) => Left(ApiError("Username not found"))
+      case Failure(error) =>
+        val title = s"Could find reserved username $username"
+        logger.error(title, error)
+        Left(ApiError(title, error.getMessage))
     }
 
   def removeReservedUsername(username: String): Either[ApiError, ReservedUsernameList] =
@@ -34,11 +35,11 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
         case Right(r) => Try {
           remove(r)
         } match {
-          case Success(success) =>
-            loadReservedUsernames
+          case Success(success) => loadReservedUsernames
           case Failure(t) =>
-            logger.error(s"Could remove reserved username: $username", t)
-            Left(ApiError("", t.getMessage))
+            val title = s"Could remove reserved username $username"
+            logger.error(title, t)
+            Left(ApiError(title, t.getMessage))
         }
         case Left(l) => Left(l)
       }
@@ -49,8 +50,9 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
     } match {
       case Success(r) => Right(r)
       case Failure(t) =>
-        logger.error("Could not load reserved usernames", t)
-        Left(ApiError("", t.getMessage))
+        val title = "Could not load reserved usernames"
+        logger.error(title, t)
+        Left(ApiError(title, t.getMessage))
     }
 
   private def cursorToReservedUsernameList(col: MongoCursor): ReservedUsernameList = ReservedUsernameList(col.map(dbObject => dbObject.get("username").asInstanceOf[String]).toList)

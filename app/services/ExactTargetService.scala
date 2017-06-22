@@ -44,8 +44,7 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
 
       Option(response.getResult).fold[ApiError \/ ETSubscriber]
         {\/.left(ApiError("Failed to update email status", response.getResponseMessage))}
-//        {result => \/.right(result.getObject)}
-        {result => \/.left(ApiError(response.getResponseMessage, ""))}
+        {result => \/.right(result.getObject)}
     }
 
     def createAndUpdateStatus() = {

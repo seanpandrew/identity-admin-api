@@ -163,10 +163,9 @@ class UsersController @Inject() (
   }
 
   def activateEmailSubscriptions(email: String) = auth.async { request =>
-    import models.ApiError._
     logger.info("Activate email address in ExactTarget")
 
-      EitherT(exactTargetService.activateEmailSubscription(email)).fold(
+    EitherT(exactTargetService.activateEmailSubscription(email)).fold(
       error => {
         logger.error(s"Failed to activate email subscriptions: $error")
         InternalServerError(error)

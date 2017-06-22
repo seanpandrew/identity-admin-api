@@ -122,7 +122,6 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
-
       // execute all these in parallel
       val usersByMemNumF = searchIdentityByMembership(query)
       val orphansF = searchOrphan(query)
