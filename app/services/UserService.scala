@@ -223,11 +223,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     }
   }
 
-  def validateEmail(user: User): ApiResponse[Boolean] = Future {
-    doValidateEmail(user, emailValidated = true)
-  }
-
-  private def doValidateEmail(user: User, emailValidated: Boolean): Either[ApiError, Boolean] = {
+  def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Boolean] = Future {
     usersWriteRepository.updateEmailValidationStatus(user, emailValidated) match{
       case Right(r) => {
         triggerEvents(
@@ -243,7 +239,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def sendEmailValidation(user: User): ApiResponse[Boolean] = {
-    doValidateEmail(user, emailValidated = false) match {
+    validateEmail(user, emailValidated = false).flatMap {
       case Right(_) => identityApiClient.sendEmailValidation(user.id)
       case Left(r) => Future.successful(Left(r))
     }
