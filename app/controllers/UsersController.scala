@@ -30,9 +30,9 @@ class UsersController @Inject() (
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     def validateSearchQuery() =
-      if (!offset.forall(_ >= 0))
+      if (offset.exists(_ < 0))
         Left("offset must be a positive integer")
-      else if (!limit.forall(_ >= 0))
+      else if (limit.exists(_ < 0))
         Left("limit must be a positive integer")
       else if (query.length < MinimumQueryLength)
         Left(s"query must be a minimum of $MinimumQueryLength characters")
