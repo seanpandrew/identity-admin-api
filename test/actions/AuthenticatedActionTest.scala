@@ -1,11 +1,11 @@
 package actions
 
-import models.ApiErrors
-import org.joda.time.{DateTimeZone, DateTime}
+import models.ApiError
+import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import play.api.http.HeaderNames
-import play.api.mvc.{Results, Request, Result}
+import play.api.mvc.{Request, Result, Results}
 import play.api.test.FakeRequest
 import util.Formats
 
@@ -49,7 +49,7 @@ class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter
 
     def verifyUnauthorized(result: Future[Result], errorMessage: String) = {
       status(result) shouldEqual UNAUTHORIZED
-      contentAsJson(result) shouldEqual Json.toJson(ApiErrors.unauthorized(errorMessage))
+      contentAsJson(result) shouldEqual Json.toJson(ApiError("Authorization failure", errorMessage))
     }
 
     "Return unauthorised if Date header is missing" in {

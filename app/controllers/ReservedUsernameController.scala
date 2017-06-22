@@ -23,17 +23,16 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
       case JsSuccess(result, path) =>
         logger.info(s"Reserving username: ${result.username}")
         reservedUsernameRepository.addReservedUsername(result.username) match {
-          case Left(e) => e
+          case Left(error) => InternalServerError(error)
           case Right(success) => NoContent
         }
-      case JsError(e) =>
-        ApiErrors.badRequest(e.toString())
+      case JsError(e) => BadRequest(ApiError("Failed to reserve username", e.toString))
     }
   }
 
   def getReservedUsernames = auth { request =>
     reservedUsernameRepository.loadReservedUsernames match {
-      case Left(e) => e
+      case Left(error) => InternalServerError(error)
       case Right(success) => Ok(Json.toJson(success))
     }
   }
@@ -43,11 +42,10 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
       case JsSuccess(result, path) =>
         logger.info(s"Unreserving username: ${result.username}")
         reservedUsernameRepository.removeReservedUsername(result.username) match {
-          case Left(e) => e
+          case Left(error) => InternalServerError(error)
           case Right(success) => NoContent
         }
-      case JsError(e) =>
-        ApiErrors.badRequest(e.toString())
+      case JsError(error) => BadRequest(ApiError("Failed to unreserve username", error.toString))
     }
   }
 

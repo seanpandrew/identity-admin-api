@@ -6,17 +6,18 @@ import javax.crypto.spec.SecretKeySpec
 import com.google.inject.ImplementedBy
 import com.gu.identity.util.Logging
 import configuration.Config
-import models.ApiErrors
+import models.ApiError
 import org.apache.commons.codec.binary.Base64
-import org.joda.time.{DateTimeZone, DateTime}
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.http.HeaderNames
 import play.api.mvc.{Request, Result, _}
+import play.api.mvc.Results._
 import util.Formats
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-
 import play.api.mvc._
+import models.ApiError._
 
 class AuthenticatedActionWithSecret extends AuthenticatedAction {
   val secret = Config.hmacSecret
@@ -48,7 +49,8 @@ trait AuthenticatedAction extends ActionBuilder[Request] with Logging {
       }
     } match {
       case Success(r) => block(request)
-      case Failure(t) => Future.successful(ApiErrors.unauthorized(t.getMessage))
+      case Failure(error) =>
+        Future.successful(Unauthorized(ApiError("Authorization failure", error.getMessage)))
     }
   }
 

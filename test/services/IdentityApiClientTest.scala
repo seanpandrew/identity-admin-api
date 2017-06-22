@@ -48,7 +48,7 @@ class IdentityApiClientTest
     }
     
     "return Left when unsuccessful" in {
-      clientError.sendEmailValidation(UserId).map(_ shouldEqual Left(ApiError("Internal Server Error", "fatal error", 500)))
+      clientError.sendEmailValidation(UserId).map(_ shouldEqual Left(ApiError("Internal Server Error", "fatal error")))
     }
   }
 

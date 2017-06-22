@@ -1,21 +1,20 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
-
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import com.gu.tip.Tip
 import configuration.Config
 import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.{JsError, JsSuccess}
+import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-
 import scala.concurrent.Future
 import scalaz.{EitherT, OptionT}
 import scalaz.std.scalaFuture._
-
+import models.ApiError._
+import models._
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
@@ -30,19 +29,20 @@ class UsersController @Inject() (
   private val MinimumQueryLength = 2
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
-    ApiResponse {
-      if (offset.getOrElse(0) < 0) {
-        ApiResponse.Left(ApiErrors.badRequest("offset must be a positive integer"))
-      }
-      else if (limit.getOrElse(0) < 0) {
-        ApiResponse.Left(ApiErrors.badRequest("limit must be a positive integer"))
-      }
-      else if (query.length < MinimumQueryLength) {
-        ApiResponse.Left(ApiErrors.badRequest(s"query must be a minimum of $MinimumQueryLength characters"))
-      }
-      else {
-        userService.search(query, limit, offset)
-      }
+    if (offset.getOrElse(0) < 0) {
+      Future.successful(BadRequest(ApiError("offset must be a positive integer")))
+    }
+    else if (limit.getOrElse(0) < 0) {
+      Future.successful(BadRequest(ApiError("limit must be a positive integer")))
+    }
+    else if (query.length < MinimumQueryLength) {
+      Future.successful(BadRequest(ApiError(s"query must be a minimum of $MinimumQueryLength characters")))
+    }
+    else {
+      EitherT.fromEither(userService.search(query, limit, offset)).fold(
+        error => InternalServerError(error),
+        response => Ok(Json.toJson(response))
+      )
     }
   }
 
@@ -61,14 +61,14 @@ class UsersController @Inject() (
       val newslettersSubF = exactTargetService.newslettersSubscription(userId)
 
       for {
-        user <- userService.findById(userId).asFuture
+        user <- userService.findById(userId)
         subscription <- subscriptionF
         membership <- membershipF
         hasCommented <- hasCommentedF
         newslettersSub <- newslettersSubF
       } yield {
         user match {
-          case Left(r) => Left(ApiError.apiErrorToResult(r))
+          case Left(error) => Left(NotFound)
 
           case Right(r) =>
             if (Config.stage == "PROD") Tip.verify("User Retrieval")
@@ -90,7 +90,7 @@ class UsersController @Inject() (
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
       OptionT(salesforce.getSubscriptionByEmail(email)).fold(
         sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)),
-        Left(ApiError.apiErrorToResult(ApiErrors.notFound))
+        Left(NotFound)
       )
     }
   }
@@ -104,28 +104,28 @@ class UsersController @Inject() (
   }
 
   def update(id: String) = (auth andThen UserAction(id)).async(parse.json) { request =>
-    ApiResponse {
       request.body.validate[UserUpdateRequest] match {
         case JsSuccess(result, path) =>
           UserUpdateRequestValidator.isValid(result) match {
             case Right(validUserUpdateRequest) => {
               if (Config.stage == "PROD") Tip.verify("User Update")
               logger.info(s"Updating user id:$id, body: $result")
-              userService.update(request.user, validUserUpdateRequest)
+              EitherT.fromEither(userService.update(request.user, validUserUpdateRequest)).fold(
+                error => InternalServerError(error),
+                user => Ok(Json.toJson(user))
+              )
             }
-            case Left(e) => ApiResponse.Left(ApiErrors.badRequest(e.message))
+            case Left(e) => Future(BadRequest(ApiError("Failed to update user", e.message)))
           }
-        case JsError(e) => 
-          ApiResponse.Left(ApiErrors.badRequest(e.toString()))
+        case JsError(e) => Future(BadRequest(ApiError("Failed to update user", e.toString)))
       }
-    }
   }
 
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
-    def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email)).leftMap(error => ApiErrors.internalError(error.toString))
-    def deleteAccount() = EitherT.fromEither(userService.delete(request.user).asFuture)
+    def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email))
+    def deleteAccount() = EitherT.fromEither(userService.delete(request.user))
 
     (for {
       _ <- unsubscribeEmails()
@@ -133,7 +133,7 @@ class UsersController @Inject() (
     } yield EmailService.sendDeletionConfirmation(request.user.email)).fold(
       error => {
         logger.error(s"Error deleting user $id: $error")
-        ApiError.apiErrorToResult(error)
+        InternalServerError(error)
       },
       _ => {
         logger.info(s"Successfully deleted user $id")
@@ -144,8 +144,8 @@ class UsersController @Inject() (
 
   def unsubcribeFromAllEmailLists(email: String) = auth.async { request =>
     logger.info("Unsubscribing from all email lists (marketing and editorial)")
-    val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email)).leftMap(error => ApiErrors.internalError(error.toString))
-    val unsubcribeAllEmailsInExactTarget = EitherT.fromEither(userService.unsubscribeFromMarketingEmails(email).asFuture())
+    val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email))
+    val unsubcribeAllEmailsInExactTarget = EitherT.fromEither(userService.unsubscribeFromMarketingEmails(email))
 
     (for {
       _ <- unsubscribeMarketingEmailsInIdentity
@@ -153,7 +153,7 @@ class UsersController @Inject() (
     } yield ()).fold(
       error => {
         logger.error(s"Failed to unsubscribe from all email lists: $error")
-        ApiError.apiErrorToResult(error)
+        InternalServerError(error)
       },
       _ => {
         logger.info(s"Successfully unsubscribed from all email lists")
@@ -164,13 +164,11 @@ class UsersController @Inject() (
 
   def activateEmailSubscriptions(email: String) = auth.async { request =>
     logger.info("Activate email address in ExactTarget")
-    val activateEmailSubscriptions =
-      EitherT(exactTargetService.activateEmailSubscription(email)).leftMap(error => ApiErrors.internalError(error.toString))
 
-    activateEmailSubscriptions.fold(
+    EitherT(exactTargetService.activateEmailSubscription(email)).fold(
       error => {
         logger.error(s"Failed to activate email subscriptions: $error")
-        ApiError.apiErrorToResult(error)
+        InternalServerError(error)
       },
       _ => {
         logger.info(s"Successfully activated email subscriptions")
@@ -181,17 +179,17 @@ class UsersController @Inject() (
 
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Sending email validation for user with id: $id")
-    userService.sendEmailValidation(request.user).asFuture.map {
+    userService.sendEmailValidation(request.user).map {
       case Right(r) => NoContent
-      case Left(r) => ApiError.apiErrorToResult(r)
+      case Left(error) => InternalServerError(error)
     }
   }
 
   def validateEmail(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Validating email for user with id: $id")
-    userService.validateEmail(request.user).asFuture.map {
+    userService.validateEmail(request.user).map {
       case Right(r) => NoContent
-      case Left(r) => ApiError.apiErrorToResult(r)
+      case Left(error) => InternalServerError(error)
     }
   }
 }

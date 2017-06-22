@@ -34,45 +34,43 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     val emailValid = isEmailValid(user, userUpdateRequest)
     val usernameValid = isUsernameValid(user, userUpdateRequest)
 
-    (emailValid, usernameValid) match {
-      case (true, true) =>
-        val userEmailChanged = !user.email.equalsIgnoreCase(userUpdateRequest.email)
-        val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
-        val userEmailValidatedChanged = isEmailValidationChanged(userEmailValidated, user.status.userEmailValidated)
-        val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
-        val displayNameChanged = isDisplayNameChanged(userUpdateRequest.displayName, user.displayName)
-        val update = IdentityUserUpdate(userUpdateRequest, userEmailValidated)
-        val result = usersWriteRepository.update(user, update)
+      Future {
+        (emailValid, usernameValid) match {
+          case (true, true) =>
+            val userEmailChanged = !user.email.equalsIgnoreCase(userUpdateRequest.email)
+            val userEmailValidated = if(userEmailChanged) Some(false) else user.status.userEmailValidated
+            val userEmailValidatedChanged = isEmailValidationChanged(userEmailValidated, user.status.userEmailValidated)
+            val usernameChanged = isUsernameChanged(userUpdateRequest.username, user.username)
+            val displayNameChanged = isDisplayNameChanged(userUpdateRequest.displayName, user.displayName)
+            val update = IdentityUserUpdate(userUpdateRequest, userEmailValidated)
+            val result = usersWriteRepository.update(user, update)
 
-        triggerEvents(
-          userId = user.id,
-          usernameChanged = usernameChanged,
-          displayNameChanged = displayNameChanged,
-          emailValidatedChanged = userEmailValidatedChanged
-        )
+            triggerEvents(
+              userId = user.id,
+              usernameChanged = usernameChanged,
+              displayNameChanged = displayNameChanged,
+              emailValidatedChanged = userEmailValidatedChanged
+            )
 
-        if(result.isRight && userEmailChanged) {
-          identityApiClient.sendEmailValidation(user.id)
-          exactTargetService.updateEmailAddress(user.email, userUpdateRequest.email)
+            if(result.isRight && userEmailChanged) {
+              identityApiClient.sendEmailValidation(user.id)
+              exactTargetService.updateEmailAddress(user.email, userUpdateRequest.email)
+            }
+
+            if (userEmailChanged && eventsEnabled) {
+              SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
+            }
+
+            if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {
+              madgexService.update(GNMMadgexUser(user.id, userUpdateRequest))
+            }
+
+            result
+          case (false, true) => Left(ApiError("Email is invalid"))
+          case (true, false) => Left(ApiError("Username is invalid"))
+          case _ => Left(ApiError("Email and username are invalid"))
         }
-
-        if (userEmailChanged && eventsEnabled) {
-          SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
-        }
-
-        if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {
-          madgexService.update(GNMMadgexUser(user.id, userUpdateRequest))
-        }
-
-        ApiResponse.Async(Future.successful(result))
-      case (false, true) =>
-        ApiResponse.Left(ApiErrors.badRequest("Email is invalid"))
-      case (true, false) =>
-        ApiResponse.Left(ApiErrors.badRequest("Username is invalid"))
-      case _ =>
-        ApiResponse.Left(ApiErrors.badRequest("Email and username are invalid"))
-    }
-
+      }
   }
 
   def isDisplayNameChanged(newDisplayName: Option[String], existingDisplayName: Option[String]): Boolean = {
@@ -123,9 +121,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       true
   }
 
-  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =
-    ApiResponse.Async.Right {
-
+  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
       // execute all these in parallel
       val usersByMemNumF = searchIdentityByMembership(query)
       val orphansF = searchOrphan(query)
@@ -141,15 +137,15 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       } yield {
 
         if (idUsers.results.size > 0)
-          idUsers
+          Right(idUsers)
         else if (usersBySubId.results.size > 0)
-          usersBySubId
+          Right(usersBySubId)
         else if (orphans.results.size > 0)
-          orphans
+          Right(orphans)
         else
-          usersByMemNum
+          Right(usersByMemNum)
       }
-    }
+  }
 
   def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
 
@@ -205,36 +201,29 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {
-    ApiResponse.Async {
-      lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
-        user => Right(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
-        Left(ApiErrors.notFound)
-      )
+    lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
+      user => Right(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
+      Left(ApiError("User not found"))
+    )
 
-      OptionT(usersReadRepository.findById(id)).fold(
-        activeUser => Future.successful(Right(activeUser)),
-        deletedUserOptT
-      ).flatMap(identity) // F[F] => F
-    }
+    OptionT(usersReadRepository.findById(id)).fold(
+      activeUser => Future.successful(Right(activeUser)),
+      deletedUserOptT
+    ).flatMap(identity) // F[F] => F
   }
 
-  def delete(user: User): ApiResponse[ReservedUsernameList] = {
-    val result = usersWriteRepository.delete(user) match{
+  def delete(user: User): ApiResponse[ReservedUsernameList] = Future {
+    usersWriteRepository.delete(user) match {
       case Right(r) =>
         user.username.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
           reservedUserNameRepository.loadReservedUsernames
         }
+
       case Left(r) => Left(r)
     }
-    ApiResponse.Async(Future.successful(result))
   }
 
-  def validateEmail(user: User): ApiResponse[Boolean] = {
-    val result = doValidateEmail(user, emailValidated = true)
-    ApiResponse.Async(Future.successful(result))
-  }
-
-  private def doValidateEmail(user: User, emailValidated: Boolean): Either[ApiError, Boolean] = {
+  def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Boolean] = Future {
     usersWriteRepository.updateEmailValidationStatus(user, emailValidated) match{
       case Right(r) => {
         triggerEvents(
@@ -250,15 +239,13 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def sendEmailValidation(user: User): ApiResponse[Boolean] = {
-    val result = doValidateEmail(user, emailValidated = false) match {
+    validateEmail(user, emailValidated = false).flatMap {
       case Right(_) => identityApiClient.sendEmailValidation(user.id)
       case Left(r) => Future.successful(Left(r))
     }
-    ApiResponse.Async(result)
   }
 
-  def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] = {
-    val result = usersWriteRepository.unsubscribeFromMarketingEmails(email)
-    ApiResponse.Async(Future.successful(result))
+  def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] = Future {
+    usersWriteRepository.unsubscribeFromMarketingEmails(email)
   }
 }

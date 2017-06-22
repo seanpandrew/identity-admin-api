@@ -1,11 +1,11 @@
 package controllers
 
 import actions.AuthenticatedAction
-import models.{ApiErrors, ReservedUsernameList}
+import models.{ApiError, ReservedUsernameList}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
-import play.api.mvc.{Result, Request}
+import play.api.mvc.{Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories.ReservedUserNameWriteRepository
@@ -42,7 +42,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
 
     "return internal server error when error occurs" in {
       val json = """{"username":"usernameToReserve"}"""
-      val error = ApiErrors.internalError("boom")
+      val error = ApiError("boom")
       when(reservedUsernameRepo.addReservedUsername("usernameToReserve")).thenReturn(Left(error))
       val result = controller.reserveUsername()(FakeRequest().withBody(Json.parse(json)))
       status(result) shouldEqual INTERNAL_SERVER_ERROR
@@ -66,7 +66,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
 
     "return internal server error when error occurs" in {
       val json = """{"username":"usernameToReserve"}"""
-      val error = ApiErrors.internalError("boom")
+      val error = ApiError("boom")
       when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(Left(error))
       val result = controller.unreserveUsername()(FakeRequest().withBody(Json.parse(json)))
       status(result) shouldEqual INTERNAL_SERVER_ERROR
@@ -84,7 +84,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
     }
 
     "return internal server error when error occurs" in {
-      val error = ApiErrors.internalError("boom")
+      val error = ApiError("boom")
       when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Left(error))
       val result = controller.getReservedUsernames(FakeRequest())
       status(result) shouldEqual INTERNAL_SERVER_ERROR

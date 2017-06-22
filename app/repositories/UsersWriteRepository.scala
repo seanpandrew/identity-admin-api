@@ -29,13 +29,12 @@ class UsersWriteRepository @Inject() (
         prepareUserForUpdate(userUpdateRequest, persistedUser)
       }
     } match {
-      case Success(Some(userToSave)) =>
-          doUpdate(userToSave)
-      case Success(None) =>
-        Left(ApiErrors.notFound)
-       case Failure(t) =>
-        logger.error(s"Failed to update user. id: ${user.id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+        case Success(Some(userToSave)) => doUpdate(userToSave)
+        case Success(None) => Left(ApiError("User not found"))
+        case Failure(error) =>
+          val title = s"Failed to update user ${user.id}"
+          logger.error(title, error)
+          Left(ApiError(title, error.getMessage))
     }
   }
 
@@ -48,13 +47,12 @@ class UsersWriteRepository @Inject() (
         persistedUser.copy(statusFields = Some(statusFields))
       }
     } match {
-      case Success(Some(userToSave)) =>
-          doUpdate(userToSave)
-      case Success(None) =>
-        Left(ApiErrors.notFound)
-       case Failure(t) =>
-        logger.error(s"Failed to update email validation status to $emailValidated for user id: ${user.id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+        case Success(Some(userToSave)) => doUpdate(userToSave)
+        case Success(None) => Left(ApiError("User not found"))
+        case Failure(error) =>
+          val title = s"Failed to update email validation status to $emailValidated for user ${user.id}"
+          logger.error(title, error)
+          Left(ApiError(title, error.getMessage))
     }
   }
 
@@ -95,12 +93,11 @@ class UsersWriteRepository @Inject() (
     Try {
       update(MongoDBObject("_id" -> userToSave._id), userToSave, upsert = false, multi = false, wc = WriteConcern.Safe)
     } match {
-      case Success(_) =>
-        Right(User.fromIdentityUser(userToSave))
-      case Failure(t) =>
-        logger.error(s"Failed to update user. id: ${userToSave._id}", t)
-        val errorMessage = generateErrorMessage(t)
-        Left(ApiErrors.internalError(errorMessage))
+      case Success(_) => Right(User.fromIdentityUser(userToSave))
+      case Failure(error) =>
+        val title = s"Failed to update user ${userToSave._id}"
+        logger.error(title, error)
+        Left(ApiError(title, generateErrorMessage(error)))
     }
   }
 
@@ -119,9 +116,10 @@ class UsersWriteRepository @Inject() (
       case Success(r) =>
         deletedUsersRepository.insert(user.id, user.email, user.username.getOrElse(""))
         Right(true)
-      case Failure(t) =>
-        logger.error(s"Failed to delete user. id: ${user.id}", t)
-        Left(ApiErrors.internalError(t.getMessage))
+      case Failure(error) =>
+        val title = s"Failed to delete user ${user.id}"
+        logger.error(title, error)
+        Left(ApiError(title, error.getMessage))
     }
   }
 
@@ -136,10 +134,11 @@ class UsersWriteRepository @Inject() (
       }
     } match {
       case Success(Some(userToSave)) => doUpdate(userToSave)
-      case Success(None) => Left(ApiErrors.notFound)
-      case Failure(t) =>
-        logger.error(s"Failed to unsubscribe from marketing emails:", t)
-        Left(ApiErrors.internalError(t.getMessage))
+      case Success(None) => Left(ApiError("User not found"))
+      case Failure(error) =>
+        val title = "Failed to unsubscribe from marketing emails:"
+        logger.error(title, error)
+        Left(ApiError(title, error.getMessage))
     }
   }
 }
