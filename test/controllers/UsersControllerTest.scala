@@ -75,6 +75,17 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       contentAsJson(result) shouldEqual Json.toJson(ApiError("limit must be a positive integer"))
     }
 
+    "return 200 when limit is not provided but search is successfully performed" in {
+      val query = "test@test.com"
+      val limit = None
+      val offset = Some(0)
+      val response = SearchResponse(0, hasMore = false, Nil)
+      when(userService.search(query, limit, offset)).thenReturn(Future.successful(Right(response)))
+      val result = controller.search(query, limit, offset)(FakeRequest())
+      status(result) shouldEqual OK
+      contentAsJson(result) shouldEqual Json.toJson(response)
+    }
+
     "return 200 and empty list when user not found" in {
       val query = "test@test.com"
       val limit = Some(10)

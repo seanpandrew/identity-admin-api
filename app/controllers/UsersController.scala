@@ -29,10 +29,10 @@ class UsersController @Inject() (
   private val MinimumQueryLength = 2
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
-    if (offset.getOrElse(0) < 0) {
+    if (offset.exists(_ < 0)) {
       Future.successful(BadRequest(ApiError("offset must be a positive integer")))
     }
-    else if (limit.getOrElse(0) < 0) {
+    else if (limit.exists(_ < 0)) {
       Future.successful(BadRequest(ApiError("limit must be a positive integer")))
     }
     else if (query.length < MinimumQueryLength) {
