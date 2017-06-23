@@ -69,10 +69,9 @@ class UsersController @Inject() (
         hasCommented <- hasCommentedF
         newslettersSub <- newslettersSubF
       } yield {
-        user match {
-          case -\/(error) => Left(NotFound)
-
-          case \/-(r) =>
+        user.fold(
+          error => Left(NotFound),
+          r => {
             if (Config.stage == "PROD") Tip.verify("User Retrieval")
 
             val userWithSubscriptions = r.copy(
@@ -82,11 +81,11 @@ class UsersController @Inject() (
               newslettersSubscription = newslettersSub)
 
             Right(new UserRequest(userWithSubscriptions, input))
-        }
+          }
+        )
       }
     }
   }
-
 
   private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
@@ -106,21 +105,22 @@ class UsersController @Inject() (
   }
 
   def update(id: String) = (auth andThen UserAction(id)).async(parse.json) { request =>
-      request.body.validate[UserUpdateRequest] match {
-        case JsSuccess(result, path) =>
-          UserUpdateRequestValidator.isValid(result) match {
-            case Right(validUserUpdateRequest) => {
-              if (Config.stage == "PROD") Tip.verify("User Update")
-              logger.info(s"Updating user id:$id, body: $result")
-              EitherT(userService.update(request.user, validUserUpdateRequest)).fold(
-                error => InternalServerError(error),
-                user => Ok(Json.toJson(user))
-              )
-            }
-            case Left(e) => Future(BadRequest(ApiError("Failed to update user", e.message)))
+    request.body.validate[UserUpdateRequest] match {
+      case JsSuccess(result, path) =>
+        UserUpdateRequestValidator.isValid(result).fold(
+          e => Future(BadRequest(ApiError("Failed to update user", e.message))),
+          validUserUpdateRequest => {
+            if (Config.stage == "PROD") Tip.verify("User Update")
+            logger.info(s"Updating user id:$id, body: $result")
+            EitherT(userService.update(request.user, validUserUpdateRequest)).fold(
+              error => InternalServerError(error),
+              user => Ok(Json.toJson(user))
+            )
           }
-        case JsError(e) => Future(BadRequest(ApiError("Failed to update user", e.toString)))
-      }
+        )
+
+      case JsError(e) => Future(BadRequest(ApiError("Failed to update user", e.toString)))
+    }
   }
 
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
@@ -181,17 +181,17 @@ class UsersController @Inject() (
 
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Sending email validation for user with id: $id")
-    userService.sendEmailValidation(request.user).map {
-      case \/-(r) => NoContent
-      case -\/(error) => InternalServerError(error)
-    }
+    EitherT(userService.sendEmailValidation(request.user)).fold(
+      error => InternalServerError(error),
+      _ => NoContent
+    )
   }
 
   def validateEmail(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Validating email for user with id: $id")
-    userService.validateEmail(request.user).map {
-      case \/-(r) => NoContent
-      case -\/(error) => InternalServerError(error)
-    }
+    EitherT(userService.validateEmail(request.user)).fold(
+      error => InternalServerError(error),
+      _ => NoContent
+    )
   }
 }
