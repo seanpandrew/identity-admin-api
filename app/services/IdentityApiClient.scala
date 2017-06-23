@@ -4,12 +4,13 @@ import javax.inject.Inject
 
 import com.gu.identity.util.Logging
 import configuration.Config
-import models.ApiError
+import models.{ApiError, ApiResponse}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.libs.ws.{WSClient, WSRequest}
 
 import scala.concurrent.Future
+import scalaz.{-\/, \/-}
 
 case class IdentityApiError(message: String, description: String, context: Option[String] = None)
 
@@ -35,21 +36,21 @@ class IdentityApiClient @Inject() (ws: WSClient) extends Logging {
   private def addAuthHeaders(req: WSRequest): WSRequest = {
     req.withHeaders(ClientTokenHeaderName -> clientTokenHeaderValue)
   }
-  
-  def sendEmailValidation(userId: String): Future[Either[ApiError, Boolean]] = {
+
+  def sendEmailValidation(userId: String): ApiResponse[Boolean] = {
     addAuthHeaders(ws.url(sendEmailValidationUrl(userId))).post("").map(
       response => 
         if(response.status == 200)
-            Right(true)
+            \/-(true)
         else {
           val errorResponse = Json.parse(response.body).as[IdentityApiErrorResponse]
           val errorMessage = errorResponse.errors.headOption.map(x => x.message).getOrElse("Unknown error")
-          Left(ApiError("Send Email Validation Error", errorMessage))
+          -\/(ApiError("Send Email Validation Error", errorMessage))
         }
     ).recover { case e: Any =>
       val title = "Could not send email validation"
       logger.error(title, e.getMessage)
-      Left(ApiError(title, e.getMessage))
+      -\/(ApiError(title, e.getMessage))
     }
   }
 

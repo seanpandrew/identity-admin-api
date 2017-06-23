@@ -10,6 +10,7 @@ import org.bson.types.ObjectId
 import salat.dao.SalatDAO
 
 import scala.util.{Failure, Success, Try}
+import scalaz.{-\/, \/, \/-}
 
 case class ReservedUsername(_id: ObjectId, username: String)
 
@@ -18,46 +19,46 @@ case class ReservedUsername(_id: ObjectId, username: String)
 class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environment, salatMongoConnection: SalatMongoConnection)
   extends SalatDAO[ReservedUsername, ObjectId](collection=salatMongoConnection.db()("reservedUsernames")) with Logging {
 
-  private def findReservedUsername(username: String): Either[ApiError, ReservedUsername] =
+  private def findReservedUsername(username: String): ApiError \/ ReservedUsername =
     Try {
       findOne(MongoDBObject("username" -> username))
     } match {
-      case Success(Some(r)) => Right(r)
-      case Success(None) => Left(ApiError("Username not found"))
+      case Success(Some(r)) => \/-(r)
+      case Success(None) => -\/(ApiError("Username not found"))
       case Failure(error) =>
         val title = s"Failed to find reserved username $username"
         logger.error(title, error)
-        Left(ApiError(title, error.getMessage))
+        -\/(ApiError(title, error.getMessage))
     }
 
-  def removeReservedUsername(username: String): Either[ApiError, ReservedUsernameList] =
+  def removeReservedUsername(username: String): ApiError \/ ReservedUsernameList =
       findReservedUsername(username) match {
-        case Right(r) => Try {
+        case \/-(r) => Try {
           remove(r)
         } match {
           case Success(success) => loadReservedUsernames
           case Failure(t) =>
             val title = s"Failed to remove reserved username $username"
             logger.error(title, t)
-            Left(ApiError(title, t.getMessage))
+            -\/(ApiError(title, t.getMessage))
         }
-        case Left(l) => Left(l)
+        case -\/(l) => -\/(l)
       }
 
-  def loadReservedUsernames: Either[ApiError, ReservedUsernameList] =
+  def loadReservedUsernames: ApiError \/ ReservedUsernameList =
     Try {
       cursorToReservedUsernameList(collection.find().sort(MongoDBObject("username" -> 1)))
     } match {
-      case Success(r) => Right(r)
+      case Success(r) => \/-(r)
       case Failure(t) =>
         val title = "Failed to load reserved usernames"
         logger.error(title, t)
-        Left(ApiError(title, t.getMessage))
+        -\/(ApiError(title, t.getMessage))
     }
 
   private def cursorToReservedUsernameList(col: MongoCursor): ReservedUsernameList = ReservedUsernameList(col.map(dbObject => dbObject.get("username").asInstanceOf[String]).toList)
 
-  def addReservedUsername(reservedUsername: String): Either[ApiError, ReservedUsernameList]  = {
+  def addReservedUsername(reservedUsername: String): ApiError \/ ReservedUsernameList = {
     Try {
       insert(ReservedUsername(new ObjectId(), reservedUsername))
     } match {
@@ -67,7 +68,7 @@ class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environme
       case Failure(t) =>
         val title = s"Failed to add $reservedUsername to reserved username list"
         logger.error(title, t)
-        Left(ApiError(title, t.getMessage))
+        -\/(ApiError(title, t.getMessage))
     }
   }
 

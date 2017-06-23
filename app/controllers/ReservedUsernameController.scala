@@ -9,6 +9,8 @@ import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.mvc.Controller
 import repositories.ReservedUserNameWriteRepository
 
+import scalaz.{-\/, \/-}
+
 case class ReservedUsernameRequest(username: String)
 
 object ReservedUsernameRequest {
@@ -23,8 +25,8 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
       case JsSuccess(result, path) =>
         logger.info(s"Reserving username: ${result.username}")
         reservedUsernameRepository.addReservedUsername(result.username) match {
-          case Left(error) => InternalServerError(error)
-          case Right(success) => NoContent
+          case -\/(error) => InternalServerError(error)
+          case \/-(success) => NoContent
         }
       case JsError(e) => BadRequest(ApiError("Failed to reserve username", e.toString))
     }
@@ -32,8 +34,8 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
 
   def getReservedUsernames = auth { request =>
     reservedUsernameRepository.loadReservedUsernames match {
-      case Left(error) => InternalServerError(error)
-      case Right(success) => Ok(Json.toJson(success))
+      case -\/(error) => InternalServerError(error)
+      case \/-(success) => Ok(Json.toJson(success))
     }
   }
 
@@ -42,8 +44,8 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
       case JsSuccess(result, path) =>
         logger.info(s"Unreserving username: ${result.username}")
         reservedUsernameRepository.removeReservedUsername(result.username) match {
-          case Left(error) => InternalServerError(error)
-          case Right(success) => NoContent
+          case -\/(error) => InternalServerError(error)
+          case \/-(success) => NoContent
         }
       case JsError(error) => BadRequest(ApiError("Failed to unreserve username", error.toString))
     }

@@ -1,6 +1,7 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
+
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import com.gu.tip.Tip
@@ -10,8 +11,9 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
+
 import scala.concurrent.Future
-import scalaz.{EitherT, OptionT}
+import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
 import models.ApiError._
 import models._
@@ -39,7 +41,7 @@ class UsersController @Inject() (
       Future.successful(BadRequest(ApiError(s"query must be a minimum of $MinimumQueryLength characters")))
     }
     else {
-      EitherT.fromEither(userService.search(query, limit, offset)).fold(
+      EitherT(userService.search(query, limit, offset)).fold(
         error => InternalServerError(error),
         response => Ok(Json.toJson(response))
       )
@@ -68,9 +70,9 @@ class UsersController @Inject() (
         newslettersSub <- newslettersSubF
       } yield {
         user match {
-          case Left(error) => Left(NotFound)
+          case -\/(error) => Left(NotFound)
 
-          case Right(r) =>
+          case \/-(r) =>
             if (Config.stage == "PROD") Tip.verify("User Retrieval")
 
             val userWithSubscriptions = r.copy(
@@ -110,7 +112,7 @@ class UsersController @Inject() (
             case Right(validUserUpdateRequest) => {
               if (Config.stage == "PROD") Tip.verify("User Update")
               logger.info(s"Updating user id:$id, body: $result")
-              EitherT.fromEither(userService.update(request.user, validUserUpdateRequest)).fold(
+              EitherT(userService.update(request.user, validUserUpdateRequest)).fold(
                 error => InternalServerError(error),
                 user => Ok(Json.toJson(user))
               )
@@ -125,7 +127,7 @@ class UsersController @Inject() (
     logger.info(s"Deleting user $id")
 
     def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email))
-    def deleteAccount() = EitherT.fromEither(userService.delete(request.user))
+    def deleteAccount() = EitherT(userService.delete(request.user))
 
     (for {
       _ <- unsubscribeEmails()
@@ -145,7 +147,7 @@ class UsersController @Inject() (
   def unsubcribeFromAllEmailLists(email: String) = auth.async { request =>
     logger.info("Unsubscribing from all email lists (marketing and editorial)")
     val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email))
-    val unsubcribeAllEmailsInExactTarget = EitherT.fromEither(userService.unsubscribeFromMarketingEmails(email))
+    val unsubcribeAllEmailsInExactTarget = EitherT(userService.unsubscribeFromMarketingEmails(email))
 
     (for {
       _ <- unsubscribeMarketingEmailsInIdentity
@@ -180,16 +182,16 @@ class UsersController @Inject() (
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Sending email validation for user with id: $id")
     userService.sendEmailValidation(request.user).map {
-      case Right(r) => NoContent
-      case Left(error) => InternalServerError(error)
+      case \/-(r) => NoContent
+      case -\/(error) => InternalServerError(error)
     }
   }
 
   def validateEmail(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Validating email for user with id: $id")
     userService.validateEmail(request.user).map {
-      case Right(r) => NoContent
-      case Left(error) => InternalServerError(error)
+      case \/-(r) => NoContent
+      case -\/(error) => InternalServerError(error)
     }
   }
 }

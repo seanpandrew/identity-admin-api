@@ -14,7 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
 
-import scalaz.OptionT
+import scalaz.{-\/, OptionT, \/-}
 import scalaz.std.scalaFuture._
 
 @Singleton
@@ -66,9 +66,9 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
             }
 
             result
-          case (false, true) => Left(ApiError("Email is invalid"))
-          case (true, false) => Left(ApiError("Username is invalid"))
-          case _ => Left(ApiError("Email and username are invalid"))
+          case (false, true) => -\/(ApiError("Email is invalid"))
+          case (true, false) => -\/(ApiError("Username is invalid"))
+          case _ => -\/(ApiError("Email and username are invalid"))
         }
       }
   }
@@ -136,14 +136,16 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
         idUsers <- searchIdentity(activeUsersF, deletedUsersF)
       } yield {
 
-        if (idUsers.results.size > 0)
-          Right(idUsers)
-        else if (usersBySubId.results.size > 0)
-          Right(usersBySubId)
-        else if (orphans.results.size > 0)
-          Right(orphans)
-        else
-          Right(usersByMemNum)
+        \/-(
+          if (idUsers.results.size > 0)
+            idUsers
+          else if (usersBySubId.results.size > 0)
+            usersBySubId
+          else if (orphans.results.size > 0)
+            orphans
+          else
+            usersByMemNum
+        )
       }
   }
 
@@ -202,46 +204,46 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {
     lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
-      user => Right(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
-      Left(ApiError("User not found"))
+      user => \/-(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
+      -\/(ApiError("User not found"))
     )
 
     OptionT(usersReadRepository.findById(id)).fold(
-      activeUser => Future.successful(Right(activeUser)),
+      activeUser => Future.successful(\/-(activeUser)),
       deletedUserOptT
     ).flatMap(identity) // F[F] => F
   }
 
   def delete(user: User): ApiResponse[ReservedUsernameList] = Future {
     usersWriteRepository.delete(user) match {
-      case Right(r) =>
+      case \/-(r) =>
         user.username.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
           reservedUserNameRepository.loadReservedUsernames
         }
 
-      case Left(r) => Left(r)
+      case -\/(r) => -\/(r)
     }
   }
 
   def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Boolean] = Future {
     usersWriteRepository.updateEmailValidationStatus(user, emailValidated) match{
-      case Right(r) => {
+      case \/-(r) => {
         triggerEvents(
           userId = user.id,
           usernameChanged = false,
           displayNameChanged = false,
           emailValidatedChanged = true
         )
-        Right(true)
+        \/-(true)
       }
-      case Left(r) => Left(r)
+      case -\/(r) => -\/(r)
     }
   }
 
   def sendEmailValidation(user: User): ApiResponse[Boolean] = {
     validateEmail(user, emailValidated = false).flatMap {
-      case Right(_) => identityApiClient.sendEmailValidation(user.id)
-      case Left(r) => Future.successful(Left(r))
+      case \/-(_) => identityApiClient.sendEmailValidation(user.id)
+      case -\/(r) => Future.successful(-\/(r))
     }
   }
 
