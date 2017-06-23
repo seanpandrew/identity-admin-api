@@ -12,6 +12,7 @@ import scala.concurrent.{Await, Future}
 import org.mockito.Mockito._
 
 import scala.concurrent.duration._
+import scalaz.{-\/, \/-}
 
 class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter {
 
@@ -109,12 +110,12 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
-      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(\/-(updatedUser))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
 
       val result = service.update(user, userUpdateRequest)
 
-      Await.result(result, 1.second) shouldEqual Right(updatedUser)
+      Await.result(result, 1.second) shouldEqual \/-(updatedUser)
       verify(identityApiClient).sendEmailValidation(user.id)
     }
 
@@ -126,12 +127,12 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
-      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(\/-(updatedUser))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
 
       val result = service.update(user, userUpdateRequest)
 
-      Await.result(result, 1.second) shouldEqual Right(updatedUser)
+      Await.result(result, 1.second) shouldEqual \/-(updatedUser)
       verify(madgexService).update(gNMMadgexUser)
     }
 
@@ -142,9 +143,9 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
-      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(\/-(updatedUser))
 
-      Await.result(service.update(user, userUpdateRequest), 1.second) shouldEqual Right(updatedUser)
+      Await.result(service.update(user, userUpdateRequest), 1.second) shouldEqual \/-(updatedUser)
       verifyZeroInteractions(madgexService)
     }
 
@@ -155,9 +156,9 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
-      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(\/-(updatedUser))
 
-      Await.result(service.update(user, userUpdateRequest), 1.second) shouldEqual Right(updatedUser)
+      Await.result(service.update(user, userUpdateRequest), 1.second) shouldEqual \/-(updatedUser)
       verifyZeroInteractions(identityApiClient)
     }
 
@@ -169,11 +170,11 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val updatedUser = user.copy(email = updateRequest.email)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
-      when(userWriteRepo.update(user, updateRequest)).thenReturn(Right(updatedUser))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(\/-(updatedUser))
 
       val result = service.update(user, userUpdateRequest)
 
-      Await.result(result, 1.second) shouldEqual Right(updatedUser)
+      Await.result(result, 1.second) shouldEqual \/-(updatedUser)
       verifyZeroInteractions(madgexService)
     }
 
@@ -181,7 +182,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val user = User("id", "email@theguardian.com")
       val updateRequest = UserUpdateRequest(email = user.email, username = Some("123"))
 
-      Await.result(service.update(user, updateRequest), 1.second) shouldEqual Left(ApiError("Username is invalid"))
+      Await.result(service.update(user, updateRequest), 1.second) shouldEqual -\/(ApiError("Username is invalid"))
       verifyZeroInteractions(userReadRepo, userWriteRepo)
     }
 
@@ -189,7 +190,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val user = User("id", "email@theguardian.com")
       val updateRequest = UserUpdateRequest(email = user.email, username = Some("123456789012345678901"))
 
-      Await.result(service.update(user, updateRequest), 1.second) shouldEqual Left(ApiError("Username is invalid"))
+      Await.result(service.update(user, updateRequest), 1.second) shouldEqual -\/(ApiError("Username is invalid"))
       verifyZeroInteractions(userReadRepo, userWriteRepo)
     }
 
@@ -197,7 +198,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val user = User("id", "email@theguardian.com")
       val updateRequest = UserUpdateRequest(email = user.email, username = Some("abc123$"))
 
-      Await.result(service.update(user, updateRequest), 1.second) shouldEqual Left(ApiError("Username is invalid"))
+      Await.result(service.update(user, updateRequest), 1.second) shouldEqual -\/(ApiError("Username is invalid"))
       verifyZeroInteractions(userReadRepo, userWriteRepo)
     }
 
@@ -207,7 +208,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(Some(user)))
 
-      Await.result(service.update(user, updateRequest), 1.second) shouldEqual Left(ApiError("Email is invalid"))
+      Await.result(service.update(user, updateRequest), 1.second) shouldEqual -\/(ApiError("Email is invalid"))
       verifyZeroInteractions(userWriteRepo)
     }
 
@@ -219,7 +220,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
       val result = service.update(user, updateRequest)
 
-      Await.result(result, 1.second) shouldEqual Left(ApiError("Email and username are invalid"))
+      Await.result(result, 1.second) shouldEqual -\/(ApiError("Email and username are invalid"))
       verifyZeroInteractions(userWriteRepo)
     }
 
@@ -229,9 +230,9 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val updateRequest = IdentityUserUpdate(userUpdateRequest, None)
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
-      when(userWriteRepo.update(user, updateRequest)).thenReturn(Left(ApiError("boom")))
+      when(userWriteRepo.update(user, updateRequest)).thenReturn(-\/(ApiError("boom")))
 
-      Await.result(service.update(user, userUpdateRequest), 1.second) shouldEqual Left(ApiError("boom"))
+      Await.result(service.update(user, userUpdateRequest), 1.second) shouldEqual -\/(ApiError("boom"))
       verify(identityApiClient, never()).sendEmailValidation(user.id)
     }
   }
@@ -240,62 +241,62 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "remove the given user and reserve username" in {
       val username = "testuser"
       val user = User("id", "email", username = Some(username))
-      when(userWriteRepo.delete(user)).thenReturn(Right(true))
-      when(reservedUsernameRepo.addReservedUsername(username)).thenReturn(Right(ReservedUsernameList(List(username))))
-      Await.result(service.delete(user), 1.second) shouldEqual Right(ReservedUsernameList(List(username)))
+      when(userWriteRepo.delete(user)).thenReturn(\/-(true))
+      when(reservedUsernameRepo.addReservedUsername(username)).thenReturn(\/-(ReservedUsernameList(List(username))))
+      Await.result(service.delete(user), 1.second) shouldEqual \/-(ReservedUsernameList(List(username)))
     }
 
     "remove the given user and return existing reserved usernames when user has no username" in {
       val user = User("id", "email", username = None)
-      when(userWriteRepo.delete(user)).thenReturn(Right(true))
-      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Right(ReservedUsernameList(Nil)))
-      Await.result(service.delete(user), 1.second) shouldEqual Right(ReservedUsernameList(Nil))
+      when(userWriteRepo.delete(user)).thenReturn(\/-(true))
+      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(\/-(ReservedUsernameList(Nil)))
+      Await.result(service.delete(user), 1.second) shouldEqual \/-(ReservedUsernameList(Nil))
     }
 
     "return internal server api error if an error occurs deleting the user" in {
       val user = User("id", "email")
-      when(userWriteRepo.delete(user)).thenReturn(Left(ApiError("boom")))
-      Await.result(service.delete(user), 1.second) shouldEqual Left(ApiError("boom"))
+      when(userWriteRepo.delete(user)).thenReturn(-\/(ApiError("boom")))
+      Await.result(service.delete(user), 1.second) shouldEqual -\/(ApiError("boom"))
     }
   }
 
   "validateEmailAddress" should {
     "validate the email address" in {
       val user = User("id", "email")
-      when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(Right(user))
-      Await.result(service.validateEmail(user), 1.second) shouldEqual Right(true)
+      when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(\/-(user))
+      Await.result(service.validateEmail(user), 1.second) shouldEqual \/-(true)
     }
 
     "return internal server api error if an error occurs validating the email address" in {
       val user = User("id", "email")
-      when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(Left(ApiError("boom")))
+      when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(-\/(ApiError("boom")))
 
-      Await.result(service.validateEmail(user), 1.second) shouldEqual Left(ApiError("boom"))
+      Await.result(service.validateEmail(user), 1.second) shouldEqual -\/(ApiError("boom"))
     }
   }
 
   "sendEmailValidation" should {
     "invalidate the email address and send validation request email" in {
       val user = User("id", "email")
-      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Right(user))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Right(true)))
-      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual Right(true)
+      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(\/-(user))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
+      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual \/-(true)
     }
 
     "return internal server api error if an error occurs invalidating the email address" in {
       val user = User("id", "email")
-      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Left(ApiError("boom")))
+      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(-\/(ApiError("boom")))
 
-      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual Left(ApiError("boom"))
+      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual -\/(ApiError("boom"))
       verifyZeroInteractions(identityApiClient)
     }
 
     "return internal server api error if an error occurs sending the email" in {
       val user = User("id", "email")
-      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Right(user))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(Left(ApiError("boom"))))
+      when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(\/-(user))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(-\/(ApiError("boom"))))
 
-      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual Left(ApiError("boom"))
+      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual -\/(ApiError("boom"))
     }
   }
 

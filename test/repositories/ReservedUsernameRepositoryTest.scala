@@ -7,6 +7,8 @@ import org.scalatest.DoNotDiscover
 import org.scalatestplus.play.{OneServerPerSuite, PlaySpec}
 import play.api.Play
 
+import scalaz.-\/
+
 
 @DoNotDiscover
 class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
@@ -18,7 +20,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
 
       val result = repo.addReservedUsername(username)
       result.isRight mustBe true
-      result.right.get.reservedUsernames must contain(username)
+      result.map(_.reservedUsernames must contain(username))
     }
   }
 
@@ -31,7 +33,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
 
       val result = repo.removeReservedUsername(username)
       result.isRight mustBe true
-      result.right.get.reservedUsernames must not contain(username)
+      result.map(_.reservedUsernames must not contain(username))
     }
 
     "return not found if the username doesn't exist" in {
@@ -39,7 +41,7 @@ class ReservedUsernameRepositoryTest extends PlaySpec with OneServerPerSuite {
       val username = UUID.randomUUID().toString
 
       val result = repo.removeReservedUsername(username)
-      result mustEqual Left(ApiError("User not found"))
+      result mustEqual -\/(ApiError("User not found"))
     }
   }
 }

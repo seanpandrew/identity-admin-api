@@ -16,6 +16,7 @@ import services.{DiscussionService, ExactTargetService, SalesforceService, UserS
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scalaz.{-\/, \/-}
 
 class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   
@@ -80,7 +81,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = None
       val offset = Some(0)
       val response = SearchResponse(0, hasMore = false, Nil)
-      when(userService.search(query, limit, offset)).thenReturn(Future.successful(Right(response)))
+      when(userService.search(query, limit, offset)).thenReturn(Future.successful(\/-(response)))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)
@@ -91,7 +92,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(0, hasMore = false, Nil)
-      when(userService.search(query, limit, offset)).thenReturn(Future.successful(Right(response)))
+      when(userService.search(query, limit, offset)).thenReturn(Future.successful(\/-(response)))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)
@@ -104,7 +105,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(10, hasMore = true, Seq(UserSummary.fromPersistedUser(user)))
-      when(userService.search(query, limit, offset)).thenReturn(Future.successful(Right(response)))
+      when(userService.search(query, limit, offset)).thenReturn(Future.successful(\/-(response)))
       val result = controller.search(query, limit, offset)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(response)
@@ -114,14 +115,14 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   "findById" should {
     "return 404 when user not found" in {
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Left(ApiError("User not found"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(-\/(ApiError("User not found"))))
       val result = controller.findById(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
     }
 
     "return 200 when user found" in {
       val user = User(testIdentityId, "test@test.com")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
       val result = controller.findById(testIdentityId)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(user)
@@ -137,7 +138,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 404 when user is not found" in {
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Left(ApiError("User not found"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(-\/(ApiError("User not found"))))
       val result = controller.update(testIdentityId)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
       status(result) shouldEqual NOT_FOUND
     }
@@ -145,8 +146,8 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 400 when username and display name differ in request" in {
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"), displayName = Some("displayname"))
       val user = User("id", "email")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
-      when(userService.update(user, userUpdateRequest)).thenReturn(Future.successful(Right(user)))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.update(user, userUpdateRequest)).thenReturn(Future.successful(\/-(user)))
       val result = controller.update(testIdentityId)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
       status(result) shouldEqual BAD_REQUEST
     }
@@ -154,8 +155,8 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 200 with updated user when update is successful" in {
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
       val user = User("id", "email")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
-      when(userService.update(user, userUpdateRequest)).thenReturn(Future.successful(Right(user)))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.update(user, userUpdateRequest)).thenReturn(Future.successful(\/-(user)))
       val result = controller.update(testIdentityId)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(user)
@@ -164,7 +165,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   "delete" should {
     "return 404 when user is not found" in {
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Left(ApiError("User not found"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(-\/(ApiError("User not found"))))
       val result = controller.delete(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
     }
@@ -172,23 +173,23 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   
   "sendEmailValidation" should {
     "return 404 when user is not found" in {
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Left(ApiError("User not found"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(-\/(ApiError("User not found"))))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
     }
 
     "return 204 when email validation is sent" in {
       val user = User("", "")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
-      when(userService.sendEmailValidation(user)).thenReturn(Future.successful(Right(true)))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.sendEmailValidation(user)).thenReturn(Future.successful(\/-(true)))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
       status(result) shouldEqual NO_CONTENT
     }
 
     "return 500 when error occurs" in {
       val user = User("", "")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
-      when(userService.sendEmailValidation(user)).thenReturn(Future.successful(Left(ApiError("boom"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.sendEmailValidation(user)).thenReturn(Future.successful(-\/(ApiError("boom"))))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
       status(result) shouldEqual INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldEqual Json.toJson(ApiError("boom"))
@@ -197,23 +198,23 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   "validateEmail" should {
     "return 404 when user is not found" in {
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Left(ApiError("User not found"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(-\/(ApiError("User not found"))))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
     }
 
     "return 204 when email is validated" in {
       val user = User("", "")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
-      when(userService.validateEmail(user)).thenReturn(Future.successful(Right(true)))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.validateEmail(user)).thenReturn(Future.successful(\/-(true)))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
       status(result) shouldEqual NO_CONTENT
     }
 
     "return 500 when error occurs" in {
       val user = User("", "")
-      when(userService.findById(testIdentityId)).thenReturn(Future.successful(Right(user)))
-      when(userService.validateEmail(user)).thenReturn(Future.successful(Left(ApiError("boom"))))
+      when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.validateEmail(user)).thenReturn(Future.successful(-\/(ApiError("boom"))))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
       status(result) shouldEqual INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldEqual Json.toJson(ApiError("boom"))
