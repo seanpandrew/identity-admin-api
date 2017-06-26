@@ -3,7 +3,7 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
-import models.{SearchResponse, User}
+import models.{ApiResponse, SearchResponse, User}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoApi
@@ -12,6 +12,7 @@ import reactivemongo.play.json._
 import reactivemongo.api.{Cursor, QueryOpts, ReadPreference}
 
 import scala.concurrent.Future
+import scalaz.\/-
 
 
 @Singleton
@@ -20,7 +21,7 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
   private val MaximumResults = 20
   private lazy val usersCollectionF = reactiveMongoApi.database.map(_.collection("users"))
 
-  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): Future[SearchResponse] =  {
+  def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =  {
     usersCollectionF.flatMap { usersCollection =>
       val q = buildSearchQuery(query)
       val total = usersCollection.count(Some(q))
@@ -38,7 +39,7 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
         t <- total
         r <- results
       } yield {
-        SearchResponse.create(t, o, r)
+        \/-(SearchResponse.create(t, o, r))
       }
     }
   }

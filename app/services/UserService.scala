@@ -7,14 +7,14 @@ import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import util.UserConverter._
 import models._
-import repositories.{DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories.{DeletedUser, DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
 
-import scalaz.{-\/, OptionT, \/-}
+import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
 
 @Singleton
@@ -122,96 +122,109 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
-      // execute all these in parallel
-      val usersByMemNumF = searchIdentityByMembership(query)
-      val orphansF = searchOrphan(query)
-      val usersBySubIdF = searchIdentityBySubscriptionId(query)
-      val activeUsersF = usersReadRepository.search(query, limit, offset)
-      val deletedUsersF = deletedUsersRepository.search(query)
-
-      for {
-        usersByMemNum <- usersByMemNumF
-        orphans <- orphansF
-        usersBySubId <- usersBySubIdF
-        idUsers <- searchIdentity(activeUsersF, deletedUsersF)
-      } yield {
-
-        \/-(
-          if (idUsers.results.size > 0)
-            idUsers
-          else if (usersBySubId.results.size > 0)
-            usersBySubId
-          else if (orphans.results.size > 0)
-            orphans
-          else
-            usersByMemNum
-        )
-      }
-  }
-
-  def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
-
-  def searchIdentity(activeUsersF: Future[SearchResponse], deletedUsersF: Future[SearchResponse]) = {
-    for {
-      activeUsers <- activeUsersF
-      deletedUsers <- deletedUsersF
-    } yield {
+   def searchIdentity(activeUsers: SearchResponse, deletedUsers: SearchResponse) = {
       val combinedTotal = activeUsers.total + deletedUsers.total
       val combinedResults = activeUsers.results ++ deletedUsers.results
       activeUsers.copy(total = combinedTotal, results = combinedResults)
     }
+
+    // execute all these in parallel
+    val usersByMemNumF = EitherT(searchIdentityByMembership(query))
+    val orphansF = EitherT(searchOrphan(query))
+    val usersBySubIdF = EitherT(searchIdentityBySubscriptionId(query))
+    val activeUsersF = EitherT(usersReadRepository.search(query, limit, offset))
+    val deletedUsersF = EitherT(deletedUsersRepository.search(query))
+
+    (for {
+      usersByMemNum <- usersByMemNumF
+      orphans <- orphansF
+      usersBySubId <- usersBySubIdF
+      activeUsers <- activeUsersF
+      deletedUsers <- deletedUsersF
+    } yield {
+      val idUsers = searchIdentity(activeUsers, deletedUsers)
+
+      if (idUsers.results.size > 0)
+        idUsers
+      else if (usersBySubId.results.size > 0)
+        usersBySubId
+      else if (orphans.results.size > 0)
+        orphans
+      else
+        usersByMemNum
+    }).run
   }
 
-  def searchOrphan(email: String): Future[SearchResponse] = {
+  def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
+
+
+  def searchOrphan(email: String): ApiResponse[SearchResponse] = {
     def isEmail(query: String) = query.matches("""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r.toString())
 
     if (isEmail(email)) {
-      OptionT(salesforceService.getSubscriptionByEmail(email)).fold(
-        sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email))),
-        SearchResponse.create(0, 0, Nil)
-      )
-    } else Future.successful(SearchResponse.create(0, 0, Nil))
+      EitherT(salesforceService.getSubscriptionByEmail(email)).map(subOpt =>
+        subOpt.fold(SearchResponse.create(0, 0, Nil))(sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email))))
+      ).run
+    } else Future.successful(\/-(SearchResponse.create(0, 0, Nil)))
   }
 
-  def searchIdentityByMembership(membershipNumber: String): Future[SearchResponse] = {
+  private def salesforceSubscriptionToIdentityUser(sfSub: SalesforceSubscription) =
+    SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sfSub.identityId), primaryEmailAddress = sfSub.email)))
+
+  def searchIdentityByMembership(membershipNumber: String): ApiResponse[SearchResponse] = {
     def couldBeMembershipNumber(query: String) = query forall Character.isDigit
 
     if (couldBeMembershipNumber(membershipNumber)) {
-      OptionT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).fold(
-        mem => SearchResponse.create(1, 0, List(IdentityUser(_id = Option(mem.identityId), primaryEmailAddress = mem.email))),
-        SearchResponse.create(0, 0, Nil)
-      )
-    } else Future.successful(SearchResponse.create(0, 0, Nil))
+      EitherT(salesforceService.getMembershipByMembershipNumber(membershipNumber)).map(memOpt =>
+        memOpt.fold
+          (SearchResponse.create(0, 0, Nil))
+          (mem => salesforceSubscriptionToIdentityUser(mem))
+      ).run
+    } else Future.successful(\/-(SearchResponse.create(0, 0, Nil)))
   }
 
-  def searchIdentityBySubscriptionId(subscriberId: String): Future[SearchResponse] = {
+  def searchIdentityBySubscriptionId(subscriberId: String): ApiResponse[SearchResponse] = {
     def isSubscriberId(query: String) = List("A-S", "GA0").contains(query.take(3))
 
-    def salesforceSubscriptionToIdentityUser(sfSub: SalesforceSubscription) =
-          SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sfSub.identityId), primaryEmailAddress = sfSub.email)))
+    // execute these in parallel
+    val memOptF = EitherT(salesforceService.getMembershipBySubscriptionId(subscriberId))
+    val subOptF = EitherT(salesforceService.getSubscriptionBySubscriptionId(subscriberId))
 
-    if (isSubscriberId(subscriberId))
-      OptionT(salesforceService.getMembershipBySubscriptionId(subscriberId)).fold(
-        sfSub => Future.successful(salesforceSubscriptionToIdentityUser(sfSub)),
-        OptionT(salesforceService.getSubscriptionBySubscriptionId(subscriberId)).fold(
-          sfSub => salesforceSubscriptionToIdentityUser(sfSub),
+    if (isSubscriberId(subscriberId)) {
+      (for {
+        memOpt <- memOptF
+        subOpt <- subOptF
+      } yield {
+        if (memOpt.isDefined)
+          salesforceSubscriptionToIdentityUser(memOpt.get)
+        else if (subOpt.isDefined)
+          salesforceSubscriptionToIdentityUser(subOpt.get)
+        else
           SearchResponse.create(0, 0, Nil)
-        )
-      ).flatMap(identity)
-    else Future.successful(SearchResponse.create(0, 0, Nil))
+      }).run
+    }
+    else Future.successful(\/-(SearchResponse.create(0, 0, Nil)))
   }
 
   /* If it cannot find an active user, tries looking up a deleted one */
   def findById(id: String): ApiResponse[User] = {
-    lazy val deletedUserOptT = OptionT(deletedUsersRepository.findBy(id)).fold(
-      user => \/-(User(id = user.id, email = user.email, username = Some(user.username), deleted = true)),
-      -\/(ApiError("User not found"))
-    )
+    def deletedUserToActiveUser(user: DeletedUser) =
+      User(id = user.id, email = user.email, username = Some(user.username), deleted = true)
 
-    OptionT(usersReadRepository.findById(id)).fold(
-      activeUser => Future.successful(\/-(activeUser)),
-      deletedUserOptT
-    ).flatMap(identity) // F[F] => F
+    val deletedUserOptF = deletedUsersRepository.findBy(id)
+    val activeUserOptF = usersReadRepository.findById(id)
+
+    for {
+      activeUserOpt <- activeUserOptF
+      deletedUserOpt <- deletedUserOptF
+    } yield {
+      if (activeUserOpt.isDefined)
+        \/-(activeUserOpt.get)
+      else if (deletedUserOpt.isDefined)
+        \/-(deletedUserToActiveUser(deletedUserOpt.get))
+      else
+        -\/(ApiError("User not found"))
+    }
   }
 
   def delete(user: User): ApiResponse[ReservedUsernameList] = Future {

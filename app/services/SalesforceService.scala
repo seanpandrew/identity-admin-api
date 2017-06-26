@@ -5,7 +5,7 @@ import javax.inject.Inject
 import com.gu.identity.util.Logging
 import com.google.inject.ImplementedBy
 import configuration.Config.TouchpointSalesforce._
-import models.SalesforceSubscription
+import models.{ApiError, ApiResponse, SalesforceSubscription}
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.http.Status.OK
@@ -14,6 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
+import scalaz.{-\/, \/-}
 
 case class SalesforceError(msg: String) extends Exception(msg)
 
@@ -41,13 +42,13 @@ case class SubscriptionId(value: String, fieldName: String = "Subscription_Name_
 
 @ImplementedBy(classOf[Salesforce])
 trait SalesforceService {
-  def getSubscriptionByIdentityId(id: String): Future[Option[SalesforceSubscription]]
-  def getSubscriptionByEmail(email: String): Future[Option[SalesforceSubscription]]
-  def getSubscriptionBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]]
-  def getMembershipByIdentityId(id: String): Future[Option[SalesforceSubscription]]
-  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[SalesforceSubscription]]
-  def getMembershipByEmail(email: String): Future[Option[SalesforceSubscription]]
-  def getMembershipBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]]
+  def getSubscriptionByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]]
+  def getSubscriptionByEmail(email: String): ApiResponse[Option[SalesforceSubscription]]
+  def getSubscriptionBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]]
+  def getMembershipByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]]
+  def getMembershipByMembershipNumber(membershipNumber: String): ApiResponse[Option[SalesforceSubscription]]
+  def getMembershipByEmail(email: String): ApiResponse[Option[SalesforceSubscription]]
+  def getMembershipBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]]
 }
 
 class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging {
@@ -92,19 +93,21 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
       email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String])
   }
 
-  private def querySalesforce(soql: String): Future[Option[SalesforceSubscription]] =
+  private def querySalesforce(soql: String): ApiResponse[Option[SalesforceSubscription]] =
     ws.url(s"${sfAuth.instance_url}/services/data/v29.0/query?q=$soql").withHeaders(authHeader).get().map { response =>
       if (response.status == OK) {
         if ((response.json \ "totalSize").as[Int] > 0)
-          Some(extractSubscription(response))
+          \/-(Some(extractSubscription(response)))
         else
-          None
+          \/-(None)
       }
       else {
-        logger.error(s"Could not get subscriptions from Salesforce: ${response.body.toString}")
-        None
+        val title = "Could not get subscriptions from Salesforce"
+        val details = response.body
+        logger.error(s"$title: $details")
+        -\/(ApiError(title, details))
       }
-    }
+    }.recover { case error => -\/(ApiError("Failed to communicate with Salesforce", error.getMessage)) }
 
   private val selectQuerySection: String =
     """
@@ -137,7 +140,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
     """.stripMargin
 
 
-  private def getSubscriptionBy(uniqueIdentifier: UniqueIdentifier): Future[Option[SalesforceSubscription]] = {
+  private def getSubscriptionBy(uniqueIdentifier: UniqueIdentifier): ApiResponse[Option[SalesforceSubscription]] = {
 
     val sooqlQuery =
       s"""
@@ -166,7 +169,7 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
 
 
 
-  private def getMembershipBy(uniqueIdentifier: UniqueIdentifier): Future[Option[SalesforceSubscription]] = {
+  private def getMembershipBy(uniqueIdentifier: UniqueIdentifier): ApiResponse[Option[SalesforceSubscription]] = {
     val sooqlQuery =
       s"""
          |$selectQuerySection
@@ -192,24 +195,24 @@ class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging
     querySalesforce(sooqlQuery)
   }
 
-  def getMembershipByIdentityId(id: String): Future[Option[SalesforceSubscription]] =
+  def getMembershipByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]] =
     getMembershipBy(IdentityId(id))
 
-  def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[SalesforceSubscription]] =
+  def getMembershipByMembershipNumber(membershipNumber: String): ApiResponse[Option[SalesforceSubscription]] =
     getMembershipBy(MembershipNumber(membershipNumber))
 
-  def getMembershipByEmail(email: String): Future[Option[SalesforceSubscription]] =
+  def getMembershipByEmail(email: String): ApiResponse[Option[SalesforceSubscription]] =
     getMembershipBy(Email(email))
 
-  def getMembershipBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] =
+  def getMembershipBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]] =
     getMembershipBy(SubscriptionId(subscriptionId))
 
-  def getSubscriptionByIdentityId(id: String): Future[Option[SalesforceSubscription]] =
+  def getSubscriptionByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]] =
     getSubscriptionBy(IdentityId(id))
 
-  def getSubscriptionByEmail(email: String): Future[Option[SalesforceSubscription]] =
+  def getSubscriptionByEmail(email: String): ApiResponse[Option[SalesforceSubscription]] =
     getSubscriptionBy(Email(email))
 
-  def getSubscriptionBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] =
+  def getSubscriptionBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]] =
     getSubscriptionBy(SubscriptionId(subscriptionId))
 }

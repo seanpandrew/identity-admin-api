@@ -13,7 +13,7 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
-import scalaz.{-\/, EitherT, OptionT, \/-}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import scalaz.std.scalaFuture._
 import models.ApiError._
 import models._
@@ -57,41 +57,62 @@ class UsersController @Inject() (
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
 
-      val subscriptionF = salesforce.getSubscriptionByIdentityId(userId)
-      val membershipF = salesforce.getMembershipByIdentityId(userId)
-      val hasCommentedF = discussionService.hasCommented(userId)
-      val newslettersSubF = exactTargetService.newslettersSubscription(userId)
+//      sealed trait EnhancedUserErrors
+//      case class MongoDbError(e: ApiError) extends EnhancedUserErrors
+//      case class SalesforceSubscriptionsError(e: ApiError) extends EnhancedUserErrors
+//      case class SalesforceMembershipError(e: ApiError) extends EnhancedUserErrors
+//      case class DisscussionError(e: ApiError) extends EnhancedUserErrors
+//      case class ExactTargetError(e: ApiError) extends EnhancedUserErrors
+//
+//      def processErrors(error: EnhancedUserErrors) = Left {
+//        error match {
+//          case MongoDbError(e) => NotFound(e)
+//          case SalesforceSubscriptionsError(e) => InternalServerError(e)
+//          case SalesforceMembershipError(e) => InternalServerError(e)
+//          case DisscussionError(e) => InternalServerError(e)
+//          case ExactTargetError(e) => InternalServerError(e)
+//        }
+//      }
+//
+//      val userF = EitherT(userService.findById(userId)).leftMap(MongoDbError)
+//      val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId)).leftMap(SalesforceSubscriptionsError)
+//      val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId)).leftMap(SalesforceMembershipError)
+//      val hasCommentedF = EitherT(discussionService.hasCommented(userId)).leftMap(DisscussionError)
+//      val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId)).leftMap(ExactTargetError)
 
-      for {
-        user <- userService.findById(userId)
+      val userF = EitherT(userService.findById(userId))
+      val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId))
+      val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId))
+      val hasCommentedF = EitherT(discussionService.hasCommented(userId))
+      val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId))
+
+      (for {
+        user <- userF
         subscription <- subscriptionF
         membership <- membershipF
         hasCommented <- hasCommentedF
         newslettersSub <- newslettersSubF
       } yield {
-        user.fold(
-          error => Left(NotFound),
-          r => {
-            if (Config.stage == "PROD") Tip.verify("User Retrieval")
+          if (Config.stage == "PROD") Tip.verify("User Retrieval")
 
-            val userWithSubscriptions = r.copy(
-              subscriptionDetails = subscription,
-              membershipDetails = membership,
-              hasCommented = hasCommented,
-              newslettersSubscription = newslettersSub)
+          val userWithSubscriptions = user.copy(
+            subscriptionDetails = subscription,
+            membershipDetails = membership,
+            hasCommented = hasCommented,
+            newslettersSubscription = newslettersSub)
 
-            Right(new UserRequest(userWithSubscriptions, input))
-          }
-        )
-      }
+          Right(new UserRequest(userWithSubscriptions, input))
+      }).fold(apiError => Left(InternalServerError(apiError)), identity(_))
     }
   }
 
   private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
-      OptionT(salesforce.getSubscriptionByEmail(email)).fold(
-        sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)),
-        Left(NotFound)
+      EitherT(salesforce.getSubscriptionByEmail(email)).fold(
+        error => Left(InternalServerError(error)),
+        subOpt => subOpt.fold[Either[Result, UserRequest[A]]]
+          (Left(NotFound))
+          (sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)))
       )
     }
   }

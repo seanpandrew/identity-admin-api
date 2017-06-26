@@ -26,7 +26,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   val dapiWsMockurl = s"/profile/10000001/stats"
   val dapiWsMock = MockWS { case (GET, dapiWsMockurl) => Action {Ok("""{"status":"ok","comments":0,"pickedComments":0}""")}}
   val exactTargetServiceMock = mock[ExactTargetService]
-  when(exactTargetServiceMock.newslettersSubscription("abc")).thenReturn(Future.successful(None))
+  when(exactTargetServiceMock.newslettersSubscription("abc")).thenReturn(Future.successful(\/-(None)))
 
   class StubAuthenticatedAction extends AuthenticatedAction {
     val secret = "secret"
@@ -36,13 +36,13 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   }
 
   class StubSalesfroce extends SalesforceService {
-    override def getSubscriptionByIdentityId(id: String): Future[Option[SalesforceSubscription]] = Future(None)
-    override def getSubscriptionByEmail(email: String): Future[Option[SalesforceSubscription]] = Future(None)
-    override def getSubscriptionBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] = Future(None)
-    override def getMembershipByIdentityId(id: String): Future[Option[SalesforceSubscription]] = Future(None)
-    override def getMembershipByMembershipNumber(membershipNumber: String): Future[Option[SalesforceSubscription]] = Future(None)
-    override def getMembershipByEmail(email: String): Future[Option[SalesforceSubscription]] = Future(None)
-    override def getMembershipBySubscriptionId(subscriptionId: String): Future[Option[SalesforceSubscription]] = Future(None)
+    override def getSubscriptionByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
+    override def getSubscriptionByEmail(email: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
+    override def getSubscriptionBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
+    override def getMembershipByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
+    override def getMembershipByMembershipNumber(membershipNumber: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
+    override def getMembershipByEmail(email: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
+    override def getMembershipBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]] = Future(\/-(None))
   }
 
   val controller = new UsersController(
