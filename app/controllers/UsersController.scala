@@ -1,7 +1,6 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
-
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import com.gu.tip.Tip
@@ -11,7 +10,6 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
 import play.api.mvc._
 import services._
-
 import scala.concurrent.Future
 import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import scalaz.std.scalaFuture._
@@ -56,53 +54,34 @@ class UsersController @Inject() (
 
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
+      EitherT(userService.findById(userId)).fold(
+        error => Future(Left(NotFound(error))),
+        user => {
+          {
+            val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId))
+            val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId))
+            val hasCommentedF = EitherT(discussionService.hasCommented(userId))
+            val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId))
 
-//      sealed trait EnhancedUserErrors
-//      case class MongoDbError(e: ApiError) extends EnhancedUserErrors
-//      case class SalesforceSubscriptionsError(e: ApiError) extends EnhancedUserErrors
-//      case class SalesforceMembershipError(e: ApiError) extends EnhancedUserErrors
-//      case class DisscussionError(e: ApiError) extends EnhancedUserErrors
-//      case class ExactTargetError(e: ApiError) extends EnhancedUserErrors
-//
-//      def processErrors(error: EnhancedUserErrors) = Left {
-//        error match {
-//          case MongoDbError(e) => NotFound(e)
-//          case SalesforceSubscriptionsError(e) => InternalServerError(e)
-//          case SalesforceMembershipError(e) => InternalServerError(e)
-//          case DisscussionError(e) => InternalServerError(e)
-//          case ExactTargetError(e) => InternalServerError(e)
-//        }
-//      }
-//
-//      val userF = EitherT(userService.findById(userId)).leftMap(MongoDbError)
-//      val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId)).leftMap(SalesforceSubscriptionsError)
-//      val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId)).leftMap(SalesforceMembershipError)
-//      val hasCommentedF = EitherT(discussionService.hasCommented(userId)).leftMap(DisscussionError)
-//      val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId)).leftMap(ExactTargetError)
+            (for {
+              subscription <- subscriptionF
+              membership <- membershipF
+              hasCommented <- hasCommentedF
+              newslettersSub <- newslettersSubF
+            } yield {
+              if (Config.stage == "PROD") Tip.verify("User Retrieval")
 
-      val userF = EitherT(userService.findById(userId))
-      val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId))
-      val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId))
-      val hasCommentedF = EitherT(discussionService.hasCommented(userId))
-      val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId))
+              val userWithSubscriptions = user.copy(
+                subscriptionDetails = subscription,
+                membershipDetails = membership,
+                hasCommented = hasCommented,
+                newslettersSubscription = newslettersSub)
 
-      (for {
-        user <- userF
-        subscription <- subscriptionF
-        membership <- membershipF
-        hasCommented <- hasCommentedF
-        newslettersSub <- newslettersSubF
-      } yield {
-          if (Config.stage == "PROD") Tip.verify("User Retrieval")
-
-          val userWithSubscriptions = user.copy(
-            subscriptionDetails = subscription,
-            membershipDetails = membership,
-            hasCommented = hasCommented,
-            newslettersSubscription = newslettersSub)
-
-          Right(new UserRequest(userWithSubscriptions, input))
-      }).fold(apiError => Left(InternalServerError(apiError)), identity(_))
+              Right(new UserRequest(userWithSubscriptions, input))
+            }).fold(apiError => Left(InternalServerError(apiError)), identity(_))
+          }
+        }
+      ).flatMap(identity)
     }
   }
 

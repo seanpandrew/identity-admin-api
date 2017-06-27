@@ -1,18 +1,15 @@
 package services
 
 import javax.inject.{Inject, Singleton}
-
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiResponse, NewslettersSubscription}
-
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, OptionT, \/, \/-}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
-
 import scala.collection.JavaConversions._
 
 @Singleton
@@ -77,8 +74,8 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
     OptionT(usersReadRepository.findById(identityId)).fold(
       user => {
         val response = etClientEditorial.retrieve(classOf[ETSubscriber], s"key=${user.email}")
-        Option(response.getResult).fold[ApiError \/ Option[NewslettersSubscription]]
-          { -\/(ApiError("Failed to retrieve subscriber from ExactTarget")) }
+        Option(response.getResult).fold
+          { \/-[Option[NewslettersSubscription]](None) }
           { result => \/-(Some(NewslettersSubscription(
               status = result.getObject.getStatus.value(),
               list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId))))
