@@ -110,11 +110,12 @@ class UsersController @Inject() (
         UserUpdateRequestValidator.isValid(result).fold(
           e => Future(BadRequest(ApiError("Failed to update user", e.message))),
           validUserUpdateRequest => {
-            if (Config.stage == "PROD") Tip.verify("User Update")
-            logger.info(s"Updating user id:$id, body: $result")
             EitherT(userService.update(request.user, validUserUpdateRequest)).fold(
               error => InternalServerError(error),
-              user => Ok(Json.toJson(user))
+              user => {
+                if (Config.stage == "PROD") Tip.verify("User Update")
+                Ok(Json.toJson(user))
+              }
             )
           }
         )
