@@ -41,7 +41,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val writeRepo = app.injector.instanceOf(classOf[UsersWriteRepository])
         val user = createUser()
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(user.primaryEmailAddress), 1.second).results.map(_.id) must contain(createdUser.get)
+        Await.result(repo.search(user.primaryEmailAddress), 1.second).fold(_ => fail, _.results.map(_.id) must contain(createdUser.get))
       }
 
       "return a user when username matches exactly" in {
@@ -50,7 +50,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val username = UUID.randomUUID().toString
         val user = createUser(username = Some(username))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(username), 1.second).results.map(_.id) must contain(createdUser.get)
+        Await.result(repo.search(username), 1.second).fold(_ => fail, _.results.map(_.id) must contain(createdUser.get))
       }
 
       "return a user when postcode matches exactly" in {
@@ -59,7 +59,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val postcode = "N1 9GU"
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(postcode), 1.second).results.map(_.id) must contain(createdUser.get)
+        Await.result(repo.search(postcode), 1.second).fold(_ => fail, _.results.map(_.id) must contain(createdUser.get))
       }
 
       "return a user when postcode prefix matches" in {
@@ -68,7 +68,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val postcode = "N1 9GU"
         val user = createUser(postcode = Some(postcode))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search("N1"), 1.second).results.map(_.id) must contain(createdUser.get)
+        Await.result(repo.search("N1"), 1.second).fold(_ => fail, _.results.map(_.id) must contain(createdUser.get))
       }
 
       "return a user when registered ip matches exactly" in {
@@ -77,7 +77,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val ip = "127.0.0.1"
         val user = createUser(registeredIp = Some(ip))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(ip), 1.second).results.map(_.id) must contain(createdUser.get)
+        Await.result(repo.search(ip), 1.second).fold(_ => fail, _.results.map(_.id) must contain(createdUser.get))
       }
 
       "return a user when last active ip matches exactly" in {
@@ -86,7 +86,7 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val ip = "127.0.0.1"
         val user = createUser(lastActiveIp = Some(ip))
         val createdUser = writeRepo.createUser(user)
-        Await.result(repo.search(ip), 1.second).results.map(_.id) must contain(createdUser.get)
+        Await.result(repo.search(ip), 1.second).fold(_ => fail, _.results.map(_.id) must contain(createdUser.get))
       }
       
       "return Nil when no results are found" in {
@@ -110,12 +110,17 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val createdUser4 = writeRepo.createUser(user4)
         val createdUser5 = writeRepo.createUser(user5)
 
-        val ids = Await.result(repo.search(postcode, offset = Some(1)), 1.second).results.map(_.id)
-        ids must not contain createdUser1.get
-        ids must contain(createdUser2.get)
-        ids must contain(createdUser3.get)
-        ids must contain(createdUser4.get)
-        ids must contain(createdUser5.get)
+        val ids = Await.result(repo.search(postcode, offset = Some(1)), 1.second).fold(
+          _ => fail,
+          searchResponse => {
+            val ids = searchResponse.results.map(_.id)
+            ids must not contain createdUser1.get
+            ids must contain(createdUser2.get)
+            ids must contain(createdUser3.get)
+            ids must contain(createdUser4.get)
+            ids must contain(createdUser5.get)
+          }
+        )
       }
 
       "use limit when provided" in {
@@ -134,12 +139,16 @@ class UsersRepositoryTest @Inject() (app: Application) extends PlaySpec with One
         val createdUser4 = writeRepo.createUser(user4)
         val createdUser5 = writeRepo.createUser(user5)
 
-        val ids = Await.result(repo.search(postcode, offset = Some(1), limit = Some(2)), 1.second).results.map(_.id)
-        ids.size mustEqual 2
-        ids must contain(createdUser2.get)
-        ids must contain(createdUser3.get)
+        val ids = Await.result(repo.search(postcode, offset = Some(1), limit = Some(2)), 1.second).fold(
+          _ => fail,
+          searchResponse => {
+            val ids = searchResponse.results.map(_.id)
+            ids.size mustEqual 2
+            ids must contain(createdUser2.get)
+            ids must contain(createdUser3.get)
+          }
+        )
       }
-
   }
 
   "findById" should {

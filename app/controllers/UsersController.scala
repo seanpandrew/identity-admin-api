@@ -11,7 +11,7 @@ import play.api.libs.json.Json
 import play.api.mvc._
 import services._
 import scala.concurrent.Future
-import scalaz.{EitherT, OptionT}
+import scalaz.{-\/, EitherT, OptionT, \/, \/-}
 import scalaz.std.scalaFuture._
 import models.ApiError._
 import models._
@@ -39,7 +39,7 @@ class UsersController @Inject() (
       Future.successful(BadRequest(ApiError(s"query must be a minimum of $MinimumQueryLength characters")))
     }
     else {
-      EitherT.fromEither(userService.search(query, limit, offset)).fold(
+      EitherT(userService.search(query, limit, offset)).fold(
         error => InternalServerError(error),
         response => Ok(Json.toJson(response))
       )
@@ -54,43 +54,44 @@ class UsersController @Inject() (
 
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
+      EitherT(userService.findById(userId)).fold(
+        error => Future(Left(NotFound(error))),
+        user => {
+          {
+            val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId))
+            val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId))
+            val hasCommentedF = EitherT(discussionService.hasCommented(userId))
+            val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId))
 
-      val subscriptionF = salesforce.getSubscriptionByIdentityId(userId)
-      val membershipF = salesforce.getMembershipByIdentityId(userId)
-      val hasCommentedF = discussionService.hasCommented(userId)
-      val newslettersSubF = exactTargetService.newslettersSubscription(userId)
+            (for {
+              subscription <- subscriptionF
+              membership <- membershipF
+              hasCommented <- hasCommentedF
+              newslettersSub <- newslettersSubF
+            } yield {
+              if (Config.stage == "PROD") Tip.verify("User Retrieval")
 
-      for {
-        user <- userService.findById(userId)
-        subscription <- subscriptionF
-        membership <- membershipF
-        hasCommented <- hasCommentedF
-        newslettersSub <- newslettersSubF
-      } yield {
-        user match {
-          case Left(error) => Left(NotFound)
+              val userWithSubscriptions = user.copy(
+                subscriptionDetails = subscription,
+                membershipDetails = membership,
+                hasCommented = hasCommented,
+                newslettersSubscription = newslettersSub)
 
-          case Right(r) =>
-            if (Config.stage == "PROD") Tip.verify("User Retrieval")
-
-            val userWithSubscriptions = r.copy(
-              subscriptionDetails = subscription,
-              membershipDetails = membership,
-              hasCommented = hasCommented,
-              newslettersSubscription = newslettersSub)
-
-            Right(new UserRequest(userWithSubscriptions, input))
+              Right(new UserRequest(userWithSubscriptions, input))
+            }).fold(apiError => Left(InternalServerError(apiError)), identity(_))
+          }
         }
-      }
+      ).flatMap(identity)
     }
   }
 
-
   private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
-      OptionT(salesforce.getSubscriptionByEmail(email)).fold(
-        sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)),
-        Left(NotFound)
+      EitherT(salesforce.getSubscriptionByEmail(email)).fold(
+        error => Left(InternalServerError(error)),
+        subOpt => subOpt.fold[Either[Result, UserRequest[A]]]
+          (Left(NotFound))
+          (sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)))
       )
     }
   }
@@ -104,28 +105,30 @@ class UsersController @Inject() (
   }
 
   def update(id: String) = (auth andThen UserAction(id)).async(parse.json) { request =>
-      request.body.validate[UserUpdateRequest] match {
-        case JsSuccess(result, path) =>
-          UserUpdateRequestValidator.isValid(result) match {
-            case Right(validUserUpdateRequest) => {
-              if (Config.stage == "PROD") Tip.verify("User Update")
-              logger.info(s"Updating user id:$id, body: $result")
-              EitherT.fromEither(userService.update(request.user, validUserUpdateRequest)).fold(
-                error => InternalServerError(error),
-                user => Ok(Json.toJson(user))
-              )
-            }
-            case Left(e) => Future(BadRequest(ApiError("Failed to update user", e.message)))
+    request.body.validate[UserUpdateRequest] match {
+      case JsSuccess(result, path) =>
+        UserUpdateRequestValidator.isValid(result).fold(
+          e => Future(BadRequest(ApiError("Failed to update user", e.message))),
+          validUserUpdateRequest => {
+            EitherT(userService.update(request.user, validUserUpdateRequest)).fold(
+              error => InternalServerError(error),
+              user => {
+                if (Config.stage == "PROD") Tip.verify("User Update")
+                Ok(Json.toJson(user))
+              }
+            )
           }
-        case JsError(e) => Future(BadRequest(ApiError("Failed to update user", e.toString)))
-      }
+        )
+
+      case JsError(e) => Future(BadRequest(ApiError("Failed to update user", e.toString)))
+    }
   }
 
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
     def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email))
-    def deleteAccount() = EitherT.fromEither(userService.delete(request.user))
+    def deleteAccount() = EitherT(userService.delete(request.user))
 
     (for {
       _ <- unsubscribeEmails()
@@ -145,7 +148,7 @@ class UsersController @Inject() (
   def unsubcribeFromAllEmailLists(email: String) = auth.async { request =>
     logger.info("Unsubscribing from all email lists (marketing and editorial)")
     val unsubscribeMarketingEmailsInIdentity = EitherT(exactTargetService.unsubscribeFromAllLists(email))
-    val unsubcribeAllEmailsInExactTarget = EitherT.fromEither(userService.unsubscribeFromMarketingEmails(email))
+    val unsubcribeAllEmailsInExactTarget = EitherT(userService.unsubscribeFromMarketingEmails(email))
 
     (for {
       _ <- unsubscribeMarketingEmailsInIdentity
@@ -179,17 +182,17 @@ class UsersController @Inject() (
 
   def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Sending email validation for user with id: $id")
-    userService.sendEmailValidation(request.user).map {
-      case Right(r) => NoContent
-      case Left(error) => InternalServerError(error)
-    }
+    EitherT(userService.sendEmailValidation(request.user)).fold(
+      error => InternalServerError(error),
+      _ => NoContent
+    )
   }
 
   def validateEmail(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Validating email for user with id: $id")
-    userService.validateEmail(request.user).map {
-      case Right(r) => NoContent
-      case Left(error) => InternalServerError(error)
-    }
+    EitherT(userService.validateEmail(request.user)).fold(
+      error => InternalServerError(error),
+      _ => NoContent
+    )
   }
 }

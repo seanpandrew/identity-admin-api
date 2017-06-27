@@ -9,6 +9,7 @@ import models._
 import salat.dao.SalatDAO
 
 import scala.util.{Failure, Success, Try}
+import scalaz.{-\/, \/, \/-}
 
 @Singleton
 class UsersWriteRepository @Inject() (
@@ -23,22 +24,22 @@ class UsersWriteRepository @Inject() (
     insert(userToCreate)
   }
   
-  def update(user: User, userUpdateRequest: IdentityUserUpdate): Either[ApiError, User] = {
+  def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiError \/ User = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
         prepareUserForUpdate(userUpdateRequest, persistedUser)
       }
     } match {
         case Success(Some(userToSave)) => doUpdate(userToSave)
-        case Success(None) => Left(ApiError("User not found"))
+        case Success(None) => -\/(ApiError("User not found"))
         case Failure(error) =>
           val title = s"Failed to update user ${user.id}"
           logger.error(title, error)
-          Left(ApiError(title, error.getMessage))
+          -\/(ApiError(title, error.getMessage))
     }
   }
 
-  def updateEmailValidationStatus(user: User, emailValidated: Boolean): Either[ApiError, User] = {
+  def updateEmailValidationStatus(user: User, emailValidated: Boolean): ApiError \/ User = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
         val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
@@ -48,11 +49,11 @@ class UsersWriteRepository @Inject() (
       }
     } match {
         case Success(Some(userToSave)) => doUpdate(userToSave)
-        case Success(None) => Left(ApiError("User not found"))
+        case Success(None) => -\/(ApiError("User not found"))
         case Failure(error) =>
           val title = s"Failed to update email validation status to $emailValidated for user ${user.id}"
           logger.error(title, error)
-          Left(ApiError(title, error.getMessage))
+          -\/(ApiError(title, error.getMessage))
     }
   }
 
@@ -89,15 +90,15 @@ class UsersWriteRepository @Inject() (
     )
   }
 
-  private def doUpdate(userToSave: IdentityUser): Either[ApiError, User] = {
+  private def doUpdate(userToSave: IdentityUser): ApiError \/ User = {
     Try {
       update(MongoDBObject("_id" -> userToSave._id), userToSave, upsert = false, multi = false, wc = WriteConcern.Safe)
     } match {
-      case Success(_) => Right(User.fromIdentityUser(userToSave))
+      case Success(_) => \/-(User.fromIdentityUser(userToSave))
       case Failure(error) =>
         val title = s"Failed to update user ${userToSave._id}"
         logger.error(title, error)
-        Left(ApiError(title, generateErrorMessage(error)))
+        -\/(ApiError(title, generateErrorMessage(error)))
     }
   }
 
@@ -109,17 +110,17 @@ class UsersWriteRepository @Inject() (
       "update could not be performed contact identitydev@guardian.co.uk"
   }
 
-  def delete(user: User): Either[ApiError, Boolean] = {
+  def delete(user: User): ApiError \/ Boolean = {
     Try {
       removeById(user.id)
     } match {
       case Success(r) =>
         deletedUsersRepository.insert(user.id, user.email, user.username.getOrElse(""))
-        Right(true)
+        \/-(true)
       case Failure(error) =>
         val title = s"Failed to delete user ${user.id}"
         logger.error(title, error)
-        Left(ApiError(title, error.getMessage))
+        -\/(ApiError(title, error.getMessage))
     }
   }
 
@@ -134,11 +135,11 @@ class UsersWriteRepository @Inject() (
       }
     } match {
       case Success(Some(userToSave)) => doUpdate(userToSave)
-      case Success(None) => Left(ApiError("User not found"))
+      case Success(None) => -\/(ApiError("User not found"))
       case Failure(error) =>
         val title = "Failed to unsubscribe from marketing emails:"
         logger.error(title, error)
-        Left(ApiError(title, error.getMessage))
+        -\/(ApiError(title, error.getMessage))
     }
   }
 }

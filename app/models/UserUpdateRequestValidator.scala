@@ -1,18 +1,20 @@
 package models
 
+import scalaz.{-\/, \/, \/-}
+
 case class ValidationError(message: String)
 
 object UserUpdateRequestValidator {
 
-  def isValid(userUpdateRequest: UserUpdateRequest): Either[ValidationError, UserUpdateRequest] = {
+  def isValid(userUpdateRequest: UserUpdateRequest): ValidationError \/ UserUpdateRequest = {
     val validUsernameAndDisplayName = (userUpdateRequest.username, userUpdateRequest.displayName) match {
       case (Some(newUsername), Some(newDisplayName)) => newUsername == newDisplayName
       case _ => true
     }
     if (validUsernameAndDisplayName) {
-      Right(userUpdateRequest)
+      \/-(userUpdateRequest)
     } else {
-      Left(ValidationError("Conflict between username and display name"))
+      -\/(ValidationError("Conflict between username and display name"))
     }
   }
 

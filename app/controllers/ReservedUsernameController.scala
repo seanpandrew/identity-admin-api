@@ -1,7 +1,6 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
-
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import models._
@@ -22,29 +21,29 @@ class ReservedUsernameController @Inject() (reservedUsernameRepository: Reserved
     request.body.validate[ReservedUsernameRequest] match {
       case JsSuccess(result, path) =>
         logger.info(s"Reserving username: ${result.username}")
-        reservedUsernameRepository.addReservedUsername(result.username) match {
-          case Left(error) => InternalServerError(error)
-          case Right(success) => NoContent
-        }
+        reservedUsernameRepository.addReservedUsername(result.username).fold(
+          error => InternalServerError(error),
+          _ => NoContent
+        )
       case JsError(e) => BadRequest(ApiError("Failed to reserve username", e.toString))
     }
   }
 
   def getReservedUsernames = auth { request =>
-    reservedUsernameRepository.loadReservedUsernames match {
-      case Left(error) => InternalServerError(error)
-      case Right(success) => Ok(Json.toJson(success))
-    }
+    reservedUsernameRepository.loadReservedUsernames.fold(
+      error => InternalServerError(error),
+      success => Ok(Json.toJson(success))
+    )
   }
 
   def unreserveUsername() = auth(parse.json) { request =>
     request.body.validate[ReservedUsernameRequest] match {
       case JsSuccess(result, path) =>
         logger.info(s"Unreserving username: ${result.username}")
-        reservedUsernameRepository.removeReservedUsername(result.username) match {
-          case Left(error) => InternalServerError(error)
-          case Right(success) => NoContent
-        }
+        reservedUsernameRepository.removeReservedUsername(result.username).fold(
+          error => InternalServerError(error),
+          _ => NoContent
+        )
       case JsError(error) => BadRequest(ApiError("Failed to unreserve username", error.toString))
     }
   }
