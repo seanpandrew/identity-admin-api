@@ -229,11 +229,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   def delete(user: User): ApiResponse[ReservedUsernameList] =
     EitherT(usersWriteRepository.delete(user)).fold(
-      error => (-\/(error)),
+      error => Future.successful(-\/(error)),
       _ => user.username.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
         reservedUserNameRepository.loadReservedUsernames
       }
-    )
+    ).flatMap(identity)
 
   def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Boolean] =
     EitherT(usersWriteRepository.updateEmailValidationStatus(user, emailValidated)).fold(

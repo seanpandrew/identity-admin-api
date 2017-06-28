@@ -242,14 +242,14 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val username = "testuser"
       val user = User("id", "email", username = Some(username))
       when(userWriteRepo.delete(user)).thenReturn(Future.successful(\/-(true)))
-      when(reservedUsernameRepo.addReservedUsername(username)).thenReturn(\/-(ReservedUsernameList(List(username))))
+      when(reservedUsernameRepo.addReservedUsername(username)).thenReturn(Future.successful(\/-(ReservedUsernameList(List(username)))))
       Await.result(service.delete(user), 1.second) shouldEqual \/-(ReservedUsernameList(List(username)))
     }
 
     "remove the given user and return existing reserved usernames when user has no username" in {
       val user = User("id", "email", username = None)
       when(userWriteRepo.delete(user)).thenReturn(Future.successful(\/-(true)))
-      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(\/-(ReservedUsernameList(Nil)))
+      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Future.successful(\/-(ReservedUsernameList(Nil))))
       Await.result(service.delete(user), 1.second) shouldEqual \/-(ReservedUsernameList(Nil))
     }
 
