@@ -17,13 +17,6 @@ class UsersWriteRepository @Inject() (
     deletedUsersRepository: DeletedUsersRepository)
   extends SalatDAO[IdentityUser, String](collection=salatMongoConnection.db()("users")) with Logging {
 
-  private[repositories] def createUser(user: IdentityUser) = {
-    val userToCreate = user.copy(
-      primaryEmailAddress = user.primaryEmailAddress.toLowerCase,
-      publicFields = user.publicFields.map(pf => pf.copy(usernameLowerCase = pf.username.map(_.toLowerCase))))
-    insert(userToCreate)
-  }
-  
   def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiError \/ User = {
     Try {
       findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
