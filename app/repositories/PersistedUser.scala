@@ -1,11 +1,9 @@
 package repositories
 
-import models.MongoJsFormats
-import org.joda.time.{DateTime, DateTimeZone}
+import MongoJsonFormats._
+import org.joda.time.DateTime
 import play.api.libs.json._
-import MongoJsFormats._
 import play.api.libs.functional.syntax._
-
 import scala.language.implicitConversions
 
 case class SocialLink(socialId: String, 
@@ -33,17 +31,6 @@ case class GroupMembership(path: String,
                            joinedDate: Option[DateTime] = None)
 
 object GroupMembership {
-  implicit val dateTimeRead: Reads[DateTime] =
-    (__ \ "$date").read[Long].map { dateTime =>
-      new DateTime(dateTime, DateTimeZone.UTC)
-    }
-
-
-  implicit val dateTimeWrite: Writes[DateTime] = new Writes[DateTime] {
-    def writes(dateTime: DateTime): JsValue = Json.obj(
-      "$date" -> dateTime.getMillis
-    )
-  }
   implicit val format = Json.format[GroupMembership]
 }
 
@@ -103,18 +90,6 @@ case class UserDates(lastActivityDate: Option[DateTime] = None,
                      lastExportedFromDiscussion: Option[DateTime] = None)
 
 object UserDates {
-  implicit val dateTimeRead: Reads[DateTime] =
-    (__ \ "$date").read[Long].map { dateTime =>
-      new DateTime(dateTime, DateTimeZone.UTC)
-    }
-
-
-  implicit val dateTimeWrite: Writes[DateTime] = new Writes[DateTime] {
-    def writes(dateTime: DateTime): JsValue = Json.obj(
-      "$date" -> dateTime.getMillis
-    )
-  }
-
   implicit val format = Json.format[UserDates]
 }
 
@@ -180,8 +155,7 @@ object IdentityUser {
   (JsPath \ "searchFields").writeNullable[SearchFields]
 )(unlift(IdentityUser.unapply))
 
-  implicit val format: OFormat[IdentityUser] =
-    OFormat(identityUserReads, identityUserWrites)
+  implicit val format: OFormat[IdentityUser] = OFormat(identityUserReads, identityUserWrites)
 }
 
 case class Orphan(id: String = "orphan", email: String) extends PersistedUser

@@ -4,9 +4,8 @@ import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.json.Json
 import play.api.mvc.{Result, Results}
 import repositories.IdentityUser
-
 import scala.language.implicitConversions
-import MongoJsFormats._
+import ClientJsonFormats._
 
 case class PersonalDetails(firstName: Option[String] = None,
                            lastName: Option[String] = None,
