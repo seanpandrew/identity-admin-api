@@ -6,29 +6,20 @@ import models._
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
-import reactivemongo.api.ReadPreference
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
 import scala.concurrent.Future
 import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
 
-@Singleton
-class UsersWriteRepository @Inject() (
+@Singleton class UsersWriteRepository @Inject() (
     reactiveMongoApi: ReactiveMongoApi,
     deletedUsersRepository: DeletedUsersRepository) extends Logging {
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
-  private def insert(user: IdentityUser) =
-    usersF.flatMap(r => r.insert[IdentityUser](user))
-
   def findBy(query: String): ApiResponse[IdentityUser] =
-    OptionT(usersF.flatMap {
-      _.find(buildSearchQuery(query))
-        .cursor[IdentityUser](ReadPreference.primaryPreferred)
-        .headOption
-    }).fold(
+    OptionT(usersF.flatMap(_.find(buildSearchQuery(query)).one[IdentityUser])).fold(
       user => \/-(user),
       -\/(ApiError("User not found"))
     )
@@ -97,23 +88,15 @@ class UsersWriteRepository @Inject() (
     )
   }
 
-  private def doUpdate(userToSave: IdentityUser): ApiResponse[User] = {
+  private def doUpdate(userToSave: IdentityUser): ApiResponse[User] =
     usersF.flatMap(_.update(buildSearchQuery(userToSave._id.get), userToSave)).map( _ => \/-(User.fromIdentityUser(userToSave)))
-  }
+      .recover { case error => -\/(ApiError("Failed to update user", error.getMessage))}
 
-  private def generateErrorMessage(error: Throwable): String = {
-    val errorText = error.toString
-    if (errorText contains "E11000 duplicate key error")
-      "this data is already in use in the database"
-    else
-      "update could not be performed contact identitydev@guardian.co.uk"
-  }
-
-  def delete(user: User): ApiResponse[Boolean] = {
+  def delete(user: User): ApiResponse[Boolean] =
     usersF.flatMap(_.remove(buildSearchQuery(user.id))).map(_ => \/-(true))
-  }
+      .recover { case error => -\/(ApiError("Failed to delete user", error.getMessage)) }
 
-  def unsubscribeFromMarketingEmails(email: String) = {
+  def unsubscribeFromMarketingEmails(email: String) =
     EitherT(findBy(email)).fold(
       error => Future(-\/(error)),
       persistedUser => {
@@ -125,5 +108,4 @@ class UsersWriteRepository @Inject() (
         doUpdate(userToSave)
       }
     ).flatMap(identity)
-  }
 }
