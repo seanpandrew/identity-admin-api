@@ -5,23 +5,20 @@ import javax.inject.{Inject, Singleton}
 import com.gu.identity.util.Logging
 import com.mongodb.casbah.WriteConcern
 import models._
-import play.api.libs.json.{JsObject, Json}
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
 import reactivemongo.api.ReadPreference
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
+import play.api.libs.json.Json
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
-import IdentityUser._
 
 @Singleton
 class UsersWriteRepository @Inject() (
-                                       reactiveMongoApi: ReactiveMongoApi,
-                                       deletedUsersRepository: DeletedUsersRepository) extends Logging {
+    reactiveMongoApi: ReactiveMongoApi,
+    deletedUsersRepository: DeletedUsersRepository) extends Logging {
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
@@ -46,13 +43,6 @@ class UsersWriteRepository @Inject() (
       )
     )
 
-//  def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiResponse[User] = {
-//    EitherT(findBy(user.id)).map(prepareUserForUpdate(userUpdateRequest, _)).fold(
-//      error => Future(-\/(error)),
-//      userToSave => doUpdate(userToSave)
-//    ).flatMap(identity)
-//  }
-
   def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiResponse[User] = {
     EitherT(findBy(user.id)).fold(
       error => Future(-\/(error)),
@@ -62,14 +52,6 @@ class UsersWriteRepository @Inject() (
       }
     ).flatMap(identity)
   }
-
-//    OptionT(findBy(user.id)).fold(
-//      persistedUser => {
-//        val userToSave = prepareUserForUpdate(userUpdateRequest, persistedUser)
-//        doUpdate(userToSave)
-//      },
-//      Left(ApiError("User not found"))
-//    )
 
   def updateEmailValidationStatus(user: User, emailValidated: Boolean): ApiResponse[User] = {
     EitherT(findBy(user.id)).fold(
