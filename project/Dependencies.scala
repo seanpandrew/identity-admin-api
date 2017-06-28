@@ -13,7 +13,7 @@ object Dependencies {
   val awsWrap =             "com.github.dwhjames"           %% "aws-wrap"                 % "0.8.0"
   val aws =                 "com.amazonaws"                 %  "aws-java-sdk"             % "1.11.105"
   val scalaz =              "org.scalaz"                    %% "scalaz-core"              % "7.2.10"
-  val reactiveMongo =       "org.reactivemongo"             %% "play2-reactivemongo"      % "0.12.2"
+  val reactiveMongo =       "org.reactivemongo"             %% "play2-reactivemongo"      % "0.12.4"
   val emailValidation =     "uk.gov.hmrc"                   %% "emailaddress"             % "2.1.0"
   val exactTargetFuel =     "com.exacttarget"               %  "fuelsdk"                  % "1.1.0"
   val tip =                 "com.gu"                        %% "tip"                      % "0.3.2"
