@@ -1,9 +1,7 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
-
 import com.gu.identity.util.Logging
-import com.mongodb.casbah.WriteConcern
 import models._
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.play.json.collection._
