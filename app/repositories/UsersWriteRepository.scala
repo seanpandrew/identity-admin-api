@@ -8,7 +8,6 @@ import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
-import scala.concurrent.Future
 import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
 
@@ -32,28 +31,18 @@ import scalaz.std.scalaFuture._
       )
     )
 
-  def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiResponse[User] = {
-    EitherT(findBy(user.id)).fold(
-      error => Future(-\/(error)),
-      persistedUser => {
-        val userToSave = prepareUserForUpdate(userUpdateRequest, persistedUser)
-        doUpdate(userToSave)
-      }
-    ).flatMap(identity)
-  }
+  def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiResponse[User] =
+    (for {
+      persistedUser <- EitherT(findBy(user.id))
+      updatedUser <- EitherT(doUpdate(prepareUserForUpdate(userUpdateRequest, persistedUser)))
+    } yield (updatedUser)).run
 
-  def updateEmailValidationStatus(user: User, emailValidated: Boolean): ApiResponse[User] = {
-    EitherT(findBy(user.id)).fold(
-      error => Future(-\/(error)),
-      persistedUser => {
-        val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
-          userEmailValidated = Some(emailValidated)
-        )
-        val userToSave = persistedUser.copy(statusFields = Some(statusFields))
-        doUpdate(userToSave)
-      }
-    ).flatMap(identity)
-  }
+  def updateEmailValidationStatus(user: User, emailValidated: Boolean): ApiResponse[User] =
+    (for {
+      persistedUser <- EitherT(findBy(user.id))
+      statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(userEmailValidated = Some(emailValidated))
+      updatedUser <- EitherT(doUpdate(persistedUser.copy(statusFields = Some(statusFields))))
+    } yield (updatedUser)).run
 
   private def prepareUserForUpdate(userUpdateRequest: IdentityUserUpdate, identityUser: IdentityUser): IdentityUser = {
     val publicFields = identityUser.publicFields.getOrElse(PublicFields()).copy(
@@ -97,15 +86,9 @@ import scalaz.std.scalaFuture._
       .recover { case error => -\/(ApiError("Failed to delete user", error.getMessage)) }
 
   def unsubscribeFromMarketingEmails(email: String) =
-    EitherT(findBy(email)).fold(
-      error => Future(-\/(error)),
-      persistedUser => {
-        val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
-          receive3rdPartyMarketing = Some(false),
-          receiveGnmMarketing = Some(false)
-        )
-        val userToSave = persistedUser.copy(statusFields = Some(statusFields))
-        doUpdate(userToSave)
-      }
-    ).flatMap(identity)
+    (for {
+      persistedUser <- EitherT(findBy(email))
+      statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(receive3rdPartyMarketing = Some(false), receiveGnmMarketing = Some(false))
+      updatedUser <- EitherT(doUpdate(persistedUser.copy(statusFields = Some(statusFields))))
+    } yield (updatedUser)).run
 }
