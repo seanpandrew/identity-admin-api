@@ -17,17 +17,17 @@ import scalaz.std.scalaFuture._
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
-  def findBy(query: String): ApiResponse[IdentityUser] =
-    OptionT(usersF.flatMap(_.find(buildSearchQuery(query)).one[IdentityUser])).fold(
+  def findBy(key: String): ApiResponse[IdentityUser] =
+    OptionT(usersF.flatMap(_.find(selector(key)).one[IdentityUser])).fold(
       user => \/-(user),
       -\/(ApiError("User not found"))
     )
 
-  private def buildSearchQuery(query: String) =
+  private def selector(key: String) =
     Json.obj(
       "$or" -> Json.arr(
-        Json.obj("_id" -> query.toLowerCase),
-        Json.obj("primaryEmailAddress" -> query.toLowerCase)
+        Json.obj("_id" -> key.toLowerCase),
+        Json.obj("primaryEmailAddress" -> key.toLowerCase)
       )
     )
 
@@ -78,12 +78,24 @@ import scalaz.std.scalaFuture._
   }
 
   private def doUpdate(userToSave: IdentityUser): ApiResponse[User] =
-    usersF.flatMap(_.update(buildSearchQuery(userToSave._id.get), userToSave)).map( _ => \/-(User.fromIdentityUser(userToSave)))
-      .recover { case error => -\/(ApiError("Failed to update user", error.getMessage))}
+    usersF
+      .flatMap(_.update(selector(userToSave.primaryEmailAddress), userToSave))
+      .map( _ => \/-(User.fromIdentityUser(userToSave)))
+      .recover { case error =>
+        val title = s"Failed to update user ${userToSave._id.getOrElse("")}"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+      }
 
   def delete(user: User): ApiResponse[Boolean] =
-    usersF.flatMap(_.remove(buildSearchQuery(user.id))).map(_ => \/-(true))
-      .recover { case error => -\/(ApiError("Failed to delete user", error.getMessage)) }
+    usersF
+      .flatMap(_.remove(selector(user.id)))
+      .map(_ => \/-(true))
+      .recover { case error =>
+        val title = s"Failed to delete user ${user.id}"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+      }
 
   def unsubscribeFromMarketingEmails(email: String) =
     (for {

@@ -34,19 +34,42 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
     )
 
   def removeReservedUsername(username: String): ApiResponse[ReservedUsernameList] =
-    reservedUsernamesF.flatMap(_.remove(buildSearchQuery(username))).flatMap(_ => loadReservedUsernames)
-      .recover { case error => -\/(ApiError(s"Failed to remove reserved username $username", error.getMessage)) }
+    reservedUsernamesF
+      .flatMap(_.remove(buildSearchQuery(username)))
+      .flatMap(_ => loadReservedUsernames)
+      .recover { case error =>
+        val title = s"Failed to remove reserved username $username"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+      }
 
-  def loadReservedUsernames: ApiResponse[ReservedUsernameList] =
-    reservedUsernamesF.flatMap {
-      _.find(Json.obj())
+  def loadReservedUsernames: ApiResponse[ReservedUsernameList] = {
+    val listOfReservedUsernamesF = reservedUsernamesF.flatMap {
+       _.find(Json.obj())
         .sort(Json.obj("username" -> 1))
         .cursor[ReservedUsername](ReadPreference.primaryPreferred)
         .collect[List](-1, Cursor.FailOnError[List[ReservedUsername]]())
-    }.map(_.map(_.username)).map(ReservedUsernameList(_)).map(\/-(_))
-      .recover { case error => -\/(ApiError("Failed to load reserved usernames list", error.getMessage)) }
+    }
+
+    (for {
+      listOfReservedUsernames <- listOfReservedUsernamesF
+      listOfUsernames = listOfReservedUsernames.map(_.username)
+    } yield {
+      \/-(ReservedUsernameList(listOfUsernames))
+    }).recover { case error =>
+      val title = "Failed to load reserved usernames list"
+      logger.error(title, error)
+      -\/(ApiError(title, error.getMessage))
+    }
+  }
 
   def addReservedUsername(username: String): ApiResponse[ReservedUsernameList] =
-    reservedUsernamesF.flatMap(_.insert[ReservedUsername](ReservedUsername(username))).flatMap(_ => loadReservedUsernames)
-      .recover { case error => -\/(ApiError(s"Failed to add $username to reserved username list", error.getMessage)) }
+    reservedUsernamesF
+      .flatMap(_.insert[ReservedUsername](ReservedUsername(username)))
+      .flatMap(_ => loadReservedUsernames)
+      .recover { case error =>
+        val title = s"Failed to add $username to reserved username list"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+      }
 }

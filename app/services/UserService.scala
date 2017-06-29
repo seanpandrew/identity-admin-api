@@ -231,12 +231,11 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       triggerEvents(userId = user.id, usernameChanged = false, displayNameChanged = false, emailValidatedChanged = true)
     }.run
 
-  def sendEmailValidation(user: User): ApiResponse[Unit] = {
+  def sendEmailValidation(user: User): ApiResponse[Unit] =
     (for {
       _ <- EitherT(validateEmail(user, emailValidated = false))
       _ <- EitherT(identityApiClient.sendEmailValidation(user.id))
     } yield()).run
-  }
 
   def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] =
     usersWriteRepository.unsubscribeFromMarketingEmails(email)
