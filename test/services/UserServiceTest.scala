@@ -264,7 +264,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "validate the email address" in {
       val user = User("id", "email")
       when(userWriteRepo.updateEmailValidationStatus(user, true)).thenReturn(Future.successful(\/-(user)))
-      Await.result(service.validateEmail(user), 1.second) shouldEqual \/-(true)
+      Await.result(service.validateEmail(user), 1.second) shouldEqual \/-{}
     }
 
     "return internal server api error if an error occurs validating the email address" in {
@@ -280,7 +280,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
       val user = User("id", "email")
       when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Future.successful(\/-(user)))
       when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
-      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual \/-(true)
+      Await.result(service.sendEmailValidation(user), 1.second) shouldEqual \/-{}
     }
 
     "return internal server api error if an error occurs invalidating the email address" in {

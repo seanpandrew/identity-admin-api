@@ -226,17 +226,16 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
       reservedUsernameList <- EitherT(user.username.fold(reservedUserNameRepository.loadReservedUsernames)(reservedUserNameRepository.addReservedUsername(_)))
     } yield(reservedUsernameList)).run
 
-  def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Boolean] =
+  def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Unit] =
     EitherT(usersWriteRepository.updateEmailValidationStatus(user, emailValidated)).map { _ =>
       triggerEvents(userId = user.id, usernameChanged = false, displayNameChanged = false, emailValidatedChanged = true)
-      true
     }.run
 
-  def sendEmailValidation(user: User): ApiResponse[Boolean] = {
+  def sendEmailValidation(user: User): ApiResponse[Unit] = {
     (for {
       _ <- EitherT(validateEmail(user, emailValidated = false))
-      result <- EitherT(identityApiClient.sendEmailValidation(user.id))
-    } yield(result)).run
+      _ <- EitherT(identityApiClient.sendEmailValidation(user.id))
+    } yield()).run
   }
 
   def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] =
