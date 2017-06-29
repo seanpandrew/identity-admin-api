@@ -1,20 +1,18 @@
-package models
+package repositories
 
-import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.Json.JsValueWrapper
 import play.api.libs.json._
 
-object MongoJsFormats {
-  private val dateFormat = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZoneUTC()
+// Used by ReactiveMongo for implicit JSON to BSON conversion
+object MongoJsonFormats {
 
+  // https://stackoverflow.com/questions/41390385/how-to-store-date-in-mongodb-in-iso-format-instead-of-long-play-scala-and-reac
   implicit val dateTimeRead: Reads[DateTime] =
-    (__ \ "$date").read[Long].map { dateTime =>
-      new DateTime(dateTime)
-    }
+    (__ \ "$date").read[Long].map(dateTime => new DateTime(dateTime, DateTimeZone.UTC))
 
   implicit val dateTimeWrite: Writes[DateTime] = new Writes[DateTime] {
-    def writes(dateTime: DateTime): JsValue = JsString(dateFormat.print(dateTime))
+    def writes(dateTime: DateTime): JsValue = Json.obj("$date" -> dateTime.getMillis)
   }
 
   implicit val objectMapFormat = new Format[Map[String, Any]] {
@@ -43,4 +41,4 @@ object MongoJsFormats {
         })
       })
   }
-} 
+}

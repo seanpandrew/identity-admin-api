@@ -11,11 +11,9 @@ object Dependencies {
   val identityCookie =      "com.gu.identity"               %% "identity-cookie"          % "3.78"
   val identityPlayAuth =    "com.gu.identity"               %% "identity-play-auth"       % "1.2"
   val awsWrap =             "com.github.dwhjames"           %% "aws-wrap"                 % "0.8.0"
-  val awsSns =              "com.amazonaws"                 %  "aws-java-sdk"             % "1.11.105"
+  val aws =                 "com.amazonaws"                 %  "aws-java-sdk"             % "1.11.105"
   val scalaz =              "org.scalaz"                    %% "scalaz-core"              % "7.2.10"
-  val autoMongoDiscovery =  "com.gu"                        %% "mongodb-auto-discovery"   % "1.6"
-  val reactiveMongo =       "org.reactivemongo"             %% "play2-reactivemongo"      % "0.12.2"
-  val salat =               "com.github.salat"              %% "salat"                    % "1.10.0"
+  val reactiveMongo =       "org.reactivemongo"             %% "play2-reactivemongo"      % "0.12.4"
   val emailValidation =     "uk.gov.hmrc"                   %% "emailaddress"             % "2.1.0"
   val exactTargetFuel =     "com.exacttarget"               %  "fuelsdk"                  % "1.1.0"
   val tip =                 "com.gu"                        %% "tip"                      % "0.3.2"
@@ -27,8 +25,8 @@ object Dependencies {
   val akkaTestkit =         "com.typesafe.akka"             %% "akka-testkit"             % "2.4.17"    % "test"
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
-    playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo, salat,
-    specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, autoMongoDiscovery, akkaSlf4j, akkaTestkit,
-    exactTargetFuel, tip)
+    playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo,
+    specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, akkaSlf4j, akkaTestkit,
+    exactTargetFuel, tip, aws)
 
 }

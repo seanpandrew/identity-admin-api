@@ -1,54 +1,48 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
-
 import com.gu.identity.util.Logging
-import com.mongodb.casbah.WriteConcern
-import com.mongodb.casbah.commons.MongoDBObject
 import models._
-import salat.dao.SalatDAO
+import play.modules.reactivemongo.ReactiveMongoApi
+import reactivemongo.play.json.collection._
+import reactivemongo.play.json._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.json.Json
+import scalaz.{-\/, EitherT, OptionT, \/-}
+import scalaz.std.scalaFuture._
 
-import scala.util.{Failure, Success, Try}
-import scalaz.{-\/, \/, \/-}
+@Singleton class UsersWriteRepository @Inject() (
+    reactiveMongoApi: ReactiveMongoApi,
+    deletedUsersRepository: DeletedUsersRepository) extends Logging {
 
-@Singleton
-class UsersWriteRepository @Inject() (
-    salatMongoConnection: SalatMongoConnection,
-    deletedUsersRepository: DeletedUsersRepository)
-  extends SalatDAO[IdentityUser, String](collection=salatMongoConnection.db()("users")) with Logging {
+  private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
-  def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiError \/ User = {
-    Try {
-      findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
-        prepareUserForUpdate(userUpdateRequest, persistedUser)
-      }
-    } match {
-        case Success(Some(userToSave)) => doUpdate(userToSave)
-        case Success(None) => -\/(ApiError("User not found"))
-        case Failure(error) =>
-          val title = s"Failed to update user ${user.id}"
-          logger.error(title, error)
-          -\/(ApiError(title, error.getMessage))
-    }
-  }
+  def findBy(query: String): ApiResponse[IdentityUser] =
+    OptionT(usersF.flatMap(_.find(buildSearchQuery(query)).one[IdentityUser])).fold(
+      user => \/-(user),
+      -\/(ApiError("User not found"))
+    )
 
-  def updateEmailValidationStatus(user: User, emailValidated: Boolean): ApiError \/ User = {
-    Try {
-      findOne(MongoDBObject("_id" -> user.id)).map { persistedUser =>
-        val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
-          userEmailValidated = Some(emailValidated)
-        )
-        persistedUser.copy(statusFields = Some(statusFields))
-      }
-    } match {
-        case Success(Some(userToSave)) => doUpdate(userToSave)
-        case Success(None) => -\/(ApiError("User not found"))
-        case Failure(error) =>
-          val title = s"Failed to update email validation status to $emailValidated for user ${user.id}"
-          logger.error(title, error)
-          -\/(ApiError(title, error.getMessage))
-    }
-  }
+  private def buildSearchQuery(query: String) =
+    Json.obj(
+      "$or" -> Json.arr(
+        Json.obj("_id" -> query.toLowerCase),
+        Json.obj("primaryEmailAddress" -> query.toLowerCase)
+      )
+    )
+
+  def update(user: User, userUpdateRequest: IdentityUserUpdate): ApiResponse[User] =
+    (for {
+      persistedUser <- EitherT(findBy(user.id))
+      updatedUser <- EitherT(doUpdate(prepareUserForUpdate(userUpdateRequest, persistedUser)))
+    } yield (updatedUser)).run
+
+  def updateEmailValidationStatus(user: User, emailValidated: Boolean): ApiResponse[User] =
+    (for {
+      persistedUser <- EitherT(findBy(user.id))
+      statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(userEmailValidated = Some(emailValidated))
+      updatedUser <- EitherT(doUpdate(persistedUser.copy(statusFields = Some(statusFields))))
+    } yield (updatedUser)).run
 
   private def prepareUserForUpdate(userUpdateRequest: IdentityUserUpdate, identityUser: IdentityUser): IdentityUser = {
     val publicFields = identityUser.publicFields.getOrElse(PublicFields()).copy(
@@ -83,56 +77,18 @@ class UsersWriteRepository @Inject() (
     )
   }
 
-  private def doUpdate(userToSave: IdentityUser): ApiError \/ User = {
-    Try {
-      update(MongoDBObject("_id" -> userToSave._id), userToSave, upsert = false, multi = false, wc = WriteConcern.Safe)
-    } match {
-      case Success(_) => \/-(User.fromIdentityUser(userToSave))
-      case Failure(error) =>
-        val title = s"Failed to update user ${userToSave._id}"
-        logger.error(title, error)
-        -\/(ApiError(title, generateErrorMessage(error)))
-    }
-  }
+  private def doUpdate(userToSave: IdentityUser): ApiResponse[User] =
+    usersF.flatMap(_.update(buildSearchQuery(userToSave._id.get), userToSave)).map( _ => \/-(User.fromIdentityUser(userToSave)))
+      .recover { case error => -\/(ApiError("Failed to update user", error.getMessage))}
 
-  private def generateErrorMessage(error: Throwable): String = {
-    val errorText = error.toString
-    if (errorText contains "E11000 duplicate key error")
-      "this data is already in use in the database"
-    else
-      "update could not be performed contact identitydev@guardian.co.uk"
-  }
+  def delete(user: User): ApiResponse[Boolean] =
+    usersF.flatMap(_.remove(buildSearchQuery(user.id))).map(_ => \/-(true))
+      .recover { case error => -\/(ApiError("Failed to delete user", error.getMessage)) }
 
-  def delete(user: User): ApiError \/ Boolean = {
-    Try {
-      removeById(user.id)
-    } match {
-      case Success(r) =>
-        deletedUsersRepository.insert(user.id, user.email, user.username.getOrElse(""))
-        \/-(true)
-      case Failure(error) =>
-        val title = s"Failed to delete user ${user.id}"
-        logger.error(title, error)
-        -\/(ApiError(title, error.getMessage))
-    }
-  }
-
-  def unsubscribeFromMarketingEmails(email: String) = {
-    Try {
-      findOne(MongoDBObject("primaryEmailAddress" -> email)).map { persistedUser =>
-        val statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(
-          receive3rdPartyMarketing = Some(false),
-          receiveGnmMarketing = Some(false)
-        )
-        persistedUser.copy(statusFields = Some(statusFields))
-      }
-    } match {
-      case Success(Some(userToSave)) => doUpdate(userToSave)
-      case Success(None) => -\/(ApiError("User not found"))
-      case Failure(error) =>
-        val title = "Failed to unsubscribe from marketing emails:"
-        logger.error(title, error)
-        -\/(ApiError(title, error.getMessage))
-    }
-  }
+  def unsubscribeFromMarketingEmails(email: String) =
+    (for {
+      persistedUser <- EitherT(findBy(email))
+      statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(receive3rdPartyMarketing = Some(false), receiveGnmMarketing = Some(false))
+      updatedUser <- EitherT(doUpdate(persistedUser.copy(statusFields = Some(statusFields))))
+    } yield (updatedUser)).run
 }

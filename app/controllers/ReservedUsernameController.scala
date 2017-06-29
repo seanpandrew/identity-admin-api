@@ -7,6 +7,10 @@ import models._
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.mvc.Controller
 import repositories.ReservedUserNameWriteRepository
+import scalaz.EitherT
+import scalaz.std.scalaFuture._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import scala.concurrent.Future
 
 case class ReservedUsernameRequest(username: String)
 
@@ -17,34 +21,34 @@ object ReservedUsernameRequest {
 @Singleton
 class ReservedUsernameController @Inject() (reservedUsernameRepository: ReservedUserNameWriteRepository, auth: AuthenticatedAction) extends Controller with Logging {
 
-  def reserveUsername() = auth(parse.json) { request =>
+  def reserveUsername() = auth.async(parse.json) { request =>
     request.body.validate[ReservedUsernameRequest] match {
       case JsSuccess(result, path) =>
         logger.info(s"Reserving username: ${result.username}")
-        reservedUsernameRepository.addReservedUsername(result.username).fold(
+        EitherT(reservedUsernameRepository.addReservedUsername(result.username)).fold(
           error => InternalServerError(error),
           _ => NoContent
         )
-      case JsError(e) => BadRequest(ApiError("Failed to reserve username", e.toString))
+      case JsError(e) => Future.successful(BadRequest(ApiError("Failed to reserve username", e.toString)))
     }
   }
 
-  def getReservedUsernames = auth { request =>
-    reservedUsernameRepository.loadReservedUsernames.fold(
+  def getReservedUsernames = auth.async { request =>
+    EitherT(reservedUsernameRepository.loadReservedUsernames).fold(
       error => InternalServerError(error),
       success => Ok(Json.toJson(success))
     )
   }
 
-  def unreserveUsername() = auth(parse.json) { request =>
+  def unreserveUsername() = auth.async(parse.json) { request =>
     request.body.validate[ReservedUsernameRequest] match {
       case JsSuccess(result, path) =>
         logger.info(s"Unreserving username: ${result.username}")
-        reservedUsernameRepository.removeReservedUsername(result.username).fold(
+        EitherT(reservedUsernameRepository.removeReservedUsername(result.username)).fold(
           error => InternalServerError(error),
           _ => NoContent
         )
-      case JsError(error) => BadRequest(ApiError("Failed to unreserve username", error.toString))
+      case JsError(error) => Future.successful(BadRequest(ApiError("Failed to unreserve username", error.toString)))
     }
   }
 

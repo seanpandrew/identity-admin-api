@@ -1,11 +1,9 @@
 package repositories
 
-import models.MongoJsFormats
+import MongoJsonFormats._
 import org.joda.time.DateTime
 import play.api.libs.json._
-import MongoJsFormats._
 import play.api.libs.functional.syntax._
-
 import scala.language.implicitConversions
 
 case class SocialLink(socialId: String, 
@@ -143,7 +141,7 @@ object IdentityUser {
   (JsPath \ "searchFields").readNullable[SearchFields]
 )(IdentityUser.apply _)
 
-  val identityUserWrites: Writes[IdentityUser] = (
+  val identityUserWrites: OWrites[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").write[String] and
   (JsPath \ "_id").writeNullable[String] and
   (JsPath \ "publicFields").writeNullable[PublicFields] and
@@ -157,8 +155,7 @@ object IdentityUser {
   (JsPath \ "searchFields").writeNullable[SearchFields]
 )(unlift(IdentityUser.unapply))
 
-  implicit val format: Format[IdentityUser] =
-    Format(identityUserReads, identityUserWrites)
+  implicit val format: OFormat[IdentityUser] = OFormat(identityUserReads, identityUserWrites)
 }
 
 case class Orphan(id: String = "orphan", email: String) extends PersistedUser

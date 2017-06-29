@@ -36,7 +36,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
 
     "return no content when succesful" in {
       val json = """{"username":"usernameToReserve"}"""
-      when(reservedUsernameRepo.addReservedUsername("usernameToReserve")).thenReturn(\/-(ReservedUsernameList()))
+      when(reservedUsernameRepo.addReservedUsername("usernameToReserve")).thenReturn(Future.successful(\/-(ReservedUsernameList())))
       val result = controller.reserveUsername()(FakeRequest().withBody(Json.parse(json)))
       status(result) shouldEqual NO_CONTENT
     }
@@ -44,7 +44,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
     "return internal server error when error occurs" in {
       val json = """{"username":"usernameToReserve"}"""
       val error = ApiError("boom")
-      when(reservedUsernameRepo.addReservedUsername("usernameToReserve")).thenReturn(-\/(error))
+      when(reservedUsernameRepo.addReservedUsername("usernameToReserve")).thenReturn(Future.successful(-\/(error)))
       val result = controller.reserveUsername()(FakeRequest().withBody(Json.parse(json)))
       status(result) shouldEqual INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldEqual Json.toJson(error)
@@ -60,7 +60,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
 
     "return no content when succesful" in {
       val json = """{"username":"usernameToReserve"}"""
-      when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(\/-(ReservedUsernameList()))
+      when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(Future.successful(\/-(ReservedUsernameList())))
       val result = controller.unreserveUsername()(FakeRequest().withBody(Json.parse(json)))
       status(result) shouldEqual NO_CONTENT
     }
@@ -68,7 +68,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
     "return internal server error when error occurs" in {
       val json = """{"username":"usernameToReserve"}"""
       val error = ApiError("boom")
-      when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(-\/(error))
+      when(reservedUsernameRepo.removeReservedUsername("usernameToReserve")).thenReturn(Future.successful(-\/(error)))
       val result = controller.unreserveUsername()(FakeRequest().withBody(Json.parse(json)))
       status(result) shouldEqual INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldEqual Json.toJson(error)
@@ -78,7 +78,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
   "getReservedUsernames" should {
     "return reserved usernames when successful" in {
       val reservedUsernameList = ReservedUsernameList(List("1", "2", "3"))
-      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(\/-(reservedUsernameList))
+      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Future.successful(\/-(reservedUsernameList)))
       val result = controller.getReservedUsernames(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(reservedUsernameList)
@@ -86,7 +86,7 @@ class ReservedUsernameControllerTest extends WordSpec with Matchers with Mockito
 
     "return internal server error when error occurs" in {
       val error = ApiError("boom")
-      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(-\/(error))
+      when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Future.successful(-\/(error)))
       val result = controller.getReservedUsernames(FakeRequest())
       status(result) shouldEqual INTERNAL_SERVER_ERROR
       contentAsJson(result) shouldEqual Json.toJson(error)

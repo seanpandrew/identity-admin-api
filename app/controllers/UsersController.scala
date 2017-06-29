@@ -133,7 +133,9 @@ class UsersController @Inject() (
     (for {
       _ <- unsubscribeEmails()
       _ <- deleteAccount()
-    } yield EmailService.sendDeletionConfirmation(request.user.email)).fold(
+    } yield {
+      EmailService.sendDeletionConfirmation(request.user.email)
+    }).fold(
       error => {
         logger.error(s"Error deleting user $id: $error")
         InternalServerError(error)

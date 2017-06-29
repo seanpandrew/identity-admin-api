@@ -2,62 +2,51 @@ package repositories
 
 import javax.inject.{Inject, Singleton}
 import com.gu.identity.util.Logging
-import com.mongodb.casbah.MongoCursor
-import com.mongodb.casbah.commons.MongoDBObject
-import models.{ApiError, ReservedUsernameList}
-import org.bson.types.ObjectId
-import salat.dao.SalatDAO
-import scala.util.{Failure, Success, Try}
-import scalaz.{-\/, \/, \/-}
+import models.{ApiError, ApiResponse, ReservedUsername, ReservedUsernameList}
+import play.api.libs.json.Json
+import play.modules.reactivemongo.ReactiveMongoApi
+import reactivemongo.api.{Cursor, ReadPreference}
+import reactivemongo.play.json.collection._
+import reactivemongo.play.json._
+import scalaz.{-\/, OptionT, \/-}
+import scalaz.std.scalaFuture._
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-case class ReservedUsername(_id: ObjectId, username: String)
+@Singleton class ReservedUserNameWriteRepository @Inject() (
+    environment: play.api.Environment,
+    reactiveMongoApi: ReactiveMongoApi) extends Logging {
 
-@Singleton
-class ReservedUserNameWriteRepository @Inject() (environment: play.api.Environment, salatMongoConnection: SalatMongoConnection)
-  extends SalatDAO[ReservedUsername, ObjectId](collection=salatMongoConnection.db()("reservedUsernames")) with Logging {
+  private lazy val reservedUsernamesF = reactiveMongoApi.database.map(_.collection("reservedUsernames"))
 
-  private def findReservedUsername(username: String): ApiError \/ ReservedUsername =
-    Try(findOne(MongoDBObject("username" -> username))) match {
-      case Success(Some(reservedUsername)) => \/-(reservedUsername)
-      case Success(None) => -\/(ApiError("Username not found"))
-      case Failure(error) =>
-        val title = s"Failed to find reserved username $username"
-        logger.error(title, error)
-        -\/(ApiError(title, error.getMessage))
-    }
+  def findReservedUsername(query: String): ApiResponse[ReservedUsername] =
+    OptionT(reservedUsernamesF.flatMap(_.find(buildSearchQuery(query)).one[ReservedUsername])).fold(
+      username => \/-(username),
+      -\/(ApiError("Username not found"))
+    )
 
-  def removeReservedUsername(username: String): ApiError \/ ReservedUsernameList =
-      findReservedUsername(username).fold(
-        error => -\/(error),
-        reservedUsername =>
-          Try(remove(reservedUsername)) match {
-            case Success(success) => loadReservedUsernames
-            case Failure(error) =>
-              val title = s"Failed to remove reserved username $username"
-              logger.error(title, error)
-              -\/(ApiError(title, error.getMessage))
-          }
+  private def buildSearchQuery(query: String) =
+    Json.obj(
+      "$or" -> Json.arr(
+        Json.obj("_id" -> query.toLowerCase),
+        Json.obj("primaryEmailAddress" -> query.toLowerCase),
+        Json.obj("username" -> query)
       )
+    )
 
-  def loadReservedUsernames: ApiError \/ ReservedUsernameList =
-    Try(cursorToReservedUsernameList(collection.find().sort(MongoDBObject("username" -> 1)))) match {
-      case Success(reservedUsernameList) => \/-(reservedUsernameList)
-      case Failure(error) =>
-        val title = "Failed to load reserved usernames"
-        logger.error(title, error)
-        -\/(ApiError(title, error.getMessage))
-    }
+  def removeReservedUsername(username: String): ApiResponse[ReservedUsernameList] =
+    reservedUsernamesF.flatMap(_.remove(buildSearchQuery(username))).flatMap(_ => loadReservedUsernames)
+      .recover { case error => -\/(ApiError(s"Failed to remove reserved username $username", error.getMessage)) }
 
-  private def cursorToReservedUsernameList(col: MongoCursor): ReservedUsernameList = ReservedUsernameList(col.map(dbObject => dbObject.get("username").asInstanceOf[String]).toList)
+  def loadReservedUsernames: ApiResponse[ReservedUsernameList] =
+    reservedUsernamesF.flatMap {
+      _.find(Json.obj())
+        .sort(Json.obj("username" -> 1))
+        .cursor[ReservedUsername](ReadPreference.primaryPreferred)
+        .collect[List](-1, Cursor.FailOnError[List[ReservedUsername]]())
+    }.map(_.map(_.username)).map(ReservedUsernameList(_)).map(\/-(_))
+      .recover { case error => -\/(ApiError("Failed to load reserved usernames list", error.getMessage)) }
 
-  def addReservedUsername(reservedUsername: String): ApiError \/ ReservedUsernameList =
-    Try(insert(ReservedUsername(new ObjectId(), reservedUsername))) match {
-      case Success(_) =>
-        logger.info(s"Reserving username: $reservedUsername")
-        loadReservedUsernames
-      case Failure(error) =>
-        val title = s"Failed to add $reservedUsername to reserved username list"
-        logger.error(title, error)
-        -\/(ApiError(title, error.getMessage))
-    }
+  def addReservedUsername(username: String): ApiResponse[ReservedUsernameList] =
+    reservedUsernamesF.flatMap(_.insert[ReservedUsername](ReservedUsername(username))).flatMap(_ => loadReservedUsernames)
+      .recover { case error => -\/(ApiError(s"Failed to add $username to reserved username list", error.getMessage)) }
 }
