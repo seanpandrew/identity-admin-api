@@ -181,7 +181,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 204 when email validation is sent" in {
       val user = User("", "")
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
-      when(userService.sendEmailValidation(user)).thenReturn(Future.successful(\/-(true)))
+      when(userService.sendEmailValidation(user)).thenReturn(Future.successful(\/-{}))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
       status(result) shouldEqual NO_CONTENT
     }
@@ -206,7 +206,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 204 when email is validated" in {
       val user = User("", "")
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
-      when(userService.validateEmail(user)).thenReturn(Future.successful(\/-(true)))
+      when(userService.validateEmail(user)).thenReturn(Future.successful(\/-{}))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
       status(result) shouldEqual NO_CONTENT
     }

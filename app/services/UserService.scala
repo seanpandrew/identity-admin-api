@@ -1,7 +1,6 @@
 package services
 
 import javax.inject.{Inject, Singleton}
-
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
@@ -10,11 +9,9 @@ import models._
 import repositories.{DeletedUser, DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
 import scala.concurrent.Future
 import configuration.Config.PublishEvents.eventsEnabled
-
-import scalaz.{-\/, EitherT, OptionT, \/-}
+import scalaz.{-\/, EitherT, \/-}
 import scalaz.std.scalaFuture._
 
 @Singleton
@@ -73,21 +70,18 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
     }
   }
 
-  def isDisplayNameChanged(newDisplayName: Option[String], existingDisplayName: Option[String]): Boolean = {
+  def isDisplayNameChanged(newDisplayName: Option[String], existingDisplayName: Option[String]): Boolean =
     newDisplayName != existingDisplayName
-  }
 
-  def isUsernameChanged(newUsername: Option[String], existingUsername: Option[String]): Boolean = {
+  def isUsernameChanged(newUsername: Option[String], existingUsername: Option[String]): Boolean =
     newUsername != existingUsername
-  }
 
   def isJobsUser(user: User) = isAMemberOfGroup("/sys/policies/guardian-jobs", user)
 
   def isAMemberOfGroup(groupPath: String, user: User): Boolean = user.groups.filter(_.path == groupPath).size > 0
 
-  def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean = {
+  def isEmailValidationChanged(newEmailValidated: Option[Boolean], existingEmailValidated: Option[Boolean]): Boolean =
     newEmailValidated != existingEmailValidated
-  }
 
   def isJobsUserChanged(user: MadgexUser, userUpdateRequest: MadgexUser): Boolean = !user.equals(userUpdateRequest)
 
@@ -156,7 +150,6 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def unreserveEmail(id: String) = deletedUsersRepository.remove(id)
-
 
   def searchOrphan(email: String): ApiResponse[SearchResponse] = {
     def isEmail(query: String) = query.matches("""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r.toString())
@@ -228,35 +221,23 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
   }
 
   def delete(user: User): ApiResponse[ReservedUsernameList] =
-    EitherT(usersWriteRepository.delete(user)).fold(
-      error => Future.successful(-\/(error)),
-      _ => user.username.map(username => reservedUserNameRepository.addReservedUsername(username)).getOrElse {
-        reservedUserNameRepository.loadReservedUsernames
-      }
-    ).flatMap(identity)
+    (for {
+      _ <- EitherT(usersWriteRepository.delete(user))
+      reservedUsernameList <- EitherT(user.username.fold(reservedUserNameRepository.loadReservedUsernames)(reservedUserNameRepository.addReservedUsername(_)))
+    } yield(reservedUsernameList)).run
 
-  def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Boolean] =
-    EitherT(usersWriteRepository.updateEmailValidationStatus(user, emailValidated)).fold(
-      apiError => -\/(apiError),
-      _ => {
-        triggerEvents(
-          userId = user.id,
-          usernameChanged = false,
-          displayNameChanged = false,
-          emailValidatedChanged = true
-        )
-        \/-(true)
-      }
-    )
+  def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Unit] =
+    EitherT(usersWriteRepository.updateEmailValidationStatus(user, emailValidated)).map { _ =>
+      triggerEvents(userId = user.id, usernameChanged = false, displayNameChanged = false, emailValidatedChanged = true)
+    }.run
 
-  def sendEmailValidation(user: User): ApiResponse[Boolean] = {
-    validateEmail(user, emailValidated = false).flatMap {
-      case \/-(_) => identityApiClient.sendEmailValidation(user.id)
-      case -\/(r) => Future.successful(-\/(r))
-    }
+  def sendEmailValidation(user: User): ApiResponse[Unit] = {
+    (for {
+      _ <- EitherT(validateEmail(user, emailValidated = false))
+      _ <- EitherT(identityApiClient.sendEmailValidation(user.id))
+    } yield()).run
   }
 
-  def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] = {
+  def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] =
     usersWriteRepository.unsubscribeFromMarketingEmails(email)
-  }
 }
