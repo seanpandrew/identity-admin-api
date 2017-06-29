@@ -132,9 +132,8 @@ class UsersController @Inject() (
 
     (for {
       _ <- unsubscribeEmails()
-      reservedEmailList <- deleteAccount()
+      _ <- deleteAccount()
     } yield {
-      logger.info(reservedEmailList.toString)
       EmailService.sendDeletionConfirmation(request.user.email)
     }).fold(
       error => {
