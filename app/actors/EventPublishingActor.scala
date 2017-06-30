@@ -2,12 +2,11 @@ package actors
 
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import akka.actor.{Actor, Props}
-import com.amazonaws.services.sns.AmazonSNSAsyncClient
+import com.amazonaws.services.sns.AmazonSNSAsync
 import com.amazonaws.services.sns.model.PublishRequest
 import com.gu.identity.util.Logging
 import configuration.Config
 import net.liftweb.json.{DefaultFormats, NoTypeHints, Serialization}
-
 import scala.util.{Failure, Success, Try}
 
 object EventPublishingActor {
@@ -19,12 +18,12 @@ object EventPublishingActor {
   case class EmailValidationChanged(userId: String) extends UserChangedMessage
   case class DisplayNameChanged(userId: String) extends UserChangedMessage
 
-  def getProps(amazonSNSAsyncClient: AmazonSNSAsyncClient) =
+  def getProps(amazonSNSAsyncClient: AmazonSNSAsync) =
     Props(new EventPublishingActor(amazonSNSAsyncClient))
 
 }
 
-class EventPublishingActor(amazonSNSAsyncClient: AmazonSNSAsyncClient) extends Actor with Logging {
+class EventPublishingActor(amazonSNSAsyncClient: AmazonSNSAsync) extends Actor with Logging {
 
   import net.liftweb.json.Serialization.write
 
