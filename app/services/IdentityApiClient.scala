@@ -10,7 +10,7 @@ import play.api.libs.json.Json
 import play.api.libs.ws.{WSClient, WSRequest}
 
 import scala.concurrent.Future
-import scalaz.{-\/, \/-}
+import scalaz.{-\/, \/, \/-}
 
 case class IdentityApiError(message: String, description: String, context: Option[String] = None)
 
@@ -37,11 +37,11 @@ class IdentityApiClient @Inject() (ws: WSClient) extends Logging {
     req.withHeaders(ClientTokenHeaderName -> clientTokenHeaderValue)
   }
 
-  def sendEmailValidation(userId: String): ApiResponse[Boolean] = {
+  def sendEmailValidation(userId: String): ApiResponse[Unit] = {
     addAuthHeaders(ws.url(sendEmailValidationUrl(userId))).post("").map(
       response => 
         if(response.status == 200)
-            \/-(true)
+            \/-{}
         else {
           val errorResponse = Json.parse(response.body).as[IdentityApiErrorResponse]
           val errorMessage = errorResponse.errors.headOption.map(x => x.message).getOrElse("Unknown error")
