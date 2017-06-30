@@ -1,11 +1,11 @@
 package services
 
-import com.amazonaws.services.sns.AmazonSNSClient
+import com.amazonaws.auth.AWSStaticCredentialsProvider
+import com.amazonaws.services.sns.AmazonSNSClientBuilder
 import com.amazonaws.services.sns.model.PublishResult
 import com.gu.identity.util.Logging
 import configuration.Config
 import play.api.libs.json.Json
-
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -14,8 +14,10 @@ object SalesforceIntegration extends Logging {
   private val snsTopic = Config.IdentitySalesforceQueue.snsTopic
   private val snsEndpoint = Config.IdentitySalesforceQueue.snsEndPoint
 
-  private val client = new AmazonSNSClient(Config.IdentitySalesforceQueue.credentials)
-  client.setEndpoint(snsEndpoint)
+  private val client = AmazonSNSClientBuilder.standard()
+    .withCredentials(new AWSStaticCredentialsProvider(Config.IdentitySalesforceQueue.credentials))
+    .withRegion(Config.AWS.region)
+    .build()
 
   def constructMessage(userId: String, email: String): String = {
     Json.obj(

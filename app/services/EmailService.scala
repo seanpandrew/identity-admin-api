@@ -2,15 +2,15 @@ package services
 
 import com.amazonaws.services.simpleemail._
 import com.amazonaws.services.simpleemail.model._
-import com.amazonaws.regions._
 import com.gu.identity.util.Logging
 import configuration.Config
-
 import scala.util.{Failure, Success, Try}
 
 object EmailService extends Logging {
-  private val client = new AmazonSimpleEmailServiceAsyncClient((Config.AWS.credentialsProvider))
-  client.setEndpoint(Region.getRegion(Config.AWS.region).getServiceEndpoint(ServiceAbbreviations.Email))
+  private val client = AmazonSimpleEmailServiceAsyncClientBuilder.standard()
+      .withCredentials(Config.AWS.credentialsProvider)
+      .withRegion(Config.AWS.region)
+      .build()
 
   private object DeletionEmail {
     val FROM = "userhelp@theguardian.com"

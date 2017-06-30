@@ -15,7 +15,7 @@ object Config {
 
   object AWS {
     val profile = config.getString("aws-profile")
-    val credentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(profile), new InstanceProfileCredentialsProvider())
+    val credentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(profile), InstanceProfileCredentialsProvider.getInstance())
     val region = Regions.EU_WEST_1
   }
 
