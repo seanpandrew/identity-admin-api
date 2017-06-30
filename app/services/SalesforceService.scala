@@ -1,17 +1,14 @@
 package services
 
-import javax.inject.Inject
-
+import javax.inject.{Inject, Singleton}
 import com.gu.identity.util.Logging
-import com.google.inject.ImplementedBy
 import configuration.Config.TouchpointSalesforce._
 import models.{ApiError, ApiResponse, SalesforceSubscription}
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.http.Status.OK
 import play.api.libs.concurrent.Execution.Implicits._
-
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, \/-}
@@ -30,7 +27,6 @@ object SFContact {
   implicit val format = Json.format[SFContact]
 }
 
-
 trait UniqueIdentifier {
   val value: String
   val fieldName: String
@@ -40,18 +36,7 @@ case class IdentityId(value: String, fieldName: String = "Zuora__Subscription__r
 case class Email(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email") extends UniqueIdentifier
 case class SubscriptionId(value: String, fieldName: String = "Subscription_Name__c") extends UniqueIdentifier
 
-@ImplementedBy(classOf[Salesforce])
-trait SalesforceService {
-  def getSubscriptionByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]]
-  def getSubscriptionByEmail(email: String): ApiResponse[Option[SalesforceSubscription]]
-  def getSubscriptionBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]]
-  def getMembershipByIdentityId(id: String): ApiResponse[Option[SalesforceSubscription]]
-  def getMembershipByMembershipNumber(membershipNumber: String): ApiResponse[Option[SalesforceSubscription]]
-  def getMembershipByEmail(email: String): ApiResponse[Option[SalesforceSubscription]]
-  def getMembershipBySubscriptionId(subscriptionId: String): ApiResponse[Option[SalesforceSubscription]]
-}
-
-class Salesforce @Inject() (ws: WSClient) extends SalesforceService with Logging {
+@Singleton class SalesforceService @Inject() (ws: WSClient) extends Logging {
 
   private lazy val sfAuth: SFAuthentication = {
     logger.info("Authenticating with Salesforce...")
