@@ -1,25 +1,21 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
-
 import com.gu.identity.util.Logging
 import models.{ApiResponse, SearchResponse}
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
 import reactivemongo.api.ReadPreference
-
 import scala.concurrent.Future
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
 import scalaz.{OptionT, \/-}
 import scalaz.std.scalaFuture._
 import DeletedUser._
 import reactivemongo.bson.BSONDocument
 
-@Singleton
-class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) extends Logging {
+@Singleton class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) extends Logging {
 
   private lazy val reservedEmailsF = reactiveMongoApi.database.map(_.collection("reservedEmails"))
 
@@ -32,7 +28,7 @@ class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) exten
 
   def search(query: String): ApiResponse[SearchResponse] =
     OptionT(findBy(query)).fold(
-      user => \/-(SearchResponse.create(1, 0, List(IdentityUser(user.email, _id = Some(user.id))))),
+      user => \/-(SearchResponse.create(1, 0, List(IdentityUser(user.email, user.id)))),
       \/-(SearchResponse.create(0, 0, Nil))
     )
 

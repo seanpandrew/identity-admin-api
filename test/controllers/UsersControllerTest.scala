@@ -92,7 +92,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 200 with user list as json when found" in {
       val email = "test@test.com"
       val query = email
-      val user = IdentityUser(email)
+      val user = IdentityUser(email, testIdentityId)
       val limit = Some(10)
       val offset = Some(0)
       val response = SearchResponse(10, hasMore = true, Seq(UserSummary.fromPersistedUser(user)))
