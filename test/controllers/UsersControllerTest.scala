@@ -5,6 +5,7 @@ import mockws.MockWS
 import models._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
+import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Request, Result}
@@ -13,7 +14,6 @@ import play.api.test.FakeRequest
 import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, ExactTargetService, SalesforceService, UserService}
-
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scalaz.{-\/, \/-}
@@ -123,6 +123,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 200 when user found" in {
       val user = User(testIdentityId, "test@test.com")
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.enrichUserWithProducts(any[User])).thenReturn(Future.successful(\/-(user)))
       val result = controller.findById(testIdentityId)(FakeRequest())
       status(result) shouldEqual OK
       contentAsJson(result) shouldEqual Json.toJson(user)
@@ -156,6 +157,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
       val user = User("id", "email")
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.enrichUserWithProducts(any[User])).thenReturn(Future.successful(\/-(user)))
       when(userService.update(user, userUpdateRequest)).thenReturn(Future.successful(\/-(user)))
       val result = controller.update(testIdentityId)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
       status(result) shouldEqual OK
@@ -181,6 +183,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 204 when email validation is sent" in {
       val user = User("", "")
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(user)))
+      when(userService.enrichUserWithProducts(any[User])).thenReturn(Future.successful(\/-(user)))
       when(userService.sendEmailValidation(user)).thenReturn(Future.successful(\/-{}))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
       status(result) shouldEqual NO_CONTENT

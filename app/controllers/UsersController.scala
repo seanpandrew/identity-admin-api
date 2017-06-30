@@ -7,28 +7,27 @@ import com.gu.tip.Tip
 import configuration.Config
 import models._
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.libs.json.Json
+import play.api.libs.json._
 import play.api.mvc._
 import services._
 import scala.concurrent.Future
-import scalaz.{-\/, EitherT, OptionT, \/, \/-}
+import scalaz.EitherT
 import scalaz.std.scalaFuture._
 import models.ApiError._
 import models._
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
-@Singleton
-class UsersController @Inject() (
+@Singleton class UsersController @Inject() (
     userService: UserService,
     auth: AuthenticatedAction,
     salesforce: SalesforceService,
     discussionService: DiscussionService,
     exactTargetService: ExactTargetService) extends Controller with Logging {
 
-  private val MinimumQueryLength = 2
-
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
+    val MinimumQueryLength = 2
+
     if (offset.exists(_ < 0)) {
       Future.successful(BadRequest(ApiError("offset must be a positive integer")))
     }
@@ -46,42 +45,19 @@ class UsersController @Inject() (
     }
   }
 
-  import play.api.libs.json._
-
   def unreserveEmail(id: String) = auth.async { request =>
     userService.unreserveEmail(id).map(_ => NoContent)
   }
 
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
-      EitherT(userService.findById(userId)).fold(
-        error => Future(Left(NotFound(error))),
-        user => {
-          {
-            val subscriptionF = EitherT(salesforce.getSubscriptionByIdentityId(userId))
-            val membershipF = EitherT(salesforce.getMembershipByIdentityId(userId))
-            val hasCommentedF = EitherT(discussionService.hasCommented(userId))
-            val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(userId))
-
-            (for {
-              subscription <- subscriptionF
-              membership <- membershipF
-              hasCommented <- hasCommentedF
-              newslettersSub <- newslettersSubF
-            } yield {
-              if (Config.stage == "PROD") Tip.verify("User Retrieval")
-
-              val userWithSubscriptions = user.copy(
-                subscriptionDetails = subscription,
-                membershipDetails = membership,
-                hasCommented = hasCommented,
-                newslettersSubscription = newslettersSub)
-
-              Right(new UserRequest(userWithSubscriptions, input))
-            }).fold(apiError => Left(InternalServerError(apiError)), identity(_))
-          }
-        }
-      ).flatMap(identity)
+      (for {
+        user <- EitherT(userService.findById(userId)).leftMap(NotFound(_))
+        userWithProducts <- EitherT(userService.enrichUserWithProducts(user)).leftMap(InternalServerError(_))
+      } yield {
+        if (Config.stage == "PROD") Tip.verify("User Retrieval")
+        new UserRequest(userWithProducts, input)
+      }).run.map(_.toEither)
     }
   }
 
