@@ -113,7 +113,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Future.successful(\/-(updatedUser)))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-{}))
 
       val result = service.update(user, userUpdateRequest)
 
@@ -130,7 +130,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
 
       when(userReadRepo.findByEmail(updateRequest.email)).thenReturn(Future.successful(None))
       when(userWriteRepo.update(user, updateRequest)).thenReturn(Future.successful(\/-(updatedUser)))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-{}))
 
       val result = service.update(user, userUpdateRequest)
 
@@ -243,14 +243,14 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "remove the given user and reserve username" in {
       val username = "testuser"
       val user = User("id", "email", username = Some(username))
-      when(userWriteRepo.delete(user)).thenReturn(Future.successful(\/-(true)))
+      when(userWriteRepo.delete(user)).thenReturn(Future.successful(\/-{}))
       when(reservedUsernameRepo.addReservedUsername(username)).thenReturn(Future.successful(\/-(ReservedUsernameList(List(username)))))
       Await.result(service.delete(user), 1.second) shouldEqual \/-(ReservedUsernameList(List(username)))
     }
 
     "remove the given user and return existing reserved usernames when user has no username" in {
       val user = User("id", "email", username = None)
-      when(userWriteRepo.delete(user)).thenReturn(Future.successful(\/-(true)))
+      when(userWriteRepo.delete(user)).thenReturn(Future.successful(\/-{}))
       when(reservedUsernameRepo.loadReservedUsernames).thenReturn(Future.successful(\/-(ReservedUsernameList(Nil))))
       Await.result(service.delete(user), 1.second) shouldEqual \/-(ReservedUsernameList(Nil))
     }
@@ -281,7 +281,7 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
     "invalidate the email address and send validation request email" in {
       val user = User("id", "email")
       when(userWriteRepo.updateEmailValidationStatus(user, false)).thenReturn(Future.successful(\/-(user)))
-      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-(true)))
+      when(identityApiClient.sendEmailValidation(user.id)).thenReturn(Future.successful(\/-{}))
       Await.result(service.sendEmailValidation(user), 1.second) shouldEqual \/-{}
     }
 

@@ -87,10 +87,10 @@ import scalaz.std.scalaFuture._
         -\/(ApiError(title, error.getMessage))
       }
 
-  def delete(user: User): ApiResponse[Boolean] =
+  def delete(user: User): ApiResponse[Unit] =
     usersF
       .flatMap(_.remove(selector(user.id)))
-      .map(_ => \/-(true))
+      .map(_ => \/-{})
       .recover { case error =>
         val title = s"Failed to delete user ${user.id}"
         logger.error(title, error)
