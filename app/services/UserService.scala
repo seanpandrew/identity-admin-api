@@ -14,18 +14,17 @@ import configuration.Config.PublishEvents.eventsEnabled
 import scalaz.{-\/, EitherT, \/-}
 import scalaz.std.scalaFuture._
 
-@Singleton
-class UserService @Inject() (usersReadRepository: UsersReadRepository,
-                             usersWriteRepository: UsersWriteRepository,
-                             reservedUserNameRepository: ReservedUserNameWriteRepository,
-                             identityApiClient: IdentityApiClient,
-                             eventPublishingActorProvider: EventPublishingActorProvider,
-                             deletedUsersRepository: DeletedUsersRepository,
-                             salesforceService: SalesforceService,
-                             madgexService: MadgexService,
-                             exactTargetService: ExactTargetService) extends Logging {
-
-  private lazy val UsernamePattern = "[a-zA-Z0-9]{6,20}".r
+@Singleton class UserService @Inject() (
+    usersReadRepository: UsersReadRepository,
+    usersWriteRepository: UsersWriteRepository,
+    reservedUserNameRepository: ReservedUserNameWriteRepository,
+    identityApiClient: IdentityApiClient,
+    eventPublishingActorProvider: EventPublishingActorProvider,
+    deletedUsersRepository: DeletedUsersRepository,
+    salesforceService: SalesforceService,
+    madgexService: MadgexService,
+    exactTargetService: ExactTargetService,
+    discussionService: DiscussionService) extends Logging {
 
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     val emailValid = isEmailValid(user, userUpdateRequest)
@@ -98,7 +97,7 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   private def isUsernameValid(user: User, userUpdateRequest: UserUpdateRequest): Boolean = {
     def validateUsername(username: Option[String]): Boolean =  username match {
-      case Some(newUsername) => UsernamePattern.pattern.matcher(newUsername).matches()
+      case Some(newUsername) => "[a-zA-Z0-9]{6,20}".r.pattern.matcher(newUsername).matches()
       case _ => true
     }
 
@@ -239,4 +238,24 @@ class UserService @Inject() (usersReadRepository: UsersReadRepository,
 
   def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] =
     usersWriteRepository.unsubscribeFromMarketingEmails(email)
+
+  def enrichUserWithProducts(user: User) = {
+    val subscriptionF = EitherT(salesforceService.getSubscriptionByIdentityId(user.id))
+    val membershipF = EitherT(salesforceService.getMembershipByIdentityId(user.id))
+    val hasCommentedF = EitherT(discussionService.hasCommented(user.id))
+    val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(user.id))
+
+    (for {
+      subscription <- subscriptionF
+      membership <- membershipF
+      hasCommented <- hasCommentedF
+      newslettersSub <- newslettersSubF
+    } yield {
+      user.copy(
+        subscriptionDetails = subscription,
+        membershipDetails = membership,
+        hasCommented = hasCommented,
+        newslettersSubscription = newslettersSub)
+    }).run
+  }
 }
