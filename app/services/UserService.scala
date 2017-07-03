@@ -154,9 +154,20 @@ import scalaz.std.scalaFuture._
     def isEmail(query: String) = query.matches("""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r.toString())
 
     if (isEmail(email)) {
-      EitherT(salesforceService.getSubscriptionByEmail(email)).map(subOpt =>
-        subOpt.fold(SearchResponse.create(0, 0, Nil))(sub => SearchResponse.create(1, 0, List(Orphan(email = sub.email))))
-      ).run
+      val subOrphanOptF = EitherT(salesforceService.getSubscriptionByEmail(email))
+      val newsOrphanOptF = EitherT(exactTargetService.newslettersSubscriptionByEmail(email))
+
+      (for {
+        subOrphanOpt <- subOrphanOptF
+        newsOrphanOpt <- newsOrphanOptF
+      } yield {
+        if (subOrphanOpt.isDefined)
+          SearchResponse.create(1, 0, List(Orphan(email = email)))
+        else if (newsOrphanOpt.isDefined)
+          SearchResponse.create(1, 0, List(Orphan(email = email)))
+        else
+          SearchResponse.create(0, 0, Nil)
+      }).run
     } else Future.successful(\/-(SearchResponse.create(0, 0, Nil)))
   }
 
@@ -243,7 +254,7 @@ import scalaz.std.scalaFuture._
     val subscriptionF = EitherT(salesforceService.getSubscriptionByIdentityId(user.id))
     val membershipF = EitherT(salesforceService.getMembershipByIdentityId(user.id))
     val hasCommentedF = EitherT(discussionService.hasCommented(user.id))
-    val newslettersSubF = EitherT(exactTargetService.newslettersSubscription(user.id))
+    val newslettersSubF = EitherT(exactTargetService.newslettersSubscriptionByIdentityId(user.id))
 
     (for {
       subscription <- subscriptionF
