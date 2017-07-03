@@ -12,9 +12,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
 import scala.collection.JavaConversions._
 
-@Singleton
-class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
-
+@Singleton class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
   /**
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */
@@ -77,9 +75,12 @@ class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) ex
     ).flatMap(identity)
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {
-    Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"key=$email").getResult).fold(\/-[Option[NewslettersSubscription]](None) )( result => \/-(Some(NewslettersSubscription(
-      status = result.getObject.getStatus.value(),
-      list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)))))
+    \/-(Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"key=$email").getResult) match {
+      case None => None
+      case Some(result) => Some(NewslettersSubscription(
+        status = result.getObject.getStatus.value(),
+        list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)))
+    })
   }
 
   private lazy val etClientAdmin = {
