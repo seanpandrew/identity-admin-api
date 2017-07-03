@@ -17,7 +17,6 @@ import scalaz.EitherT
 import scalaz.std.scalaFuture._
 import models.ApiError._
 import models._
-import repositories.Orphan
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 

@@ -153,6 +153,9 @@ import scalaz.std.scalaFuture._
   def searchOrphan(email: String): ApiResponse[SearchResponse] = {
     def isEmail(query: String) = query.matches("""^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$""".r.toString())
 
+    val orphanSearchResponse = SearchResponse.create(1, 0, List(Orphan(email = email)))
+    val emptySearchResponse = SearchResponse.create(0, 0, Nil)
+
     if (isEmail(email)) {
       val subOrphanOptF = EitherT(salesforceService.getSubscriptionByEmail(email))
       val newsOrphanOptF = EitherT(exactTargetService.newslettersSubscriptionByEmail(email))
@@ -161,14 +164,12 @@ import scalaz.std.scalaFuture._
         subOrphanOpt <- subOrphanOptF
         newsOrphanOpt <- newsOrphanOptF
       } yield {
-        if (subOrphanOpt.isDefined)
-          SearchResponse.create(1, 0, List(Orphan(email = email)))
-        else if (newsOrphanOpt.isDefined)
-          SearchResponse.create(1, 0, List(Orphan(email = email)))
+        if (subOrphanOpt.isDefined || newsOrphanOpt.isDefined)
+          orphanSearchResponse
         else
           SearchResponse.create(0, 0, Nil)
       }).run
-    } else Future.successful(\/-(SearchResponse.create(0, 0, Nil)))
+    } else Future.successful(\/-(emptySearchResponse))
   }
 
   private def salesforceSubscriptionToIdentityUser(sfSub: SalesforceSubscription) =
