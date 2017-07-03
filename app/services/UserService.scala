@@ -161,7 +161,7 @@ import scalaz.std.scalaFuture._
   }
 
   private def salesforceSubscriptionToIdentityUser(sfSub: SalesforceSubscription) =
-    SearchResponse.create(1, 0, List(IdentityUser(_id = Option(sfSub.identityId), primaryEmailAddress = sfSub.email)))
+    SearchResponse.create(1, 0, List(IdentityUser(sfSub.email, sfSub.identityId)))
 
   def searchIdentityByMembership(membershipNumber: String): ApiResponse[SearchResponse] = {
     def couldBeMembershipNumber(query: String) = query forall Character.isDigit

@@ -114,7 +114,7 @@ object User {
 
   def fromIdentityUser(user: IdentityUser): User =
     User(
-                id = user._id.getOrElse(throw new IllegalStateException("User must have an id")),
+                id = user._id,
                 email = user.primaryEmailAddress,
                 displayName = user.publicFields.flatMap(_.displayName),
                 username = user.publicFields.flatMap(_.username),

@@ -79,10 +79,10 @@ import scalaz.std.scalaFuture._
 
   private def doUpdate(userToSave: IdentityUser): ApiResponse[User] =
     usersF
-      .flatMap(_.update(selector(userToSave.primaryEmailAddress), userToSave))
+      .flatMap(_.update(selector(userToSave._id), userToSave))
       .map( _ => \/-(User.fromIdentityUser(userToSave)))
       .recover { case error =>
-        val title = s"Failed to update user ${userToSave._id.getOrElse("")}"
+        val title = s"Failed to update user ${userToSave._id}"
         logger.error(title, error)
         -\/(ApiError(title, error.getMessage))
       }

@@ -114,7 +114,7 @@ object SearchFields {
 sealed trait PersistedUser
 
 case class IdentityUser(primaryEmailAddress: String,
-                        _id: Option[String] = None,
+                        _id: String,
                         publicFields: Option[PublicFields] = None,
                         privateFields: Option[PrivateFields] = None,
                         statusFields: Option[StatusFields] = None,
@@ -129,7 +129,7 @@ case class IdentityUser(primaryEmailAddress: String,
 object IdentityUser {
   val identityUserReads: Reads[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").read[String] and
-  (JsPath \ "_id").readNullable[String] and
+  (JsPath \ "_id").read[String] and
   (JsPath \ "publicFields").readNullable[PublicFields] and
   (JsPath \ "privateFields").readNullable[PrivateFields] and
   (JsPath \ "statusFields").readNullable[StatusFields] and
@@ -143,7 +143,7 @@ object IdentityUser {
 
   val identityUserWrites: OWrites[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").write[String] and
-  (JsPath \ "_id").writeNullable[String] and
+  (JsPath \ "_id").write[String] and
   (JsPath \ "publicFields").writeNullable[PublicFields] and
   (JsPath \ "privateFields").writeNullable[PrivateFields] and
   (JsPath \ "statusFields").writeNullable[StatusFields] and

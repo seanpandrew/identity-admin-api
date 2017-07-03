@@ -1,7 +1,6 @@
 package models
 
 import java.util.UUID
-
 import org.scalatest.{Matchers, WordSpec}
 import org.scalatest.mockito.MockitoSugar
 import org.mockito.Mockito._
@@ -11,7 +10,7 @@ class SearchResponseTest extends WordSpec with MockitoSugar with Matchers {
 
   def createUser: IdentityUser = {
     val user = mock[IdentityUser]
-    when(user._id).thenReturn(Some(UUID.randomUUID().toString))
+    when(user._id).thenReturn(UUID.randomUUID().toString)
     when(user.primaryEmailAddress).thenReturn("test@test.com")
     when(user.publicFields).thenReturn(None)
     when(user.privateFields).thenReturn(None)

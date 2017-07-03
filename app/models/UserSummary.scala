@@ -23,7 +23,7 @@ object UserSummary {
     persistedUser match {
       case user: IdentityUser =>
         UserSummary(
-          id = user._id.getOrElse(""),
+          id = user._id,
           email = user.primaryEmailAddress,
           username = user.publicFields.flatMap(_.username),
           firstName = user.privateFields.flatMap(_.firstName),
