@@ -13,7 +13,7 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
-import scalaz.EitherT
+import scalaz.{-\/, EitherT, \/, \/-}
 import scalaz.std.scalaFuture._
 import models.ApiError._
 import models._
@@ -53,13 +53,27 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
 
   private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
+
+      def findUserById(userId: String): Future[Result \/ User] =
+        EitherT(userService.findById(userId)).fold(
+          error => -\/(InternalServerError(error)),
+          userOpt => userOpt match {
+            case Some(user) => \/-(user)
+            case None => -\/(NotFound)
+          }
+        )
+
+      def enrichUserWithProducts(user: User): Future[Result \/ User]  =
+        EitherT(userService.enrichUserWithProducts(user)).leftMap(InternalServerError(_)).run
+
       (for {
-        user <- EitherT(userService.findById(userId)).leftMap(NotFound(_))
-        userWithProducts <- EitherT(userService.enrichUserWithProducts(user)).leftMap(InternalServerError(_))
+        user <- EitherT(findUserById(userId))
+        userWithProducts <- EitherT(enrichUserWithProducts(user))
       } yield {
         if (Config.stage == "PROD") Tip.verify("User Retrieval")
         new UserRequest(userWithProducts, input)
       }).run.map(_.toEither)
+
     }
   }
 

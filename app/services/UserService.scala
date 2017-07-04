@@ -211,24 +211,22 @@ import scalaz.std.scalaFuture._
   }
 
   /* If it cannot find an active user, tries looking up a deleted one */
-  def findById(id: String): ApiResponse[User] = {
-    def deletedUserToActiveUser(user: DeletedUser) =
-      User(id = user.id, email = user.email, username = Some(user.username), deleted = true)
+  def findById(id: String): ApiResponse[Option[User]] = {
+    def deletedUserToActiveUser(userOpt: Option[DeletedUser]): Option[User] =
+      userOpt.map(user => User(id = user.id, email = user.email, username = Some(user.username), deleted = true))
 
-    val deletedUserOptF = deletedUsersRepository.findBy(id)
-    val activeUserOptF = usersReadRepository.findById(id)
+    val deletedUserOptF = EitherT(deletedUsersRepository.findBy(id))
+    val activeUserOptF = EitherT(usersReadRepository.findById(id))
 
-    for {
+    (for {
       activeUserOpt <- activeUserOptF
       deletedUserOpt <- deletedUserOptF
     } yield {
       if (activeUserOpt.isDefined)
-        \/-(activeUserOpt.get)
-      else if (deletedUserOpt.isDefined)
-        \/-(deletedUserToActiveUser(deletedUserOpt.get))
+        activeUserOpt
       else
-        -\/(ApiError("User not found"))
-    }
+        deletedUserToActiveUser(deletedUserOpt)
+    }).run
   }
 
   def delete(user: User): ApiResponse[ReservedUsernameList] =

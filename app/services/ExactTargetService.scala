@@ -1,15 +1,18 @@
 package services
 
 import javax.inject.{Inject, Singleton}
+
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiResponse, NewslettersSubscription}
+
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
-import scalaz.{OptionT, \/, \/-}
+import scalaz.{EitherT, OptionT, \/, \/-}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
+
 import scala.collection.JavaConversions._
 
 @Singleton class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
@@ -69,9 +72,12 @@ import scala.collection.JavaConversions._
   }
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
-    OptionT(usersReadRepository.findById(identityId)).fold(
-      user => newslettersSubscriptionByEmail(user.email),
-      Future.successful(\/-(None))
+    EitherT(usersReadRepository.findById(identityId)).fold(
+      error => Future(\/-(None)),
+      userOpt => userOpt match {
+        case Some(user) => newslettersSubscriptionByEmail(user.email)
+        case None => Future(\/-(None))
+      }
     ).flatMap(identity)
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {
