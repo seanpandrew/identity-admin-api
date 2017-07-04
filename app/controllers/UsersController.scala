@@ -1,6 +1,7 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
+
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import com.gu.tip.Tip
@@ -10,6 +11,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.api.mvc._
 import services._
+
 import scala.concurrent.Future
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
@@ -63,11 +65,27 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
 
   private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
-      EitherT(salesforce.getSubscriptionByEmail(email)).fold(
+      val subOrphanOptF = EitherT(salesforce.getSubscriptionByEmail(email))
+      val newsOrphanOptF = EitherT(exactTargetService.newslettersSubscriptionByEmail(email))
+
+      val orphanEitherT = (for {
+        subOrphanOpt <- subOrphanOptF
+        newsOrphanOpt <- newsOrphanOptF
+      } yield {
+        if (subOrphanOpt.isDefined)
+          Some(new UserRequest(User(orphan = true, id = "orphan", email = email, subscriptionDetails = Some(subOrphanOpt.get)), input))
+        else if (newsOrphanOpt.isDefined) {
+          Some(new UserRequest(User(orphan = true, id = "orphan", email = email, newslettersSubscription = Some(newsOrphanOpt.get)), input))
+        }
+        else
+          None
+      })
+
+      orphanEitherT.fold(
         error => Left(InternalServerError(error)),
-        subOpt => subOpt.fold[Either[Result, UserRequest[A]]]
+        orphanOpt => orphanOpt.fold[Either[Result, UserRequest[A]]]
           (Left(NotFound))
-          (sub => Right(new UserRequest(User(orphan = true, id = "orphan", email = sub.email, subscriptionDetails = Some(sub)), input)))
+          (orphan => Right(orphan))
       )
     }
   }
