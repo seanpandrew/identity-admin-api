@@ -167,7 +167,7 @@ import scalaz.std.scalaFuture._
         if (subOrphanOpt.isDefined || newsOrphanOpt.isDefined)
           orphanSearchResponse
         else
-          SearchResponse.create(0, 0, Nil)
+          emptySearchResponse
       }).run
     } else Future.successful(\/-(emptySearchResponse))
   }

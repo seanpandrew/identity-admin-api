@@ -76,10 +76,10 @@ import scala.collection.JavaConversions._
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {
     \/-(Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"key=$email").getResult) match {
-      case None => None
       case Some(result) => Some(NewslettersSubscription(
         status = result.getObject.getStatus.value(),
         list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)))
+      case None => None
     })
   }
 
