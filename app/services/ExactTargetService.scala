@@ -50,7 +50,7 @@ import scala.util.{Failure, Success, Try}
       val subscriber = new ETSubscriber()
       subscriber.setEmailAddress(email)
       subscriber.setKey(email)
-      subscriber.setStatus(ETSubscriber.Status.UNSUBSCRIBED)
+      subscriber.setStatus(status)
       val response = etClientAdmin.create(subscriber)
 
       Option(response.getResult).fold[ApiError \/ ETSubscriber]
