@@ -1,22 +1,25 @@
 package services
 
 import javax.inject.{Inject, Singleton}
+
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiResponse, NewslettersSubscription}
+
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
-import scalaz.{OptionT, \/, \/-}
+import scalaz.{-\/, EitherT, \/, \/-}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
+
 import scala.collection.JavaConversions._
 
 @Singleton class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
   /**
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */
-  def unsubscribeFromAllLists(email: String): Future[ApiError \/ ETSubscriber] = {
+  def unsubscribeFromAllLists(email: String): ApiResponse[ETSubscriber] = {
     logger.info("Unsubscribe from all email lists")
     updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED)
   }
@@ -25,13 +28,13 @@ import scala.collection.JavaConversions._
     * Allows this subscriber to subscribe to lists in the future. This will only activate the subscriber
     * on the All Subscribers list, and not on any specific lists.
     */
-  def activateEmailSubscription(email: String): Future[ApiError \/ ETSubscriber] = {
+  def activateEmailSubscription(email: String): ApiResponse[ETSubscriber] = {
     logger.info("Activate email subscriptions")
     updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE)
   }
 
   private def updateSubscriptionStatus(
-      email: String, status: ETSubscriber.Status): Future[ApiError \/ ETSubscriber] = Future {
+      email: String, status: ETSubscriber.Status): ApiResponse[ETSubscriber] = Future {
 
     def updateStatus(subscriber: ETSubscriber) = {
       subscriber.setStatus(status)
@@ -69,9 +72,12 @@ import scala.collection.JavaConversions._
   }
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
-    OptionT(usersReadRepository.findById(identityId)).fold(
-      user => newslettersSubscriptionByEmail(user.email),
-      Future.successful(\/-(None))
+    EitherT(usersReadRepository.findById(identityId)).fold(
+      error => Future.successful(-\/(error)),
+      userOpt => userOpt match {
+        case Some(user) => newslettersSubscriptionByEmail(user.email)
+        case None => Future.successful(\/-(None))
+      }
     ).flatMap(identity)
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {

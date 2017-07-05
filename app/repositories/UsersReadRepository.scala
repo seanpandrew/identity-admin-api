@@ -3,7 +3,7 @@ package repositories
 import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
-import models.{ApiResponse, SearchResponse, User}
+import models.{ApiError, ApiResponse, SearchResponse, User}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoApi
@@ -12,7 +12,7 @@ import reactivemongo.play.json._
 import reactivemongo.api.{Cursor, QueryOpts, ReadPreference}
 
 import scala.concurrent.Future
-import scalaz.\/-
+import scalaz.{-\/, \/-}
 
 
 @Singleton
@@ -60,18 +60,22 @@ class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends
     )
   }
 
-  private def findBy(field: String, value: String): Future[Option[User]] =
+  private def findBy(field: String, value: String): ApiResponse[Option[User]] =
     usersCollectionF.flatMap { usersCollection =>
       usersCollection.find(Json.obj(field -> value))
         .cursor[IdentityUser](ReadPreference.primaryPreferred)
-        .headOption.map(_.map(User.fromIdentityUser))
+        .headOption.map(_.map(User.fromIdentityUser)).map(\/-(_))
+    }.recover { case error =>
+      val title = s"Failed to perform search in MongoDB"
+      logger.error(title, error)
+      -\/(ApiError(title, error.getMessage))
     }
 
-  def findById(id: String): Future[Option[User]] = findBy("_id", id)
+  def findById(id: String): ApiResponse[Option[User]] = findBy("_id", id)
 
-  def findByEmail(email: String): Future[Option[User]] = findBy("primaryEmailAddress", email.toLowerCase)
-  def findByUsername(username: String): Future[Option[User]] = findBy("publicFields.usernameLowerCase", username.toLowerCase)
-  def findByVanityUrl(vanityUrl: String): Future[Option[User]] = findBy("publicFields.vanityUrl", vanityUrl)
+  def findByEmail(email: String): ApiResponse[Option[User]] = findBy("primaryEmailAddress", email.toLowerCase)
+  def findByUsername(username: String): ApiResponse[Option[User]] = findBy("publicFields.usernameLowerCase", username.toLowerCase)
+  def findByVanityUrl(vanityUrl: String): ApiResponse[Option[User]] = findBy("publicFields.vanityUrl", vanityUrl)
 
   def count(): Future[Int] = usersCollectionF.flatMap(_.count())
 }
