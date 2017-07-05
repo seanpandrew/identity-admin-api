@@ -13,8 +13,14 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
-import scalaz.{-\/, EitherT, \/, \/-}
+
+import scalaz._
 import scalaz.std.scalaFuture._
+import scalaz.std.string._
+import scalaz.syntax.validation._
+import scalaz.syntax.apply._
+import scalaz.syntax.std.boolean._
+
 import models.ApiError._
 import models._
 
@@ -30,20 +36,23 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     val MinimumQueryLength = 2
 
-    if (offset.exists(_ < 0)) {
-      Future.successful(BadRequest(ApiError("offset must be a positive integer")))
-    }
-    else if (limit.exists(_ < 0)) {
-      Future.successful(BadRequest(ApiError("limit must be a positive integer")))
-    }
-    else if (query.length < MinimumQueryLength) {
-      Future.successful(BadRequest(ApiError(s"query must be a minimum of $MinimumQueryLength characters")))
-    }
-    else {
+    val queryValid =
+      (query.length < MinimumQueryLength) ? s"query must be a minimum of $MinimumQueryLength characters".failure[String] | query.success[String]
+
+    val limitValid =
+      limit.exists(_ < 0) ? "limit must be a positive integer".failure[Option[Int]] | limit.success[String]
+
+    val offsetValid =
+      offset.exists(_ < 0) ? "offset must be a positive integer".failure[Option[Int]] | offset.success[String]
+
+    (queryValid |@| limitValid |@| offsetValid) { (query, limit, offset) =>
       EitherT(userService.search(query, limit, offset)).fold(
         error => InternalServerError(error),
         response => Ok(Json.toJson(response))
       )
+    } match {
+      case Success(result) => result
+      case Failure(error) => Future.successful(BadRequest(ApiError(error)))
     }
   }
 
