@@ -14,6 +14,7 @@ import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
 
 import scala.collection.JavaConversions._
+import scala.util.{Failure, Success, Try}
 
 @Singleton class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
   /**
@@ -49,7 +50,7 @@ import scala.collection.JavaConversions._
       val subscriber = new ETSubscriber()
       subscriber.setEmailAddress(email)
       subscriber.setKey(email)
-      subscriber.setStatus(ETSubscriber.Status.UNSUBSCRIBED)
+      subscriber.setStatus(status)
       val response = etClientAdmin.create(subscriber)
 
       Option(response.getResult).fold[ApiError \/ ETSubscriber]
@@ -81,12 +82,33 @@ import scala.collection.JavaConversions._
     ).flatMap(identity)
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {
-    \/-(Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"key=$email").getResult) match {
+    \/-(Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
       case Some(result) => Some(NewslettersSubscription(
         status = result.getObject.getStatus.value(),
         list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)))
       case None => None
     })
+  }
+
+  def deleteSubscriber(email: String): ApiResponse[Option[ETResponse[ETSubscriber]]] = Future {
+    val deleteTry = Try {
+      Option(etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
+        case Some(result) =>
+          val subscriber = result.getObject
+          \/-(Some(etClientAdmin.delete(subscriber)))
+
+        case None => \/-(None)
+      }
+    }
+
+    deleteTry match {
+      case Success(result) => result
+
+      case Failure(error) =>
+        val title = "Failed to delete subscriber from ExactTarget"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+    }
   }
 
   private lazy val etClientAdmin = {

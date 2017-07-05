@@ -82,18 +82,19 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
       val subOrphanOptF = EitherT(salesforce.getSubscriptionByEmail(email))
       val newsOrphanOptF = EitherT(exactTargetService.newslettersSubscriptionByEmail(email))
 
-      val orphanEitherT = (for {
-        subOrphanOpt <- subOrphanOptF
-        newsOrphanOpt <- newsOrphanOptF
-      } yield {
-        if (subOrphanOpt.isDefined)
-          Some(new UserRequest(User(orphan = true, id = "orphan", email = email, subscriptionDetails = Some(subOrphanOpt.get)), input))
-        else if (newsOrphanOpt.isDefined) {
-          Some(new UserRequest(User(orphan = true, id = "orphan", email = email, newslettersSubscription = Some(newsOrphanOpt.get)), input))
+      val orphanEitherT =
+        for {
+          subOrphanOpt <- subOrphanOptF
+          newsOrphanOpt <- newsOrphanOptF
+        } yield {
+          if (subOrphanOpt.isDefined)
+            Some(new UserRequest(User(orphan = true, id = "orphan", email = email, subscriptionDetails = Some(subOrphanOpt.get)), input))
+          else if (newsOrphanOpt.isDefined) {
+            Some(new UserRequest(User(orphan = true, id = "orphan", email = email, newslettersSubscription = Some(newsOrphanOpt.get)), input))
+          }
+          else
+            None
         }
-        else
-          None
-      })
 
       orphanEitherT.fold(
         error => Left(InternalServerError(error)),
@@ -135,12 +136,12 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
   def delete(id: String) = (auth andThen UserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
-    def unsubscribeEmails() = EitherT(exactTargetService.unsubscribeFromAllLists(request.user.email))
-    def deleteAccount() = EitherT(userService.delete(request.user))
+    val deleteEmailSubscriberF = EitherT(exactTargetService.deleteSubscriber(request.user.email))
+    val deleteAccountF = EitherT(userService.delete(request.user))
 
     (for {
-      _ <- unsubscribeEmails()
-      _ <- deleteAccount()
+      _ <- deleteEmailSubscriberF
+      _ <- deleteAccountF
     } yield {
       EmailService.sendDeletionConfirmation(request.user.email)
     }).fold(
