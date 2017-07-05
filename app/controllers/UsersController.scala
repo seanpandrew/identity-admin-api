@@ -34,10 +34,10 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
     exactTargetService: ExactTargetService) extends Controller with Logging {
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
-    val MinimumQueryLength = 2
+    import Config.SearchValidation._
 
     val queryValid =
-      (query.length < MinimumQueryLength) ? s"query must be a minimum of $MinimumQueryLength characters".failure[String] | query.success[String]
+      (query.length < minimumQueryLength) ? s"query must be a minimum of $minimumQueryLength characters".failure[String] | query.success[String]
 
     val limitValid =
       limit.exists(_ < 0) ? "limit must be a positive integer".failure[Option[Int]] | limit.success[String]

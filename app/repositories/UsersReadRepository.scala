@@ -1,9 +1,11 @@
 package repositories
 
+import configuration.Config.SearchValidation._
+import models.{ApiError, ApiResponse, SearchResponse, User}
+
 import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
-import models.{ApiError, ApiResponse, SearchResponse, User}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoApi
@@ -17,14 +19,13 @@ import scalaz.std.scalaFuture._
 
 @Singleton class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends Logging {
 
-  private val MaximumResults = 20
   private lazy val usersCollectionF = reactiveMongoApi.database.map(_.collection("users"))
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =  {
     usersCollectionF.flatMap { usersCollection =>
       val totalF = usersCollection.count(Some(selector(query)))
 
-      val batchSizeN = limit.getOrElse(MaximumResults)
+      val batchSizeN = limit.getOrElse(maximumLimit)
       val skipN = offset.getOrElse(0)
 
       val resultsF = usersCollection
