@@ -12,70 +12,62 @@ import reactivemongo.play.json._
 import reactivemongo.api.{Cursor, QueryOpts, ReadPreference}
 
 import scala.concurrent.Future
-import scalaz.{-\/, \/-}
+import scalaz.{-\/, OptionT, \/-}
+import scalaz.std.scalaFuture._
 
-
-@Singleton
-class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends Logging {
+@Singleton class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends Logging {
 
   private val MaximumResults = 20
   private lazy val usersCollectionF = reactiveMongoApi.database.map(_.collection("users"))
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =  {
     usersCollectionF.flatMap { usersCollection =>
-      val q = buildSearchQuery(query)
-      val total = usersCollection.count(Some(q))
+      val totalF = usersCollection.count(Some(selector(query)))
 
-      val l = limit.getOrElse(MaximumResults)
-      val o = offset.getOrElse(0)
+      val batchSizeN = limit.getOrElse(MaximumResults)
+      val skipN = offset.getOrElse(0)
 
-      val results = usersCollection
-        .find(q)
-        .options(QueryOpts(o, l))
+      val resultsF = usersCollection
+        .find(selector(query))
+        .options(QueryOpts(skipN, batchSizeN))
         .cursor[IdentityUser](ReadPreference.primaryPreferred)
-        .collect[List](l, Cursor.FailOnError[List[IdentityUser]]())
+        .collect[List](batchSizeN, Cursor.FailOnError[List[IdentityUser]]())
 
       for {
-        t <- total
-        r <- results
+        total <- totalF
+        results <- resultsF
       } yield {
-        \/-(SearchResponse.create(t, o, r))
+        \/-(SearchResponse.create(total, skipN, results))
       }
     }
   }
 
-  private def buildSearchQuery(query: String): JsObject = {
-    val term = query.toLowerCase
+  private def selector(key: String): JsObject =
     Json.obj(
       "$or" -> Json.arr(
-        Json.obj("_id" -> term),
-        Json.obj("searchFields.emailAddress" -> term),
-        Json.obj("searchFields.username" -> term),
-        Json.obj("searchFields.postcode" -> term),
-        Json.obj("searchFields.postcodePrefix" -> term),
-        Json.obj("searchFields.displayName" -> term),
-        Json.obj("privateFields.registrationIp" -> term),
-        Json.obj("privateFields.lastActiveIpAddress" -> term)
+        Json.obj("_id" -> key.toLowerCase),
+        Json.obj("searchFields.emailAddress" -> key.toLowerCase),
+        Json.obj("searchFields.username" -> key.toLowerCase),
+        Json.obj("searchFields.postcode" -> key.toLowerCase),
+        Json.obj("searchFields.postcodePrefix" -> key.toLowerCase),
+        Json.obj("searchFields.displayName" -> key.toLowerCase),
+        Json.obj("privateFields.registrationIp" -> key.toLowerCase),
+        Json.obj("privateFields.lastActiveIpAddress" -> key.toLowerCase)
       )
     )
-  }
 
-  private def findBy(field: String, value: String): ApiResponse[Option[User]] =
-    usersCollectionF.flatMap { usersCollection =>
-      usersCollection.find(Json.obj(field -> value))
-        .cursor[IdentityUser](ReadPreference.primaryPreferred)
-        .headOption.map(_.map(User.fromIdentityUser)).map(\/-(_))
-    }.recover { case error =>
+  def find(key: String): ApiResponse[Option[User]] = {
+    val identityUserOptF = usersCollectionF.flatMap(_.find(selector(key)).one[IdentityUser])
+
+    OptionT(identityUserOptF).fold(
+      identityUser => \/-(Some(User.fromIdentityUser(identityUser))),
+      \/-(None)
+    ).recover { case error =>
       val title = s"Failed to perform search in MongoDB"
       logger.error(title, error)
       -\/(ApiError(title, error.getMessage))
     }
-
-  def findById(id: String): ApiResponse[Option[User]] = findBy("_id", id)
-
-  def findByEmail(email: String): ApiResponse[Option[User]] = findBy("primaryEmailAddress", email.toLowerCase)
-  def findByUsername(username: String): ApiResponse[Option[User]] = findBy("publicFields.usernameLowerCase", username.toLowerCase)
-  def findByVanityUrl(vanityUrl: String): ApiResponse[Option[User]] = findBy("publicFields.vanityUrl", vanityUrl)
+  }
 
   def count(): Future[Int] = usersCollectionF.flatMap(_.count())
 }

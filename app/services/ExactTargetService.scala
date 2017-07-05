@@ -72,7 +72,7 @@ import scala.collection.JavaConversions._
   }
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
-    EitherT(usersReadRepository.findById(identityId)).fold(
+    EitherT(usersReadRepository.find(identityId)).fold(
       error => Future.successful(-\/(error)),
       userOpt => userOpt match {
         case Some(user) => newslettersSubscriptionByEmail(user.email)

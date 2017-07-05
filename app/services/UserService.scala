@@ -216,7 +216,7 @@ import scalaz.std.scalaFuture._
       userOpt.map(user => User(id = user.id, email = user.email, username = Some(user.username), deleted = true))
 
     val deletedUserOptF = EitherT(deletedUsersRepository.findBy(id))
-    val activeUserOptF = EitherT(usersReadRepository.findById(id))
+    val activeUserOptF = EitherT(usersReadRepository.find(id))
 
     (for {
       activeUserOpt <- activeUserOptF
