@@ -161,15 +161,11 @@ import scala.util.{Failure, Success, Try}
     subByEmailT.run
   }
 
-  def subscriberByIdentityId(identityId: String): ApiResponse[Option[ExactTargetSubscriber]] = {
-    EitherT(usersReadRepository.find(identityId)).fold(
-      error => Future.successful(-\/(error)),
-      userOpt => userOpt match {
-        case Some(user) => subscriberByEmail(user.email)
-        case None => Future.successful(\/-(None))
-      }
-    ).flatMap(identity)
-  }
+  def subscriberByIdentityId(identityId: String): ApiResponse[Option[ExactTargetSubscriber]] =
+    EitherT(usersReadRepository.find(identityId)).flatMap({
+      case Some(user) => EitherT(subscriberByEmail(user.email))
+      case None => EitherT.right(Future.successful(Option.empty[ExactTargetSubscriber]))
+    }).run
 
   private def retrieveSubscriber(
     key: String, value: String, client: ETClient): ApiResponse[Option[ETSubscriber]] = Future {
