@@ -13,6 +13,11 @@ object Config {
   val stage = config.getString("stage")
   val stack = config.getString("stack")
 
+  object SearchValidation {
+    val minimumQueryLength = config.getInt("search-validation.minimumQueryLength")
+    val maximumLimit = config.getInt("search-validation.maximumLimit")
+  }
+
   object AWS {
     val profile = config.getString("aws-profile")
     val credentialsProvider = new AWSCredentialsProviderChain(new ProfileCredentialsProvider(profile), InstanceProfileCredentialsProvider.getInstance())
