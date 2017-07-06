@@ -66,13 +66,10 @@ import scala.util.{Failure, Success, Try}
     }.run
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
-    EitherT(usersReadRepository.find(identityId)).fold(
-      error => Future.successful(-\/(error)),
-      userOpt => userOpt match {
-        case Some(user) => newslettersSubscriptionByEmail(user.email)
-        case None => Future.successful(\/-(None))
-      }
-    ).flatMap(identity)
+    EitherT(usersReadRepository.find(identityId)).flatMap {
+      case Some(user) => EitherT(newslettersSubscriptionByEmail(user.email))
+      case None => EitherT.right(Future.successful(Option.empty[NewslettersSubscription]))
+    }.run
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = {
 
