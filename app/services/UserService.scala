@@ -253,19 +253,19 @@ import scalaz.std.scalaFuture._
     val subscriptionF = EitherT(salesforceService.getSubscriptionByIdentityId(user.id))
     val membershipF = EitherT(salesforceService.getMembershipByIdentityId(user.id))
     val hasCommentedF = EitherT(discussionService.hasCommented(user.id))
-    val newslettersSubF = EitherT(exactTargetService.newslettersSubscriptionByIdentityId(user.id))
+    val exactTargetSubF = EitherT(exactTargetService.subscriberByIdentityId(user.id))
 
     (for {
       subscription <- subscriptionF
       membership <- membershipF
       hasCommented <- hasCommentedF
-      newslettersSub <- newslettersSubF
+      exactTargetSub <- exactTargetSubF
     } yield {
       user.copy(
         subscriptionDetails = subscription,
         membershipDetails = membership,
         hasCommented = hasCommented,
-        newslettersSubscription = newslettersSub)
+        exactTargetSubscriber = exactTargetSub)
     }).run
   }
 }
