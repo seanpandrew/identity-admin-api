@@ -9,7 +9,7 @@ import models.{ApiError, ApiResponse, ExactTargetSubscriber, NewslettersSubscrip
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
-import scalaz.{-\/, EitherT, \/-}
+import scalaz.{-\/, EitherT, \/, \/-}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
 
@@ -20,7 +20,7 @@ import scala.util.{Failure, Success, Try}
   /**
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */
-  def unsubscribeFromAllLists(email: String): ApiResponse[ETResponse[ETSubscriber]] = {
+  def unsubscribeFromAllLists(email: String): ApiResponse[Unit] = {
     updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED)
   }
 
@@ -28,41 +28,17 @@ import scala.util.{Failure, Success, Try}
     * Allows this subscriber to subscribe to lists in the future. This will only activate the subscriber
     * on the All Subscribers list, and not on any specific lists.
     */
-  def activateEmailSubscription(email: String): ApiResponse[ETResponse[ETSubscriber]] = {
+  def activateEmailSubscription(email: String): ApiResponse[Unit] = {
     updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE)
   }
 
-  private def updateSubscriptionStatus(
-      email: String, status: ETSubscriber.Status): ApiResponse[ETResponse[ETSubscriber]] = {
-
-    def updateStatus(subscriber: ETSubscriber) = {
-      subscriber.setStatus(status)
-      etClientAdmin.update(subscriber)
-    }
-
-    def createAndUpdateStatus() = {
-      val subscriber = new ETSubscriber()
-      subscriber.setEmailAddress(email)
-      subscriber.setKey(email)
-      subscriber.setStatus(status)
-      etClientAdmin.create(subscriber)
-    }
-
-    EitherT(retrieveSubscriber("emailaddress", email, etClientAdmin)).map {
-      case Some(subscriber) => updateStatus(subscriber)
-      case None => createAndUpdateStatus()
-    }.run
-
-  }
-
-  def updateEmailAddress(oldEmail: String, newEmail: String): ApiResponse[Option[ETResponse[ETSubscriber]]] =
-    EitherT(retrieveSubscriber("emailAddress", oldEmail, etClientAdmin)).map {
-      case Some(subscriber) => Some {
+  def updateEmailAddress(oldEmail: String, newEmail: String): ApiResponse[Unit] =
+    EitherT(retrieveSubscriber("emailAddress", oldEmail, etClientAdmin)).flatMap {
+      case Some(subscriber) =>
         subscriber.setEmailAddress(newEmail)
-        etClientAdmin.update(subscriber)
-      }
+        EitherT(updateSubscriber(subscriber))
 
-      case None => None
+      case None => EitherT.right(Future.successful({}))
     }.run
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
@@ -92,26 +68,11 @@ import scala.util.{Failure, Success, Try}
     }.run
   }
 
-  def deleteSubscriber(email: String): ApiResponse[Option[ETResponse[ETSubscriber]]] = Future {
-    val deleteTry = Try {
-      Option(etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
-        case Some(result) =>
-          val subscriber = result.getObject
-          \/-(Some(etClientAdmin.delete(subscriber)))
-
-        case None => \/-(None)
-      }
-    }
-
-    deleteTry match {
-      case Success(result) => result
-
-      case Failure(error) =>
-        val title = "Failed to delete subscriber from ExactTarget"
-        logger.error(title, error)
-        -\/(ApiError(title, error.getMessage))
-    }
-  }
+  def deleteSubscriber(email: String): ApiResponse[Unit] =
+    EitherT(retrieveSubscriber("emailAddress", email, etClientAdmin)).flatMap {
+      case Some(subscriber) => EitherT(deleteSubscriber(subscriber))
+      case None => EitherT.right(Future.successful({}))
+    }.run
 
   def status(email: String): ApiResponse[Option[String]] =
     EitherT(retrieveSubscriber("emailAddress", email, etClientAdmin)).map {
@@ -143,6 +104,28 @@ import scala.util.{Failure, Success, Try}
       case None => EitherT.right(Future.successful(Option.empty[ExactTargetSubscriber]))
     }.run
 
+  private def updateSubscriptionStatus(
+    email: String, status: ETSubscriber.Status): ApiResponse[Unit] = {
+
+    def updateStatus(subscriber: ETSubscriber) = {
+      subscriber.setStatus(status)
+      updateSubscriber(subscriber)
+    }
+
+    def createAndUpdateStatus() = {
+      val subscriber = new ETSubscriber()
+      subscriber.setEmailAddress(email)
+      subscriber.setKey(email)
+      subscriber.setStatus(status)
+      createSubscriber(subscriber)
+    }
+
+    EitherT(retrieveSubscriber("emailAddress", email, etClientAdmin)).flatMap {
+      case Some(subscriber) => EitherT(updateStatus(subscriber))
+      case None => EitherT(createAndUpdateStatus())
+    }.run
+  }
+
   private def retrieveSubscriber(
       key: String, value: String, client: ETClient): ApiResponse[Option[ETSubscriber]] = Future {
 
@@ -162,6 +145,29 @@ import scala.util.{Failure, Success, Try}
         -\/(ApiError(title, error.getMessage))
     }
   }
+
+  private def deleteSubscriber(subscriber: ETSubscriber): ApiResponse[Unit] = Future {
+    val etResponse = etClientAdmin.delete(subscriber)
+    handleETResponse(etResponse, "Failed to delete ExactTarget subscriber")
+  }
+
+  private def updateSubscriber(subscriber: ETSubscriber): ApiResponse[Unit] = Future {
+    val etResponse = etClientAdmin.update(subscriber)
+    handleETResponse(etResponse, "Failed to update ExactTarget subscriber")
+  }
+
+  private def createSubscriber(subscriber: ETSubscriber): ApiResponse[Unit] = Future {
+    val etResponse = etClientAdmin.create(subscriber)
+    handleETResponse(etResponse, "Failed to create ExactTarget subscriber")
+  }
+
+  private def handleETResponse(etResponse: ETResponse[ETSubscriber], title: String): ApiError \/ Unit =
+    if (etResponse.getResponseCode == "OK")
+      \/-{}
+    else {
+      logger.error(s"${title}: ${etResponse.getResponseMessage}")
+      -\/(ApiError(title, etResponse.getResponseMessage))
+    }
 
   private lazy val etClientAdmin = {
     val etConf = new ETConfiguration()
