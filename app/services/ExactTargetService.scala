@@ -48,32 +48,22 @@ import scala.util.{Failure, Success, Try}
       etClientAdmin.create(subscriber)
     }
 
-    val updateSubStatusT =
-      EitherT(retrieveSubscriber("emailaddress", email, etClientAdmin)).map(subscriberOpt =>
-        subscriberOpt match {
-          case Some(subscriber) => updateStatus(subscriber)
-          case None => createAndUpdateStatus()
-        }
-      )
+    EitherT(retrieveSubscriber("emailaddress", email, etClientAdmin)).map {
+      case Some(subscriber) => updateStatus(subscriber)
+      case None => createAndUpdateStatus()
+    }.run
 
-    updateSubStatusT.run
   }
 
-  def updateEmailAddress(oldEmail: String, newEmail: String): ApiResponse[Option[ETResponse[ETSubscriber]]] = {
-    val updateEmailT =
-      EitherT(retrieveSubscriber("emailAddress", oldEmail, etClientAdmin)).map(subscriberOpt =>
-        subscriberOpt match {
-          case Some(subscriber) => Some {
-            subscriber.setEmailAddress(newEmail)
-            etClientAdmin.update(subscriber)
-          }
+  def updateEmailAddress(oldEmail: String, newEmail: String): ApiResponse[Option[ETResponse[ETSubscriber]]] =
+    EitherT(retrieveSubscriber("emailAddress", oldEmail, etClientAdmin)).map {
+      case Some(subscriber) => Some {
+        subscriber.setEmailAddress(newEmail)
+        etClientAdmin.update(subscriber)
+      }
 
-          case None => None
-        }
-      )
-
-    updateEmailT.run
-  }
+      case None => None
+    }.run
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
     EitherT(usersReadRepository.find(identityId)).fold(
@@ -91,23 +81,18 @@ import scala.util.{Failure, Success, Try}
 
     def subscriberIsActive(subscriber: ETSubscriber) = subscriber.getStatus == ETSubscriber.Status.ACTIVE
 
-    val newslettersT =
-      EitherT(retrieveSubscriber("emailAddress", email, etClientEditorial)).map(subscriberOpt =>
-        subscriberOpt match {
-          case Some(subscriber) => {
-            val activeList = activeNewsletterSubscriptions(subscriber.getSubscriptions.toList)
+    EitherT(retrieveSubscriber("emailAddress", email, etClientEditorial)).map {
+      case Some(subscriber) => {
+        val activeList = activeNewsletterSubscriptions(subscriber.getSubscriptions.toList)
 
-            if (subscriberIsActive(subscriber) && !activeList.isEmpty)
-              Some(NewslettersSubscription(activeList))
-            else
-              None
-          }
+        if (subscriberIsActive(subscriber) && !activeList.isEmpty)
+          Some(NewslettersSubscription(activeList))
+        else
+          None
+      }
 
-          case None => None
-        }
-      )
-
-    newslettersT.run
+      case None => None
+    }.run
   }
 
   def deleteSubscriber(email: String): ApiResponse[Option[ETResponse[ETSubscriber]]] = Future {
@@ -131,17 +116,11 @@ import scala.util.{Failure, Success, Try}
     }
   }
 
-  def status(email: String): ApiResponse[Option[String]] = {
-    val statusT =
-      EitherT(retrieveSubscriber("emailAddress", email, etClientAdmin)).map(subscriberOpt =>
-        subscriberOpt match {
-          case Some(subscriber) => Some(subscriber.getStatus.value)
-          case None => None
-        }
-      )
-
-    statusT.run
-  }
+  def status(email: String): ApiResponse[Option[String]] =
+    EitherT(retrieveSubscriber("emailAddress", email, etClientAdmin)).map {
+      case Some(subscriber) => Some(subscriber.getStatus.value)
+      case None => None
+    }.run
 
   def subscriberByEmail(email: String): ApiResponse[Option[ExactTargetSubscriber]] = {
     val statusF = EitherT(status(email))
@@ -162,13 +141,13 @@ import scala.util.{Failure, Success, Try}
   }
 
   def subscriberByIdentityId(identityId: String): ApiResponse[Option[ExactTargetSubscriber]] =
-    EitherT(usersReadRepository.find(identityId)).flatMap({
+    EitherT(usersReadRepository.find(identityId)).flatMap {
       case Some(user) => EitherT(subscriberByEmail(user.email))
       case None => EitherT.right(Future.successful(Option.empty[ExactTargetSubscriber]))
-    }).run
+    }.run
 
   private def retrieveSubscriber(
-    key: String, value: String, client: ETClient): ApiResponse[Option[ETSubscriber]] = Future {
+      key: String, value: String, client: ETClient): ApiResponse[Option[ETSubscriber]] = Future {
 
     val retrieveTry = Try {
       Option(client.retrieve(classOf[ETSubscriber], s"$key=$value").getResult) match {
