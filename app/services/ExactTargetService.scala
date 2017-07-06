@@ -9,7 +9,7 @@ import models.{ApiError, ApiResponse, ExactTargetSubscriber, NewslettersSubscrip
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
-import scalaz.{-\/, EitherT, \/, \/-}
+import scalaz.{-\/, EitherT, \/-}
 import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
 
@@ -20,8 +20,7 @@ import scala.util.{Failure, Success, Try}
   /**
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */
-  def unsubscribeFromAllLists(email: String): ApiResponse[ETSubscriber] = {
-    logger.info("Unsubscribe from all email lists")
+  def unsubscribeFromAllLists(email: String): ApiResponse[ETResponse[ETSubscriber]] = {
     updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED)
   }
 
@@ -29,21 +28,16 @@ import scala.util.{Failure, Success, Try}
     * Allows this subscriber to subscribe to lists in the future. This will only activate the subscriber
     * on the All Subscribers list, and not on any specific lists.
     */
-  def activateEmailSubscription(email: String): ApiResponse[ETSubscriber] = {
-    logger.info("Activate email subscriptions")
+  def activateEmailSubscription(email: String): ApiResponse[ETResponse[ETSubscriber]] = {
     updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE)
   }
 
   private def updateSubscriptionStatus(
-      email: String, status: ETSubscriber.Status): ApiResponse[ETSubscriber] = Future {
+      email: String, status: ETSubscriber.Status): ApiResponse[ETResponse[ETSubscriber]] = {
 
     def updateStatus(subscriber: ETSubscriber) = {
       subscriber.setStatus(status)
-      val response = etClientAdmin.update(subscriber)
-
-      Option(response.getResult).fold[ApiError \/ ETSubscriber]
-        {\/.left(ApiError("Failed to update email status", response.getResponseMessage))}
-        {result => \/.right(result.getObject)}
+      etClientAdmin.update(subscriber)
     }
 
     def createAndUpdateStatus() = {
@@ -51,25 +45,34 @@ import scala.util.{Failure, Success, Try}
       subscriber.setEmailAddress(email)
       subscriber.setKey(email)
       subscriber.setStatus(status)
-      val response = etClientAdmin.create(subscriber)
-
-      Option(response.getResult).fold[ApiError \/ ETSubscriber]
-        {\/.left(ApiError("Failed to update email status", response.getResponseMessage))}
-        {result => \/.right(result.getObject)}
+      etClientAdmin.create(subscriber)
     }
 
-    Option(
-      etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult
-    ).fold(createAndUpdateStatus)(result => updateStatus(result.getObject))
+    val updateSubStatusT =
+      EitherT(retrieveSubscriber("emailaddress", email, etClientAdmin)).map(subscriberOpt =>
+        subscriberOpt match {
+          case Some(subscriber) => updateStatus(subscriber)
+          case None => createAndUpdateStatus()
+        }
+      )
+
+    updateSubStatusT.run
   }
 
-  def updateEmailAddress(oldEmail: String, newEmail: String) = Future {
-    logger.info("Updating user's email address in ExactTarget")
-    Option(etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$oldEmail").getResult).map { result =>
-      val subscriber = result.getObject
-      subscriber.setEmailAddress(newEmail)
-      etClientAdmin.update(subscriber)
-    }
+  def updateEmailAddress(oldEmail: String, newEmail: String): ApiResponse[Option[ETResponse[ETSubscriber]]] = {
+    val updateEmailT =
+      EitherT(retrieveSubscriber("emailAddress", oldEmail, etClientAdmin)).map(subscriberOpt =>
+        subscriberOpt match {
+          case Some(subscriber) => Some {
+            subscriber.setEmailAddress(newEmail)
+            etClientAdmin.update(subscriber)
+          }
+
+          case None => None
+        }
+      )
+
+    updateEmailT.run
   }
 
   def newslettersSubscriptionByIdentityId(identityId: String): ApiResponse[Option[NewslettersSubscription]] =
@@ -81,23 +84,30 @@ import scala.util.{Failure, Success, Try}
       }
     ).flatMap(identity)
 
-  def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {
+  def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = {
 
     def activeNewsletterSubscriptions(subscriptions: List[ETSubscriber#Subscription]) =
       subscriptions.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)
 
-    \/-(Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
-      case Some(result) =>
-        val subscriber = result.getObject
-        val editorialSubscriberStatus = subscriber.getStatus
+    def subscriberIsActive(subscriber: ETSubscriber) = subscriber.getStatus == ETSubscriber.Status.ACTIVE
 
-        if (editorialSubscriberStatus == ETSubscriber.Status.ACTIVE)
-          Some(NewslettersSubscription(activeNewsletterSubscriptions(subscriber.getSubscriptions.toList)))
-        else
-          None
+    val newslettersT =
+      EitherT(retrieveSubscriber("emailAddress", email, etClientEditorial)).map(subscriberOpt =>
+        subscriberOpt match {
+          case Some(subscriber) => {
+            val activeList = activeNewsletterSubscriptions(subscriber.getSubscriptions.toList)
 
-      case None => None
-    })
+            if (subscriberIsActive(subscriber) && !activeList.isEmpty)
+              Some(NewslettersSubscription(activeList))
+            else
+              None
+          }
+
+          case None => None
+        }
+      )
+
+    newslettersT.run
   }
 
   def deleteSubscriber(email: String): ApiResponse[Option[ETResponse[ETSubscriber]]] = Future {
@@ -121,29 +131,34 @@ import scala.util.{Failure, Success, Try}
     }
   }
 
-  def status(email: String): ApiResponse[Option[String]] = Future {
-    \/-(Option(etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
-      case Some(result) =>
-        val subscriber = result.getObject
-        Some(subscriber.getStatus.value())
+  def status(email: String): ApiResponse[Option[String]] = {
+    val statusT =
+      EitherT(retrieveSubscriber("emailAddress", email, etClientAdmin)).map(subscriberOpt =>
+        subscriberOpt match {
+          case Some(subscriber) => Some(subscriber.getStatus.value)
+          case None => None
+        }
+      )
 
-      case None => None
-    })
+    statusT.run
   }
 
   def subscriberByEmail(email: String): ApiResponse[Option[ExactTargetSubscriber]] = {
     val statusF = EitherT(status(email))
     val newslettersF = EitherT(newslettersSubscriptionByEmail(email))
 
-    (for {
-      statusOpt <- statusF
-      newslettersOpt <- newslettersF
-    } yield {
-      statusOpt match {
-        case Some(status) => Some(ExactTargetSubscriber(status, newslettersOpt))
-        case None => None
+    val subByEmailT =
+      for {
+        statusOpt <- statusF
+        newslettersOpt <- newslettersF
+      } yield {
+        statusOpt match {
+          case Some(status) => Some(ExactTargetSubscriber(status, newslettersOpt))
+          case None => None
+        }
       }
-    }).run
+
+    subByEmailT.run
   }
 
   def subscriberByIdentityId(identityId: String): ApiResponse[Option[ExactTargetSubscriber]] = {
@@ -154,6 +169,26 @@ import scala.util.{Failure, Success, Try}
         case None => Future.successful(\/-(None))
       }
     ).flatMap(identity)
+  }
+
+  private def retrieveSubscriber(
+    key: String, value: String, client: ETClient): ApiResponse[Option[ETSubscriber]] = Future {
+
+    val retrieveTry = Try {
+      Option(client.retrieve(classOf[ETSubscriber], s"$key=$value").getResult) match {
+        case Some(result) => \/-(Some(result.getObject))
+        case None => \/-(Option.empty[ETSubscriber])
+      }
+    }
+
+    retrieveTry match {
+      case Success(result) => result
+
+      case Failure(error) =>
+        val title = "Failed to retrieve subscriber from ExactTarget"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+    }
   }
 
   private lazy val etClientAdmin = {
