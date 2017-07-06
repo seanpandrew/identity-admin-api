@@ -5,7 +5,7 @@ import javax.inject.{Inject, Singleton}
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
-import models.{ApiError, ApiResponse, NewslettersSubscription}
+import models.{ApiError, ApiResponse, ExactTargetSubscriber, NewslettersSubscription}
 
 import scala.concurrent.Future
 import scalaz.std.scalaFuture._
@@ -82,10 +82,20 @@ import scala.util.{Failure, Success, Try}
     ).flatMap(identity)
 
   def newslettersSubscriptionByEmail(email: String): ApiResponse[Option[NewslettersSubscription]] = Future {
+
+    def activeNewsletterSubscriptions(subscriptions: List[ETSubscriber#Subscription]) =
+      subscriptions.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)
+
     \/-(Option(etClientEditorial.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
-      case Some(result) => Some(NewslettersSubscription(
-        status = result.getObject.getStatus.value(),
-        list = result.getObject.getSubscriptions.toList.filter(_.getStatus == ETSubscriber.Status.ACTIVE).map(_.getListId)))
+      case Some(result) =>
+        val subscriber = result.getObject
+        val editorialSubscriberStatus = subscriber.getStatus
+
+        if (editorialSubscriberStatus == ETSubscriber.Status.ACTIVE)
+          Some(NewslettersSubscription(activeNewsletterSubscriptions(subscriber.getSubscriptions.toList)))
+        else
+          None
+
       case None => None
     })
   }
@@ -109,6 +119,41 @@ import scala.util.{Failure, Success, Try}
         logger.error(title, error)
         -\/(ApiError(title, error.getMessage))
     }
+  }
+
+  def status(email: String): ApiResponse[Option[String]] = Future {
+    \/-(Option(etClientAdmin.retrieve(classOf[ETSubscriber], s"emailAddress=$email").getResult) match {
+      case Some(result) =>
+        val subscriber = result.getObject
+        Some(subscriber.getStatus.value())
+
+      case None => None
+    })
+  }
+
+  def subscriberByEmail(email: String): ApiResponse[Option[ExactTargetSubscriber]] = {
+    val statusF = EitherT(status(email))
+    val newslettersF = EitherT(newslettersSubscriptionByEmail(email))
+
+    (for {
+      statusOpt <- statusF
+      newslettersOpt <- newslettersF
+    } yield {
+      statusOpt match {
+        case Some(status) => Some(ExactTargetSubscriber(status, newslettersOpt))
+        case None => None
+      }
+    }).run
+  }
+
+  def subscriberByIdentityId(identityId: String): ApiResponse[Option[ExactTargetSubscriber]] = {
+    EitherT(usersReadRepository.find(identityId)).fold(
+      error => Future.successful(-\/(error)),
+      userOpt => userOpt match {
+        case Some(user) => subscriberByEmail(user.email)
+        case None => Future.successful(\/-(None))
+      }
+    ).flatMap(identity)
   }
 
   private lazy val etClientAdmin = {
