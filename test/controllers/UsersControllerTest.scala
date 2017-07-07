@@ -1,6 +1,6 @@
 package controllers
 
-import actions.AuthenticatedAction
+import actions.{AuthenticatedAction, IdentityUserAction, OrphanUserAction, UserRequest}
 import mockws.MockWS
 import models._
 import org.scalatest.mockito.MockitoSugar
@@ -8,12 +8,13 @@ import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Matchers.any
 import org.mockito.Mockito._
 import play.api.libs.json.Json
-import play.api.mvc.{Action, Request, Result}
+import play.api.mvc.{Action, ActionRefiner, Request, Result}
 import play.api.mvc.Results._
 import play.api.test.FakeRequest
 import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, ExactTargetService, SalesforceService, UserService}
+
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scalaz.{-\/, \/-}
@@ -27,6 +28,9 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   val dapiWsMock = MockWS { case (GET, dapiWsMockurl) => Action {Ok("""{"status":"ok","comments":0,"pickedComments":0}""")}}
   val exactTargetServiceMock = mock[ExactTargetService]
   val salesforceService = mock[SalesforceService]
+  val identityUserAction = mock[IdentityUserAction]
+  val orphanUserAction = mock[OrphanUserAction]
+
   when(exactTargetServiceMock.newslettersSubscriptionByIdentityId("abc")).thenReturn(Future.successful(\/-(None)))
 
   class StubAuthenticatedAction extends AuthenticatedAction {
@@ -36,8 +40,26 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     }
   }
 
+  def createIdentityUserActionRightMock(user: User) =
+    new ActionRefiner[Request, UserRequest] {
+      override def refine[A](request: Request[A]): Future[Either[Result, UserRequest[A]]] =
+        Future.successful(Right(new UserRequest(user, request)))
+    }
+
+  def createIdentityUserActionLeftMock() =
+    new ActionRefiner[Request, UserRequest] {
+      override def refine[A](request: Request[A]): Future[Either[Result, UserRequest[A]]] =
+        Future.successful(Left(NotFound))
+    }
+
   val controller = new UsersController(
-    userService, new StubAuthenticatedAction, salesforceService, new DiscussionService(dapiWsMock), exactTargetServiceMock)
+    userService,
+    new StubAuthenticatedAction,
+    identityUserAction,
+    orphanUserAction,
+    salesforceService,
+    new DiscussionService(dapiWsMock),
+    exactTargetServiceMock)
 
   "search" should {
     "return 400 when query string is less than minimum length" in {
@@ -106,6 +128,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   "findById" should {
     "return 404 when user not found" in {
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionLeftMock())
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(None)))
       val result = controller.findById(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
@@ -113,6 +136,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 200 when user found" in {
       val user = User(testIdentityId, "test@test.com")
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionRightMock(user))
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(Some(user))))
       when(userService.enrichUserWithProducts(any[User])).thenReturn(Future.successful(\/-(user)))
       val result = controller.findById(testIdentityId)(FakeRequest())
@@ -130,6 +154,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 404 when user is not found" in {
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"))
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionLeftMock())
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(None)))
       val result = controller.update(testIdentityId)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
       status(result) shouldEqual NOT_FOUND
@@ -138,6 +163,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
     "return 400 when username and display name differ in request" in {
       val userUpdateRequest = UserUpdateRequest(email = "test@test.com", username = Some("username"), displayName = Some("displayname"))
       val user = User("id", "email")
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionRightMock(user))
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(Some(user))))
       when(userService.update(user, userUpdateRequest)).thenReturn(Future.successful(\/-(user)))
       val result = controller.update(testIdentityId)(FakeRequest().withBody(Json.toJson(userUpdateRequest)))
@@ -158,6 +184,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   "delete" should {
     "return 404 when user is not found" in {
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionLeftMock())
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(None)))
       val result = controller.delete(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
@@ -166,6 +193,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
   
   "sendEmailValidation" should {
     "return 404 when user is not found" in {
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionLeftMock())
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(None)))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
@@ -173,6 +201,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 204 when email validation is sent" in {
       val user = User("", "")
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionRightMock(user))
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(Some(user))))
       when(userService.enrichUserWithProducts(any[User])).thenReturn(Future.successful(\/-(user)))
       when(userService.sendEmailValidation(user)).thenReturn(Future.successful(\/-{}))
@@ -182,6 +211,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 500 when error occurs" in {
       val user = User("", "")
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionRightMock(user))
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(Some(user))))
       when(userService.sendEmailValidation(user)).thenReturn(Future.successful(-\/(ApiError("boom"))))
       val result = controller.sendEmailValidation(testIdentityId)(FakeRequest())
@@ -192,6 +222,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   "validateEmail" should {
     "return 404 when user is not found" in {
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionLeftMock())
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(None)))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
       status(result) shouldEqual NOT_FOUND
@@ -199,6 +230,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 204 when email is validated" in {
       val user = User("", "")
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionRightMock(user))
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(Some(user))))
       when(userService.validateEmail(user)).thenReturn(Future.successful(\/-{}))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
@@ -207,6 +239,7 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
     "return 500 when error occurs" in {
       val user = User("", "")
+      when(identityUserAction.apply(any[String])).thenReturn(createIdentityUserActionRightMock(user))
       when(userService.findById(testIdentityId)).thenReturn(Future.successful(\/-(Some(user))))
       when(userService.validateEmail(user)).thenReturn(Future.successful(-\/(ApiError("boom"))))
       val result = controller.validateEmail(testIdentityId)(FakeRequest())
