@@ -2,7 +2,7 @@ package controllers
 
 import javax.inject.{Inject, Singleton}
 
-import actions.AuthenticatedAction
+import actions.{AuthenticatedAction, IdentityUserAction, OrphanUserAction}
 import com.gu.identity.util.Logging
 import com.gu.tip.Tip
 import configuration.Config
@@ -13,22 +13,20 @@ import play.api.mvc._
 import services._
 
 import scala.concurrent.Future
-
 import scalaz._
 import scalaz.std.scalaFuture._
 import scalaz.std.string._
 import scalaz.syntax.validation._
 import scalaz.syntax.apply._
 import scalaz.syntax.std.boolean._
-
 import models.ApiError._
 import models._
-
-class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
 @Singleton class UsersController @Inject() (
     userService: UserService,
     auth: AuthenticatedAction,
+    identityUserAction: IdentityUserAction,
+    orphanUserAction: OrphanUserAction,
     salesforce: SalesforceService,
     discussionService: DiscussionService,
     exactTargetService: ExactTargetService) extends Controller with Logging {
@@ -60,69 +58,15 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
     userService.unreserveEmail(id).map(_ => NoContent)
   }
 
-  private def UserAction(userId: String) = new ActionRefiner[Request, UserRequest] {
-    override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
-
-      def findUserById(userId: String): Future[Result \/ User] =
-        EitherT(userService.findById(userId)).fold(
-          error => -\/(InternalServerError(error)),
-          userOpt => userOpt match {
-            case Some(user) => \/-(user)
-            case None => -\/(NotFound)
-          }
-        )
-
-      def enrichUserWithProducts(user: User): Future[Result \/ User]  =
-        EitherT(userService.enrichUserWithProducts(user)).leftMap(InternalServerError(_)).run
-
-      (for {
-        user <- EitherT(findUserById(userId))
-        userWithProducts <- EitherT(enrichUserWithProducts(user))
-      } yield {
-        if (Config.stage == "PROD") Tip.verify("User Retrieval")
-        new UserRequest(userWithProducts, input)
-      }).run.map(_.toEither)
-
-    }
+  def findById(id: String) = (auth andThen identityUserAction(id)) { request =>
+    Ok(request.user)
   }
 
-  private def OrphanUserAction(email: String) = new ActionRefiner[Request, UserRequest] {
-    override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
-      val subOrphanOptF = EitherT(salesforce.getSubscriptionByEmail(email))
-      val exactTargetOptF = EitherT(exactTargetService.subscriberByEmail(email))
-
-      val orphanEitherT =
-        for {
-          subOrphanOpt <- subOrphanOptF
-          exactTargetOpt <- exactTargetOptF
-        } yield {
-          if (subOrphanOpt.isDefined)
-            Some(new UserRequest(User(orphan = true, id = "orphan", email = email, subscriptionDetails = subOrphanOpt), input))
-          else if (exactTargetOpt.isDefined) {
-            Some(new UserRequest(User(orphan = true, id = "orphan", email = email, exactTargetSubscriber = exactTargetOpt), input))
-          }
-          else
-            None
-        }
-
-      orphanEitherT.fold(
-        error => Left(InternalServerError(error)),
-        orphanOpt => orphanOpt.fold[Either[Result, UserRequest[A]]]
-          (Left(NotFound))
-          (orphan => Right(orphan))
-      )
-    }
+  def findOrphanByEmail(email: String) = (auth andThen orphanUserAction(email)) { request =>
+    Ok(request.user)
   }
 
-  def findById(id: String) = (auth andThen UserAction(id)) { request =>
-    request.user
-  }
-
-  def findOrphanByEmail(email: String) = (auth andThen OrphanUserAction(email)) { request =>
-    request.user
-  }
-
-  def update(id: String) = (auth andThen UserAction(id)).async(parse.json) { request =>
+  def update(id: String) = (auth andThen identityUserAction(id)).async(parse.json) { request =>
     request.body.validate[UserUpdateRequest] match {
       case JsSuccess(result, path) =>
         UserUpdateRequestValidator.isValid(result).fold(
@@ -142,7 +86,7 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
     }
   }
 
-  def delete(id: String) = (auth andThen UserAction(id)).async { request =>
+  def delete(id: String) = (auth andThen identityUserAction(id)).async { request =>
     logger.info(s"Deleting user $id")
 
     val deleteEmailSubscriberF = EitherT(exactTargetService.deleteSubscriber(request.user.email))
@@ -200,7 +144,7 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
     )
   }
 
-  def sendEmailValidation(id: String) = (auth andThen UserAction(id)).async { request =>
+  def sendEmailValidation(id: String) = (auth andThen identityUserAction(id)).async { request =>
     logger.info(s"Sending email validation for user with id: $id")
     EitherT(userService.sendEmailValidation(request.user)).fold(
       error => InternalServerError(error),
@@ -208,7 +152,7 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
     )
   }
 
-  def validateEmail(id: String) = (auth andThen UserAction(id)).async { request =>
+  def validateEmail(id: String) = (auth andThen identityUserAction(id)).async { request =>
     logger.info(s"Validating email for user with id: $id")
     EitherT(userService.validateEmail(request.user)).fold(
       error => InternalServerError(error),

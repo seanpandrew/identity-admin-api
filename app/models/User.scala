@@ -2,7 +2,6 @@ package models
 
 import org.joda.time.{DateTime, LocalDate}
 import play.api.libs.json.Json
-import play.api.mvc.{Result, Results}
 import repositories.IdentityUser
 import scala.language.implicitConversions
 import ClientJsonFormats._
@@ -114,9 +113,6 @@ case class User(id: String,
 
 object User {
   implicit val format = Json.format[User]
-
-  implicit def userResponseToResult(userResponse: User): Result =
-    Results.Ok(Json.toJson(userResponse))
 
   def fromIdentityUser(user: IdentityUser): User =
     User(
