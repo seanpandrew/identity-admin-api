@@ -21,22 +21,33 @@ import scala.util.{Failure, Success, Try}
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */
   def unsubscribeFromAllLists(email: String): ApiResponse[Unit] = {
-    updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED)
+    val adminStatusUpdateF = EitherT(updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED, etClientAdmin))
+    val editorialStatusUpdateF = EitherT(updateSubscriptionStatus(email, ETSubscriber.Status.UNSUBSCRIBED, etClientEditorial))
+
+    (for {
+      _ <- adminStatusUpdateF
+      _ <- editorialStatusUpdateF
+    } yield {}).run
   }
 
   /**
-    * Allows this subscriber to subscribe to lists in the future. This will only activate the subscriber
-    * on the All Subscribers list, and not on any specific lists.
+    * Activates subscriber in both Admin and Editorial business units.
     */
   def activateEmailSubscription(email: String): ApiResponse[Unit] = {
-    updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE)
+    val adminStatusUpdateF = EitherT(updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE, etClientAdmin))
+    val editorialStatusUpdateF = EitherT(updateSubscriptionStatus(email, ETSubscriber.Status.ACTIVE, etClientEditorial))
+
+    (for {
+      _ <- adminStatusUpdateF
+      _ <- editorialStatusUpdateF
+    } yield {}).run
   }
 
   def updateEmailAddress(oldEmail: String, newEmail: String): ApiResponse[Unit] =
     EitherT(retrieveSubscriber(oldEmail, etClientAdmin)).flatMap {
       case Some(subscriber) =>
         subscriber.setEmailAddress(newEmail)
-        EitherT(updateSubscriber(subscriber))
+        EitherT(updateSubscriber(subscriber, etClientAdmin))
 
       case None => EitherT.right(Future.successful({}))
     }.run
@@ -74,11 +85,57 @@ import scala.util.{Failure, Success, Try}
       case None => EitherT.right(Future.successful({}))
     }.run
 
-  def status(email: String): ApiResponse[Option[String]] =
-    EitherT(retrieveSubscriber(email, etClientAdmin)).map {
-      case Some(subscriber) => Some(subscriber.getStatus.value)
-      case None => None
-    }.run
+  /*
+   Currently (12.07.2017) there is a bug where if the user is unsubscribed at Editorial Business Unit level,
+   they cannot re-subscribe from the article page such as:
+   https://www.theguardian.com/info/2015/dec/08/daily-email-uk
+
+   They can re-subscribe from the email-prefs page if they are signed in.
+
+   This ugly method considers the user active only if they are active in both business units
+
+   If the user exists only in the Admin Business Unit, then it returns whatever status is there.
+   */
+  def status(email: String): ApiResponse[Option[String]] = {
+    val adminSubscriberOptF = EitherT(retrieveSubscriber(email, etClientAdmin))
+    val editorialSubscriberOptF = EitherT(retrieveSubscriber(email, etClientEditorial))
+
+    (for {
+      adminSubscriberOpt <- adminSubscriberOptF
+      editorialSubscriberOpt <- editorialSubscriberOptF
+    } yield {
+
+      def subscriberExistsInBothBusinessUnits: Boolean =
+        List(adminSubscriberOpt, editorialSubscriberOpt).forall(_.isDefined)
+
+      def subscriberIsActiveInBothBusinessUnits: Boolean =
+        (for {
+          adminSubscriber <- adminSubscriberOpt
+          editorialSubscriber <- editorialSubscriberOpt
+        } yield {
+          List(adminSubscriber, editorialSubscriber).map(_.getStatus.value).forall(_ == "Active")
+        }).getOrElse(false)
+
+      def whateverStatusIsInAdminBusinessUnit: Option[String] =
+        adminSubscriberOpt match {
+          case Some(subscriber) => subscriber.getStatus.value match {
+            case "Active" => Some("Active")
+            case _ => Some("Unsubscribed")
+          }
+          case None => None
+        }
+
+      if (subscriberExistsInBothBusinessUnits) {
+        if (subscriberIsActiveInBothBusinessUnits)
+          Some("Active")
+        else
+          Some("Unsubscribed")
+      }
+      else
+        whateverStatusIsInAdminBusinessUnit
+
+    }).run
+  }
 
   def subscriberByEmail(email: String): ApiResponse[Option[ExactTargetSubscriber]] = {
     val statusF = EitherT(status(email))
@@ -105,11 +162,11 @@ import scala.util.{Failure, Success, Try}
     }.run
 
   private def updateSubscriptionStatus(
-    email: String, status: ETSubscriber.Status): ApiResponse[Unit] = {
+    email: String, status: ETSubscriber.Status, client: ETClient): ApiResponse[Unit] = {
 
     def updateStatus(subscriber: ETSubscriber) = {
       subscriber.setStatus(status)
-      updateSubscriber(subscriber)
+      updateSubscriber(subscriber, client)
     }
 
     def createAndUpdateStatus() = {
@@ -120,7 +177,7 @@ import scala.util.{Failure, Success, Try}
       createSubscriber(subscriber)
     }
 
-    EitherT(retrieveSubscriber(email, etClientAdmin)).flatMap {
+    EitherT(retrieveSubscriber(email, client)).flatMap {
       case Some(subscriber) => EitherT(updateStatus(subscriber))
       case None => EitherT(createAndUpdateStatus())
     }.run
@@ -150,8 +207,8 @@ import scala.util.{Failure, Success, Try}
     handleETResponse(etResponse, "Failed to delete ExactTarget subscriber")
   }
 
-  private def updateSubscriber(subscriber: ETSubscriber): ApiResponse[Unit] = Future {
-    val etResponse = etClientAdmin.update(subscriber)
+  private def updateSubscriber(subscriber: ETSubscriber, client: ETClient): ApiResponse[Unit] = Future {
+    val etResponse = client.update(subscriber)
     handleETResponse(etResponse, "Failed to update ExactTarget subscriber")
   }
 
