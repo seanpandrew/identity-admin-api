@@ -116,7 +116,7 @@ import scala.util.{Failure, Success, Try}
           List(adminSubscriber, editorialSubscriber).map(_.getStatus.value).forall(_ == "Active")
         }).getOrElse(false)
 
-      def whateverStatusIsInAdminBusinessUnit: Option[String] =
+      def adminBusinessUnitStatus: Option[String] =
         adminSubscriberOpt match {
           case Some(subscriber) => subscriber.getStatus.value match {
             case "Active" => Some("Active")
@@ -132,7 +132,7 @@ import scala.util.{Failure, Success, Try}
           Some("Unsubscribed")
       }
       else
-        whateverStatusIsInAdminBusinessUnit
+        adminBusinessUnitStatus
 
     }).run
   }
