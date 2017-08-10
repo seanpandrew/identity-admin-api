@@ -17,13 +17,13 @@ import scalaz.std.scalaFuture._
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
-  def findBy(key: String): ApiResponse[IdentityUser] =
+  private[this] def findBy(key: String): ApiResponse[IdentityUser] =
     OptionT(usersF.flatMap(_.find(selector(key)).one[IdentityUser])).fold(
       user => \/-(user),
       -\/(ApiError("User not found"))
     )
 
-  private def selector(key: String) =
+  private[this] def selector(key: String) =
     Json.obj(
       "$or" -> Json.arr(
         Json.obj("_id" -> key.toLowerCase),

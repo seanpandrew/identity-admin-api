@@ -24,9 +24,13 @@ object Dependencies {
   val akkaSlf4j =           "com.typesafe.akka"             %% "akka-slf4j"               % "2.4.17"    % "test"
   val akkaTestkit =         "com.typesafe.akka"             %% "akka-testkit"             % "2.4.17"    % "test"
 
+  val scalaLike = "org.scalikejdbc" %% "scalikejdbc" % "3.0.2"
+  val postgresDriver = "org.postgresql" % "postgresql" % "42.1.4"
+  val doobie = "org.tpolecat" %% "doobie-core" % "0.4.2"
+
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo,
     specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, akkaSlf4j, akkaTestkit,
-    exactTargetFuel, tip, aws)
+    exactTargetFuel, tip, aws, scalaLike, postgresDriver, doobie)
 
 }
