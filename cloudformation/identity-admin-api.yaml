@@ -168,7 +168,6 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
-      LoadBalancerName: !Sub '${App}-${Stage}-ELB'
       Scheme: internal
       Listeners:
       - LoadBalancerPort: '443'
@@ -194,6 +193,15 @@ Resources:
       ConnectionDrainingPolicy:
         Enabled: 'true'
         Timeout: '60'
+      Tags:
+      - Key: Stage
+        Value: !Ref 'Stage'
+      - Key: Stack
+        Value: !Ref 'Stack'
+        PropagateAtLaunch: 'true'
+      - Key: App
+        Value: !Ref 'App'
+        PropagateAtLaunch: 'true'
   TopicSendEmail:
     Type: AWS::SNS::Topic
     Properties:
