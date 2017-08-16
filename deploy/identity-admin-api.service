@@ -1,0 +1,17 @@
+[Unit]
+Description=<APP>
+After=network.target
+
+[Service]
+Environment='JAVA_OPTS=-Dhttp.port=<PORT> -Dconfig.resource=<STAGE>.conf -Xmx<HEAP_SIZE_IN_MB>m -Xms<HEAP_SIZE_IN_MB>m -server -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+ScavengeBeforeFullGC -XX:+CMSScavengeBeforeRemark'
+PIDFile=/<APP>/<APP>/RUNNING_PID
+WorkingDirectory=/<APP>
+ExecStart=/bin/sh -ec '/<APP>/<APP>/bin/<APP> -v > /<APP>/stderr.log 2>&1'
+ExecStop=/bin/kill
+ExecStopPost=/bin/rm -f /<APP>/<APP>/RUNNING_PID
+Restart=on-failure
+User=<APP>
+Group=<APP>
+
+[Install]
+WantedBy=multi-user.target

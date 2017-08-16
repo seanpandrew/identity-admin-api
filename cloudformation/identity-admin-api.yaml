@@ -90,6 +90,10 @@ Parameters:
   LoadBalancerLogsS3Bucket:
     Description: S3 Bucket to write ELB logs to
     Type: String
+  Port:
+    Description: Port that the app listens on
+    Type: Number
+    Default: 9500
 Mappings:
   StageVariables:
     PROD:
@@ -171,13 +175,13 @@ Resources:
       Scheme: internal
       Listeners:
       - LoadBalancerPort: '443'
-        InstancePort: '9500'
+        InstancePort: !Ref Port
         Protocol: HTTPS
         SSLCertificateId: !Join [':', ['arn:aws:acm:eu-west-1', !Ref 'AWS::AccountId',
             !FindInMap [CertsMap, !Ref 'Stage', ssl]]]
       CrossZone: 'true'
       HealthCheck:
-        Target: HTTP:9500/healthcheck
+        Target: !Sub HTTP:${Port}/healthcheck
         HealthyThreshold: '2'
         UnhealthyThreshold: '10'
         Interval: '30'
@@ -256,25 +260,29 @@ Resources:
       AssociatePublicIpAddress: 'False'
       IamInstanceProfile: !Ref 'InstanceProfile'
       UserData:
-        Fn::Base64: |
-          #!/bin/bash -ev
-
-          source /identity-functions.sh
-          source /set-env.sh
-
-          installScriptFromBucket gu-identity-dist/$stagetag identity-bootstrap.sh
-          installScriptFromBucket gu-identity-dist/$stagetag logstash-setup.sh
-
-          aws s3 cp s3://gu-$apptag-dist/$stacktag/$stagetag/$apptag/identity-admin-api-1.0-SNAPSHOT.zip /$apptag/$apptag.zip
-          aws s3 cp s3://gu-$apptag-private/$stagetag/$apptag.conf /etc/gu/$apptag.conf
-          unzip -o /$apptag/$apptag.zip -d /$apptag
-          cp /$apptag/$apptag-1.0-SNAPSHOT/deploy/$apptag-upstart.conf /etc/init/$apptag.conf
-          chown -R $apptag /$apptag
-          sed -i "s/<APP>/$apptag/g" /etc/init/$apptag.conf
-          sed -i "s/<STAGE>/$stagetag/g" /etc/init/$apptag.conf
-
-          service identity-admin-api start
-          sleep 20s
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -ev
+  
+            source /identity-functions.sh
+            source /set-env.sh
+  
+            installScriptFromBucket gu-identity-dist/${Stage} identity-bootstrap.sh
+            installScriptFromBucket gu-identity-dist/${Stage} logstash-setup.sh
+  
+            aws s3 cp s3://gu-${App}-dist/$stacktag/${Stage}/${App}/${App}.zip /${App}
+            aws s3 cp s3://gu-${App}-private/${Stage}/${App}.conf /etc/gu/${App}.conf
+  
+            unzip -o /${App}/${App}.zip -d /${App}
+            cp /${App}/${App}/deploy/${App}.service /etc/systemd/system/${App}.service
+            chown -R ${App} /${App}
+  
+            sed -i "s/<APP>/${App}/g" /etc/systemd/system/${App}.service
+            sed -i "s/<STAGE>/${Stage}/g" /etc/systemd/system/${App}.service
+            sed -i "s/<PORT>/${Port}
+  
+            systemctl start ${App} start
+            sleep 20s
           
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -297,8 +305,8 @@ Resources:
       GroupDescription: Open up HTTP access to load balancer
       SecurityGroupIngress:
       - IpProtocol: tcp
-        FromPort: '9500'
-        ToPort: '9500'
+        FromPort: !Ref Port
+        ToPort: !Ref Port
         SourceSecurityGroupId: !Ref 'LoadBalancerSecurityGroup'
   HighLatencyAlarm:
     Type: AWS::CloudWatch::Alarm
