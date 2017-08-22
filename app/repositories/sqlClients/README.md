@@ -63,4 +63,10 @@ I'd lean towards Scalike as it's conceptually simpler, but the typechecking
 facilities (at runtime) of Doobie are attractive and could certainly catch 
 errors when used to write tests.
 
+*Comment on blocking vs non-blocking*
 
+Doobie and Scalike are both blocking. Isn't that a disaster?! No. Firstly, 
+Identity API is built on Scalatra and a thread-per-request/blocking model so 
+async is not helpful. But more generally, asynchronous code is much harder to 
+reason about and write. If necessary (as for Identity Admin API) it is easy to 
+make a blocking API asynchronous by pushing work onto a threadpool of some kind.

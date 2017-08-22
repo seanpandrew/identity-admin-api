@@ -102,7 +102,8 @@ client.updateEmailValidationStatus(user, true)
     val query: Update0 = sql"update users set jdoc = $jdoc::jsonb where jdoc->>'_id' = ${user._id}"
       .update
 
-      val result = query
+    // TODO - we would want to push this onto a threadpool rather than faking the async like here!
+    val result = query
       .run
       .transact(xa)
       .unsafePerformIO()
