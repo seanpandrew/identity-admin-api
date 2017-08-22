@@ -70,3 +70,23 @@ Identity API is built on Scalatra and a thread-per-request/blocking model so
 async is not helpful. But more generally, asynchronous code is much harder to 
 reason about and write. If necessary (as for Identity Admin API) it is easy to 
 make a blocking API asynchronous by pushing work onto a threadpool of some kind.
+
+*Comment on 'raw' SQL vs DSL*
+
+Jsonb restricts us here anyway, but there are interesting trade-offs between 
+writing raw SQL (with interpolation) vs a DSL of some kind.
+
+Raw SQL:
+
+* easy to write the query you intend you and optimise for performance
+* can use (Postgres specific?) features even if unsupported by the DSL
+* don't have to grok/fight additional abstraction layer
+
+DSL:
+
+* greater type safety
+* easier refactoring if columns change etc as col/table names all in one place
+* possibly(!) less glue code to map results to case classes
+
+Experience tells me that sticking as close as possible to raw SQL is best, but 
+would be good to hear from someone with a different experience.
