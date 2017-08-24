@@ -1,13 +1,15 @@
 package services
 
 import javax.inject.{Inject, Singleton}
+
 import com.gu.identity.util.Logging
 import configuration.Config.TouchpointSalesforce._
-import models.{ApiError, ApiResponse, SalesforceSubscription}
+import models.{ApiError, ApiResponse, SalesforceSubscription, SalesforceSubscriptionDeliveryAddress}
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.http.Status.OK
 import play.api.libs.concurrent.Execution.Implicits._
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -75,7 +77,9 @@ case class SubscriptionId(value: String, fieldName: String = "Subscription_Name_
       end = Some((records(0) \ "Zuora__EffectiveEndDate__c").as[String]),
       zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),
       identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").asOpt[String].getOrElse("orphan"),
-      email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String])
+      email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String],
+      deliveryAddress = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r").as[SalesforceSubscriptionDeliveryAddress])
+    )
   }
 
   private def querySalesforce(soql: String): ApiResponse[Option[SalesforceSubscription]] =
@@ -103,7 +107,15 @@ case class SubscriptionId(value: String, fieldName: String = "Subscription_Name_
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Contact_Number__c,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Name,
+      |
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Delivery_Information__c,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingStreet,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.OtherStreet,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCity,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingPostalCode,
+      |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.OtherPostalCode,
       |    Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.MailingCountry,
+      |
       |    Zuora__ProductName__c,
       |    Subscription_Status__c,
       |    Subscription_Name__c,
