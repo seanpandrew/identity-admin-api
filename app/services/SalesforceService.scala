@@ -78,8 +78,8 @@ case class SubscriptionId(value: String, fieldName: String = "Subscription_Name_
       zuoraSubscriptionName = Some((records(0) \ "Subscription_Name__c").as[String]),
       identityId = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "IdentityID__c").asOpt[String].getOrElse("orphan"),
       email = (records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r" \ "Email").as[String],
-      deliveryAddress = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r").as[SalesforceSubscriptionDeliveryAddress]),
-      billingAddress = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r").as[SalesforceSubscriptionBillingAddress])
+      deliveryAddress = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r").as[SalesforceDeliveryAddress]),
+      billingAddress = Some((records(0) \ "Zuora__Subscription__r" \ "Zuora__CustomerAccount__r" \ "Contact__r").as[SalesforceBillingAddress])
     )
   }
 

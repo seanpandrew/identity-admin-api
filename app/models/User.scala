@@ -59,7 +59,7 @@ object LastActiveLocation {
   implicit val format = Json.format[LastActiveLocation]
 }
 
-case class SalesforceSubscriptionDeliveryAddress(
+case class SalesforceDeliveryAddress(
   Delivery_Information__c: Option[String],
   MailingStreet: String,
   MailingCity: String,
@@ -67,19 +67,19 @@ case class SalesforceSubscriptionDeliveryAddress(
   MailingCountry: String
 )
 
-object SalesforceSubscriptionDeliveryAddress {
-  implicit val format = Json.format[SalesforceSubscriptionDeliveryAddress]
+object SalesforceDeliveryAddress {
+  implicit val format = Json.format[SalesforceDeliveryAddress]
 }
 
-case class SalesforceSubscriptionBillingAddress(
+case class SalesforceBillingAddress(
   OtherStreet: String,
   OtherCity: String,
   OtherPostalCode: String,
   OtherCountry: String
 )
 
-object SalesforceSubscriptionBillingAddress {
-  implicit val format = Json.format[SalesforceSubscriptionBillingAddress]
+object SalesforceBillingAddress {
+  implicit val format = Json.format[SalesforceBillingAddress]
 }
 
 case class SalesforceSubscription(
@@ -92,8 +92,8 @@ case class SalesforceSubscription(
   zuoraSubscriptionName: Option[String] = None,
   identityId: String = "orphan",
   email: String,
-  deliveryAddress: Option[SalesforceSubscriptionDeliveryAddress] = None,
-  billingAddress: Option[SalesforceSubscriptionBillingAddress] = None
+  deliveryAddress: Option[SalesforceDeliveryAddress] = None,
+  billingAddress: Option[SalesforceBillingAddress] = None
 )
 
 object SalesforceSubscription {
