@@ -279,7 +279,7 @@ Resources:
   
             sed -i "s/<APP>/${App}/g" /etc/systemd/system/${App}.service
             sed -i "s/<STAGE>/${Stage}/g" /etc/systemd/system/${App}.service
-            sed -i "s/<PORT>/${Port}" /etc/systemd/system/${App}.service
+            sed -i "s/<PORT>/${Port}/" /etc/systemd/system/${App}.service
             sed -i "s/<HEAP_SIZE_IN_MB>/$heap_size_in_mb/g" /etc/systemd/system/$apptag.service
 
             systemctl start ${App}
