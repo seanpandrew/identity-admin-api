@@ -61,10 +61,10 @@ object LastActiveLocation {
 
 case class SalesforceDeliveryAddress(
   Delivery_Information__c: Option[String],
-  MailingStreet: String,
-  MailingCity: String,
-  MailingPostalCode: String,
-  MailingCountry: String
+  MailingStreet: Option[String],
+  MailingCity: Option[String],
+  MailingPostalCode: Option[String],
+  MailingCountry: Option[String]
 )
 
 object SalesforceDeliveryAddress {
@@ -72,10 +72,10 @@ object SalesforceDeliveryAddress {
 }
 
 case class SalesforceBillingAddress(
-  OtherStreet: String,
-  OtherCity: String,
-  OtherPostalCode: String,
-  OtherCountry: String
+  OtherStreet: Option[String],
+  OtherCity: Option[String],
+  OtherPostalCode: Option[String],
+  OtherCountry: Option[String]
 )
 
 object SalesforceBillingAddress {
