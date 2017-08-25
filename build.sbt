@@ -44,6 +44,7 @@ libraryDependencies ++= Dependencies.apiDependencies
 // *****************************
 // Deployment package
 // *****************************
+packageName in Universal := name.value
 mappings in Universal ++= (baseDirectory.value / "deploy" * "*" get) map (x => x -> ("deploy/" + x.getName))
 riffRaffPackageType := (packageBin in Universal).value
 riffRaffUploadArtifactBucket := Option("riffraff-artifact")

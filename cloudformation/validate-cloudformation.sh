@@ -9,9 +9,9 @@ if [[ $? -gt 0 ]]; then
 fi
 
 if [[ -d "${CLOUDFORMATION_DIRECTORY}" ]]; then
-	for TEMPLATE in $(find ${CLOUDFORMATION_DIRECTORY} -iname "*.json"); do
+	for TEMPLATE in $(find ${CLOUDFORMATION_DIRECTORY} -iname "*.yaml"); do
 		echo -n "Validating CloudFormation template ${TEMPLATE}..."
-		aws cloudformation validate-template --template-body "file://${TEMPLATE}" 1>/dev/null
+		aws cloudformation validate-template --profile identity --template-body "file://${TEMPLATE}" 1>/dev/null
 		if [[ $? -gt 0 ]]; then
 			exit 1
 		fi
