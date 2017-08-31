@@ -296,7 +296,7 @@ Resources:
       - IpProtocol: tcp
         FromPort: !Ref Port
         ToPort: !Ref Port
-        DestinationSecurityGroupId: !Ref 'InstanceSecurityGroup'
+        CidrIp: !Ref 'VpcSubNetCIDR'
 
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
