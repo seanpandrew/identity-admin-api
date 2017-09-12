@@ -5,14 +5,20 @@ import com.gu.identity.util.Logging
 import repositories.UsersReadRepository
 
 import scala.concurrent.duration._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
 import scala.util.{Failure, Success}
 import javax.inject._
 
 import configuration.Config
 import play.api.Environment
 
-class MongoDBHealthCheck @Inject() (environment: Environment, userRepository: UsersReadRepository, actorSystem: ActorSystem, metrics: Metrics) extends Logging {
+import scala.concurrent.ExecutionContext
+
+class MongoDBHealthCheck @Inject() (
+    environment: Environment,
+    userRepository: UsersReadRepository,
+    actorSystem: ActorSystem,
+    metrics: Metrics)(implicit ec: ExecutionContext) extends Logging {
   private[monitoring] val MetricName = "MongoConnectivity"
 
   private[monitoring] def triggerUpdate() {

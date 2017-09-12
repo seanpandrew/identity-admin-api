@@ -1,13 +1,15 @@
 package services
 
 import javax.inject.{Inject, Singleton}
+
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiResponse}
 import play.api.http.Status
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+
+import scala.concurrent.ExecutionContext
 import scalaz.{-\/, \/-}
 
 case class DiscussionStats(status: String, comments: Int, pickedComments: Int)
@@ -16,7 +18,7 @@ object DiscussionStats {
   implicit val format = Json.format[DiscussionStats]
 }
 
-@Singleton class DiscussionService @Inject() (ws: WSClient) extends Logging {
+@Singleton class DiscussionService @Inject() (ws: WSClient)(implicit ec: ExecutionContext) extends Logging {
   def hasCommented(id: String): ApiResponse[Boolean] = {
     ws.url(s"${Config.Discussion.apiUrl}/profile/$id/stats").get().map { response =>
       if (response.status == Status.NOT_FOUND) {

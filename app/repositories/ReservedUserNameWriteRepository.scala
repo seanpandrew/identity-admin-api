@@ -1,6 +1,7 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
+
 import com.gu.identity.util.Logging
 import models.{ApiError, ApiResponse, ReservedUsername, ReservedUsernameList}
 import play.api.libs.json.Json
@@ -8,13 +9,14 @@ import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.api.{Cursor, ReadPreference}
 import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
+
+import scala.concurrent.ExecutionContext
 import scalaz.{-\/, OptionT, \/-}
 import scalaz.std.scalaFuture._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
 @Singleton class ReservedUserNameWriteRepository @Inject() (
     environment: play.api.Environment,
-    reactiveMongoApi: ReactiveMongoApi) extends Logging {
+    reactiveMongoApi: ReactiveMongoApi)(implicit ec: ExecutionContext) extends Logging {
 
   private lazy val reservedUsernamesF = reactiveMongoApi.database.map(_.collection("reservedUsernames"))
 

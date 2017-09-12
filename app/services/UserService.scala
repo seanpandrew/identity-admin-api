@@ -1,6 +1,7 @@
 package services
 
 import javax.inject.{Inject, Singleton}
+
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
@@ -8,9 +9,10 @@ import util.UserConverter._
 import models._
 import repositories.{DeletedUser, DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 import uk.gov.hmrc.emailaddress.EmailAddress
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import scala.concurrent.Future
+
+import scala.concurrent.{ExecutionContext, Future}
 import configuration.Config.PublishEvents.eventsEnabled
+
 import scalaz.{-\/, EitherT, \/-}
 import scalaz.std.scalaFuture._
 
@@ -22,9 +24,10 @@ import scalaz.std.scalaFuture._
     eventPublishingActorProvider: EventPublishingActorProvider,
     deletedUsersRepository: DeletedUsersRepository,
     salesforceService: SalesforceService,
+    slalesforceIntegration: SalesforceIntegration,
     madgexService: MadgexService,
     exactTargetService: ExactTargetService,
-    discussionService: DiscussionService) extends Logging {
+    discussionService: DiscussionService)(implicit ec: ExecutionContext) extends Logging {
 
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     val emailValid = isEmailValid(user, userUpdateRequest)
@@ -53,7 +56,7 @@ import scalaz.std.scalaFuture._
           }
 
           if (userEmailChanged && eventsEnabled) {
-            SalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
+            slalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
           }
 
           if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {

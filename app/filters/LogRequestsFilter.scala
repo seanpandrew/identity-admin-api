@@ -1,13 +1,14 @@
 package filters
 
 import javax.inject.Inject
+
 import akka.stream.Materializer
 import play.api.Logger
 import play.api.mvc._
-import scala.concurrent.Future
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-class LogRequestsFilter @Inject() (implicit val mat: Materializer) extends Filter {
+import scala.concurrent.{ExecutionContext, Future}
+
+class LogRequestsFilter @Inject() (implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   private val logger = Logger(this.getClass)
 

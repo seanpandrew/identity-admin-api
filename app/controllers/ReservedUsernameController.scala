@@ -1,16 +1,17 @@
 package controllers
 
 import javax.inject.{Inject, Singleton}
+
 import actions.AuthenticatedAction
 import com.gu.identity.util.Logging
 import models._
 import play.api.libs.json.{JsError, JsSuccess, Json}
-import play.api.mvc.Controller
+import play.api.mvc.{AbstractController, Controller, ControllerComponents}
 import repositories.ReservedUserNameWriteRepository
+
 import scalaz.EitherT
 import scalaz.std.scalaFuture._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 case class ReservedUsernameRequest(username: String)
 
@@ -19,7 +20,10 @@ object ReservedUsernameRequest {
 }
 
 @Singleton
-class ReservedUsernameController @Inject() (reservedUsernameRepository: ReservedUserNameWriteRepository, auth: AuthenticatedAction) extends Controller with Logging {
+class ReservedUsernameController @Inject() (
+    cc: ControllerComponents,
+    reservedUsernameRepository: ReservedUserNameWriteRepository,
+    auth: AuthenticatedAction)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
   def reserveUsername() = auth.async(parse.json) { request =>
     request.body.validate[ReservedUsernameRequest] match {

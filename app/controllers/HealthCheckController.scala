@@ -5,12 +5,14 @@ import javax.inject.{Inject, Singleton}
 import actions.AuthenticatedAction
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc.{Action, Results}
+import play.api.mvc.{AbstractController, ControllerComponents}
 
 case class Test(name: String, result: () => Boolean)
 
 @Singleton
-class HealthCheckController @Inject() (auth: AuthenticatedAction) extends Results {
+class HealthCheckController @Inject() (
+    auth: AuthenticatedAction,
+    cc: ControllerComponents) extends AbstractController(cc) {
 
   // TODO add a meaningful test
   val tests: Seq[Test] = Nil

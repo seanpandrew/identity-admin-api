@@ -7,16 +7,16 @@ import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiResponse, ExactTargetSubscriber, NewslettersSubscription}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, EitherT, \/, \/-}
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import repositories.UsersReadRepository
 
 import scala.collection.JavaConversions._
 import scala.util.{Failure, Success, Try}
 
-@Singleton class ExactTargetService @Inject() (usersReadRepository: UsersReadRepository) extends Logging {
+@Singleton class ExactTargetService @Inject() (
+    usersReadRepository: UsersReadRepository)(implicit ec: ExecutionContext) extends Logging {
   /**
     * Unsubscribe this subscriber from all current and future subscriber lists.
     */

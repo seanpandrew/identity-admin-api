@@ -7,11 +7,10 @@ import configuration.Config
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 
-import scala.concurrent.Future
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import scala.concurrent.{ExecutionContext, Future}
 
 
-class AddEC2InstanceHeader @Inject() (ws: WSClient, implicit val mat: Materializer) extends Filter {
+class AddEC2InstanceHeader @Inject() (ws: WSClient, implicit val mat: Materializer)(implicit ec: ExecutionContext) extends Filter {
 
   // http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-metadata.html
   lazy val instanceIdOptF = if (Config.stage == "PROD")
