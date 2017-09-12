@@ -1,6 +1,6 @@
 package util
 
-import actions.AuthenticatedAction
+import actions.{AuthenticatedAction, Hmac}
 
 object HmacGenerator {
 
@@ -10,13 +10,8 @@ object HmacGenerator {
 
     val date = args(0)
     val path = args(1)
-    val hmacSecret = args(2)
 
-    val generator = new AuthenticatedAction {
-      override def secret: String = hmacSecret
-    }
-
-    val hmac = generator.sign(date, path)
+    val hmac = Hmac.sign(date, path)
 
     println(s"HMAC token: $hmac")
   }

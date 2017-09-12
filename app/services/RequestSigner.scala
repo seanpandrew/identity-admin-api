@@ -30,8 +30,8 @@ trait RequestSigner extends Logging {
     val path = getPath(request)
     val dateHeaderValue = getDateHeaderValue
     val hmacToken = sign(dateHeaderValue, path)
-    logger.info(s"path: $path, date: $dateHeaderValue, hmac: $hmacToken")
-    request.withHeaders(HeaderNames.DATE -> dateHeaderValue, HeaderNames.AUTHORIZATION -> hmacHeaderValue(hmacToken))
+    logger.trace(s"path: $path, date: $dateHeaderValue, hmac: $hmacToken")
+    request.addHttpHeaders(HeaderNames.DATE -> dateHeaderValue, HeaderNames.AUTHORIZATION -> hmacHeaderValue(hmacToken))
   }
 
   private[services] def getPath(request: WSRequest): String = {

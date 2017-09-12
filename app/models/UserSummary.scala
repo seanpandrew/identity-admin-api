@@ -4,6 +4,7 @@ import org.joda.time.DateTime
 import play.api.libs.json.Json
 import repositories.{IdentityUser, Orphan, PersistedUser}
 import scala.language.implicitConversions
+import ClientJsonFormats._
 
 case class UserSummary(id: String,
                        email: String,
