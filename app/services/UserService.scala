@@ -24,7 +24,7 @@ import scalaz.std.scalaFuture._
     eventPublishingActorProvider: EventPublishingActorProvider,
     deletedUsersRepository: DeletedUsersRepository,
     salesforceService: SalesforceService,
-    slalesforceIntegration: SalesforceIntegration,
+    salesforceIntegration: SalesforceIntegration,
     madgexService: MadgexService,
     exactTargetService: ExactTargetService,
     discussionService: DiscussionService)(implicit ec: ExecutionContext) extends Logging {
@@ -56,7 +56,7 @@ import scalaz.std.scalaFuture._
           }
 
           if (userEmailChanged && eventsEnabled) {
-            slalesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
+            salesforceIntegration.enqueueUserUpdate(user.id, userUpdateRequest.email)
           }
 
           if (isJobsUser(user) && isJobsUserChanged(user, userUpdateRequest)) {
