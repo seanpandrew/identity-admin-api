@@ -19,9 +19,26 @@ import scala.util.{Failure, Success, Try}
 import play.api.mvc._
 import models.ApiError._
 
-object Hmac extends Logging {
+object HmacSigner {
+  def sign(date: String, path: String, secret: String): String = {
+    val input = List[String](date, path)
+    val toSign = input.mkString("\n")
+    calculateHMAC(toSign, secret)
+  }
+
+  private def calculateHMAC(toEncode: String, secret: String): String = {
+    val Algorithm = "HmacSHA256"
+    val signingKey = new SecretKeySpec(secret.getBytes, Algorithm)
+    val mac = Mac.getInstance(Algorithm)
+    mac.init(signingKey)
+    val rawHmac = mac.doFinal(toEncode.getBytes)
+    new String(Base64.encodeBase64(rawHmac))
+  }
+}
+
+object HmacAuthenticator extends Logging {
   val secret = Config.hmacSecret
-  val Algorithm = "HmacSHA256"
+
   val HmacPattern = "HMAC\\s(.+)".r
   val HmacValidDurationInMinutes = 5
   val MinuteInMilliseconds = 60000
@@ -49,20 +66,7 @@ object Hmac extends Logging {
     (HmacPattern.findAllIn(authHeader).matchData map { m => m.group(1) }).toList.headOption
   }
 
-  def sign(date: String, path: String): String = {
-    val input = List[String](date, path)
-    val toSign = input.mkString("\n")
-    calculateHMAC(toSign)
-  }
-
-
-  def calculateHMAC(toEncode: String): String = {
-    val signingKey = new SecretKeySpec(secret.getBytes, Algorithm)
-    val mac = Mac.getInstance(Algorithm)
-    mac.init(signingKey)
-    val rawHmac = mac.doFinal(toEncode.getBytes)
-    new String(Base64.encodeBase64(rawHmac))
-  }
+  def sign(date: String, path: String): String = HmacSigner.sign(date, path, secret)
 }
 
 class AuthenticatedAction @Inject() (val parser: BodyParsers.Default)(implicit val executionContext: ExecutionContext)
@@ -71,13 +75,13 @@ class AuthenticatedAction @Inject() (val parser: BodyParsers.Default)(implicit v
   def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
     Try {
       val authorization = request.headers.get(HeaderNames.AUTHORIZATION).getOrElse(throw new IllegalArgumentException("Authorization header is required."))
-      val hmac = Hmac.extractToken(authorization).getOrElse(throw new IllegalArgumentException("Authorization header is invalid."))
+      val hmac = HmacAuthenticator.extractToken(authorization).getOrElse(throw new IllegalArgumentException("Authorization header is invalid."))
       val date = request.headers.get(HeaderNames.DATE).getOrElse(throw new scala.IllegalArgumentException("Date header is required."))
       val uri = request.uri
 
       logger.trace(s"path: $uri, date: $date, hmac: $hmac")
 
-      if (Hmac.isDateValid(date) && Hmac.isHmacValid(date, uri, hmac)) {
+      if (HmacAuthenticator.isDateValid(date) && HmacAuthenticator.isHmacValid(date, uri, hmac)) {
         Success
       } else {
         throw new IllegalArgumentException("Authorization token is invalid.")

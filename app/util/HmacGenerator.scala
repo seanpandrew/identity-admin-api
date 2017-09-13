@@ -1,6 +1,6 @@
 package util
 
-import actions.{AuthenticatedAction, Hmac}
+import actions.HmacSigner
 
 object HmacGenerator {
 
@@ -10,8 +10,9 @@ object HmacGenerator {
 
     val date = args(0)
     val path = args(1)
+    val secret = args(2)
 
-    val hmac = Hmac.sign(date, path)
+    val hmac = HmacSigner.sign(date, path, secret)
 
     println(s"HMAC token: $hmac")
   }
