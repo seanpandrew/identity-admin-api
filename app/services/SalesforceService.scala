@@ -8,9 +8,8 @@ import models._
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.ws.{WSClient, WSResponse}
 import play.api.http.Status.OK
-import play.api.libs.concurrent.Execution.Implicits._
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, \/-}
@@ -38,7 +37,7 @@ case class IdentityId(value: String, fieldName: String = "Zuora__Subscription__r
 case class Email(value: String, fieldName: String = "Zuora__Subscription__r.Zuora__CustomerAccount__r.Contact__r.Email") extends UniqueIdentifier
 case class SubscriptionId(value: String, fieldName: String = "Subscription_Name__c") extends UniqueIdentifier
 
-@Singleton class SalesforceService @Inject() (ws: WSClient) extends Logging {
+@Singleton class SalesforceService @Inject() (ws: WSClient)(implicit ec: ExecutionContext) extends Logging {
 
   private lazy val sfAuth: SFAuthentication = {
     logger.info("Authenticating with Salesforce...")
@@ -84,7 +83,7 @@ case class SubscriptionId(value: String, fieldName: String = "Subscription_Name_
   }
 
   private def querySalesforce(soql: String): ApiResponse[Option[SalesforceSubscription]] =
-    ws.url(s"${sfAuth.instance_url}/services/data/v29.0/query?q=$soql").withHeaders(authHeader).get().map { response =>
+    ws.url(s"${sfAuth.instance_url}/services/data/v29.0/query?q=$soql").addHttpHeaders(authHeader).get().map { response =>
       if (response.status == OK) {
         if ((response.json \ "totalSize").as[Int] > 0)
           \/-(Some(extractSubscription(response)))

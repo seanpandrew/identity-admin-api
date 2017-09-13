@@ -8,17 +8,18 @@ import models.User
 import play.api.mvc.{ActionRefiner, Request, Result, WrappedRequest}
 import play.api.mvc.Results._
 import services.{ExactTargetService, SalesforceService, UserService}
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.std.scalaFuture._
 import scalaz.{-\/, EitherT, \/, \/-}
 
 class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest[A](request)
 
-@Singleton class IdentityUserAction @Inject() (userService: UserService) {
+@Singleton class IdentityUserAction @Inject() (userService: UserService)(implicit ec: ExecutionContext) {
 
   def apply(userId: String) = new ActionRefiner[Request, UserRequest] {
+    def executionContext = ec
+
     override def refine[A](request: Request[A]): Future[Either[Result, UserRequest[A]]] = {
 
       def findUserById(userId: String): Future[Result \/ User] =
@@ -48,9 +49,11 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
 
 @Singleton class OrphanUserAction @Inject() (
     salesforce: SalesforceService,
-    exactTargetService: ExactTargetService) {
+    exactTargetService: ExactTargetService)(implicit ec: ExecutionContext)  {
 
   def apply(email: String) = new ActionRefiner[Request, UserRequest] {
+    def executionContext = ec
+
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
       val subOrphanOptF = EitherT(salesforce.getSubscriptionByEmail(email))
       val exactTargetOptF = EitherT(exactTargetService.subscriberByEmail(email))

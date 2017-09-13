@@ -9,11 +9,11 @@ import models.{GNMMadgexUser, MadgexUser}
 import play.api.libs.json.Json
 import play.api.libs.ws.WSClient
 
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import play.api.libs.json.Json
 
-@Singleton class MadgexService @Inject() (ws: WSClient, requestSigner: RequestSigner) extends Logging {
+@Singleton class MadgexService @Inject() (
+    ws: WSClient, requestSigner: RequestSigner)(implicit ec: ExecutionContext) extends Logging {
 
   implicit val format = Json.format[MadgexUser]
 

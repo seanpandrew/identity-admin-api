@@ -1,19 +1,21 @@
 package repositories
 
 import javax.inject.{Inject, Singleton}
+
 import com.gu.identity.util.Logging
 import models._
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
+
+import scala.concurrent.ExecutionContext
 import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
 
 @Singleton class UsersWriteRepository @Inject() (
     reactiveMongoApi: ReactiveMongoApi,
-    deletedUsersRepository: DeletedUsersRepository) extends Logging {
+    deletedUsersRepository: DeletedUsersRepository)(implicit ec: ExecutionContext) extends Logging {
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 

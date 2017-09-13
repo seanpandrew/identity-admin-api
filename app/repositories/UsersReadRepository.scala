@@ -2,22 +2,21 @@ package repositories
 
 import configuration.Config.SearchValidation._
 import models.{ApiError, ApiResponse, SearchResponse, User}
-
 import javax.inject.{Inject, Singleton}
 
 import com.gu.identity.util.Logging
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
 import reactivemongo.api.{Cursor, QueryOpts, ReadPreference}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, OptionT, \/-}
 import scalaz.std.scalaFuture._
 
-@Singleton class UsersReadRepository @Inject() (reactiveMongoApi: ReactiveMongoApi) extends Logging {
+@Singleton class UsersReadRepository @Inject() (
+    reactiveMongoApi: ReactiveMongoApi)(implicit ec: ExecutionContext) extends Logging {
 
   private lazy val usersCollectionF = reactiveMongoApi.database.map(_.collection("users"))
 

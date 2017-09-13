@@ -7,12 +7,11 @@ import com.gu.identity.util.Logging
 import com.gu.tip.Tip
 import configuration.Config
 import models._
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json._
 import play.api.mvc._
 import services._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz._
 import scalaz.std.scalaFuture._
 import scalaz.std.string._
@@ -23,13 +22,14 @@ import models.ApiError._
 import models._
 
 @Singleton class UsersController @Inject() (
+    cc: ControllerComponents,
     userService: UserService,
     auth: AuthenticatedAction,
     identityUserAction: IdentityUserAction,
     orphanUserAction: OrphanUserAction,
     salesforce: SalesforceService,
     discussionService: DiscussionService,
-    exactTargetService: ExactTargetService) extends Controller with Logging {
+    exactTargetService: ExactTargetService)(implicit ec: ExecutionContext) extends AbstractController(cc) with Logging {
 
   def search(query: String, limit: Option[Int], offset: Option[Int]) = auth.async { request =>
     import Config.SearchValidation._

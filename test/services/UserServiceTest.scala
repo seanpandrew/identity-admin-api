@@ -8,13 +8,16 @@ import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import org.scalatest.mockito.MockitoSugar
 import repositories.{DeletedUsersRepository, IdentityUserUpdate, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import org.mockito.Mockito._
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 
 import scala.concurrent.duration._
 import scalaz.{-\/, \/-}
 
-class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter {
+class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter with GuiceOneServerPerSuite {
+
+  implicit val ec = app.injector.instanceOf[ExecutionContext]
 
   val jobsGroup = Seq(UserGroup( "GRS", "/sys/policies/guardian-jobs"))
 
@@ -25,12 +28,13 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val eventPublishingActorProvider = mock[EventPublishingActorProvider]
   val deletedUsersRepository = mock[DeletedUsersRepository]
   val salesforceService = mock[SalesforceService]
+  val salesforceIntegration = mock[SalesforceIntegration]
   val madgexService = mock[MadgexService]
   val exactTargetService = mock[ExactTargetService]
   val discussionService = mock[DiscussionService]
   val service =
     spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient,
-      eventPublishingActorProvider, deletedUsersRepository, salesforceService, madgexService, exactTargetService,
+      eventPublishingActorProvider, deletedUsersRepository, salesforceService, salesforceIntegration, madgexService, exactTargetService,
       discussionService))
 
   before {

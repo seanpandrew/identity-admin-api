@@ -5,11 +5,10 @@ import javax.inject.Inject
 import com.gu.identity.util.Logging
 import configuration.Config
 import models.{ApiError, ApiResponse}
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
 import play.api.libs.ws.{WSClient, WSRequest}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, \/, \/-}
 
 case class IdentityApiError(message: String, description: String, context: Option[String] = None)
@@ -24,7 +23,7 @@ object IdentityApiErrorResponse {
   implicit val format = Json.format[IdentityApiErrorResponse]
 }
 
-class IdentityApiClient @Inject() (ws: WSClient) extends Logging {
+class IdentityApiClient @Inject() (ws: WSClient)(implicit ec: ExecutionContext) extends Logging {
 
   val baseUrl = Config.IdentityApi.baseUrl
   val clientToken = Config.IdentityApi.clientToken
@@ -34,7 +33,7 @@ class IdentityApiClient @Inject() (ws: WSClient) extends Logging {
   private def sendEmailValidationUrl(userId: String): String = s"$baseUrl/user/$userId/send-validation-email"
   
   private def addAuthHeaders(req: WSRequest): WSRequest = {
-    req.withHeaders(ClientTokenHeaderName -> clientTokenHeaderValue)
+    req.addHttpHeaders(ClientTokenHeaderName -> clientTokenHeaderValue)
   }
 
   def sendEmailValidation(userId: String): ApiResponse[Unit] = {

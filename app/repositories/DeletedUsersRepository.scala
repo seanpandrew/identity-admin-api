@@ -10,15 +10,14 @@ import reactivemongo.play.json.collection._
 import reactivemongo.play.json._
 import reactivemongo.api.ReadPreference
 
-import scala.concurrent.Future
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, EitherT, OptionT, \/-}
 import scalaz.std.scalaFuture._
 import DeletedUser._
 import reactivemongo.bson.BSONDocument
 
-@Singleton class DeletedUsersRepository @Inject()(reactiveMongoApi: ReactiveMongoApi) extends Logging {
+@Singleton class DeletedUsersRepository @Inject()(
+    reactiveMongoApi: ReactiveMongoApi)(implicit ec: ExecutionContext) extends Logging {
 
   private lazy val reservedEmailsF = reactiveMongoApi.database.map(_.collection("reservedEmails"))
 
