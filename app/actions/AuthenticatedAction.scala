@@ -20,11 +20,11 @@ import play.api.mvc._
 import models.ApiError._
 
 object Hmac extends Logging {
-  private val secret = Config.hmacSecret
-  private val Algorithm = "HmacSHA256"
-  private val HmacPattern = "HMAC\\s(.+)".r
-  private val HmacValidDurationInMinutes = 5
-  private val MinuteInMilliseconds = 60000
+  val secret = Config.hmacSecret
+  val Algorithm = "HmacSHA256"
+  val HmacPattern = "HMAC\\s(.+)".r
+  val HmacValidDurationInMinutes = 5
+  val MinuteInMilliseconds = 60000
 
   def isDateValid(date: String): Boolean  = {
     val provided = Try(Formats.toDateTime(date)) match {

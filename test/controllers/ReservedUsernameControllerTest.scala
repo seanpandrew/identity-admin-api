@@ -5,26 +5,32 @@ import models.{ApiError, ReservedUsernameList}
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import play.api.libs.json.Json
-import play.api.mvc.{Request, Result}
+import play.api.mvc.{BodyParsers, ControllerComponents, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories.ReservedUserNameWriteRepository
 import org.mockito.Mockito._
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, \/-}
 
-class ReservedUsernameControllerTest extends WordSpec with Matchers with MockitoSugar {
+class ReservedUsernameControllerTest extends WordSpec with Matchers with MockitoSugar with GuiceOneServerPerSuite {
+
+  implicit val ec = app.injector.instanceOf[ExecutionContext]
+  val parser = app.injector.instanceOf[BodyParsers.Default]
+  val cc = app.injector.instanceOf[ControllerComponents]
 
   val reservedUsernameRepo = mock[ReservedUserNameWriteRepository]
 
-  class StubAuthenticatedAction extends AuthenticatedAction {
-    val secret = "secret"
+  // So we can apply FakeRequest without needing to add HMAC header
+  class StubAuthenticatedAction(override val parser: BodyParsers.Default) extends AuthenticatedAction(parser) {
     override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
       block(request)
     }
   }
-  val controller = new ReservedUsernameController(reservedUsernameRepo, new StubAuthenticatedAction)
+
+  val controller = new ReservedUsernameController(cc, reservedUsernameRepo, new StubAuthenticatedAction(parser))
 
 
   "reserveUsername" should {

@@ -1,26 +1,31 @@
 package controllers
 
-import actions.{AuthenticatedAction, IdentityUserAction, OrphanUserAction, UserRequest}
+import actions._
 import mockws.MockWS
 import models._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
 import org.mockito.Matchers.any
 import org.mockito.Mockito._
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.json.Json
-import play.api.mvc.{Action, ActionRefiner, Request, Result}
+import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.test.FakeRequest
 import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, ExactTargetService, SalesforceService, UserService}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scalaz.{-\/, \/-}
 
-class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
-  
+class UsersControllerTest extends WordSpec with Matchers with MockitoSugar with GuiceOneServerPerSuite {
+
+  implicit val ec = app.injector.instanceOf[ExecutionContext]
+  val parser = app.injector.instanceOf[BodyParsers.Default]
+  val cc = app.injector.instanceOf[ControllerComponents]
+
   val testIdentityId = "abc"
 
   val userService = mock[UserService]
@@ -33,8 +38,8 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   when(exactTargetServiceMock.newslettersSubscriptionByIdentityId("abc")).thenReturn(Future.successful(\/-(None)))
 
-  class StubAuthenticatedAction extends AuthenticatedAction {
-    val secret = "secret"
+  // So we can apply FakeRequest without needing to add HMAC header
+  class StubAuthenticatedAction(override val parser: BodyParsers.Default) extends AuthenticatedAction(parser) {
     override def invokeBlock[A](request: Request[A], block: (Request[A]) => Future[Result]): Future[Result] = {
       block(request)
     }
@@ -42,31 +47,35 @@ class UsersControllerTest extends WordSpec with Matchers with MockitoSugar {
 
   def createIdentityUserActionRightMock(user: User) =
     new ActionRefiner[Request, UserRequest] {
+      override def executionContext: ExecutionContext = ec
       override def refine[A](request: Request[A]): Future[Either[Result, UserRequest[A]]] =
         Future.successful(Right(new UserRequest(user, request)))
     }
 
   def createIdentityUserActionLeftMock() =
     new ActionRefiner[Request, UserRequest] {
+      override def executionContext: ExecutionContext = ec
       override def refine[A](request: Request[A]): Future[Either[Result, UserRequest[A]]] =
         Future.successful(Left(NotFound))
     }
 
   val controller = new UsersController(
+    cc,
     userService,
-    new StubAuthenticatedAction,
+    new StubAuthenticatedAction(parser),
     identityUserAction,
     orphanUserAction,
     salesforceService,
     new DiscussionService(dapiWsMock),
     exactTargetServiceMock)
 
+
   "search" should {
     "return 400 when query string is less than minimum length" in {
       val query = "a"
       val limit = Some(10)
       val offset = Some(0)
-      val result = controller.search(query, limit, offset)(FakeRequest())
+      val result = controller.search(query, limit, offset).apply(FakeRequest().withHeaders())
       status(result) shouldEqual BAD_REQUEST
       contentAsJson(result) shouldEqual Json.toJson(ApiError("query must be a minimum of 2 characters"))
     }

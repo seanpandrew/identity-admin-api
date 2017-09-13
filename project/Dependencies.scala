@@ -23,7 +23,7 @@ object Dependencies {
   val playJsonJoda =        "com.typesafe.play"             %% "play-json-joda"           % "2.6.3"
   val scalaTestPlus =       "org.scalatestplus.play"        %% "scalatestplus-play"       % "3.1.1"    % "test"
   val embeddedMongo =       "com.github.simplyscala"        %% "scalatest-embedmongo"     % "0.2.3"    % "test"
-  val mockWs =              "de.leanovate.play-mockws"      %% "play-mockws"              % "2.5.1"    % "test"
+  val mockWs =              "de.leanovate.play-mockws"      %% "play-mockws"              % "2.6.0"    % "test"
   val scalaTest =           "org.scalatest"                 %% "scalatest"                % "3.0.1"    % "test"
   val akkaSlf4j =           "com.typesafe.akka"             %% "akka-slf4j"               % "2.5.4"    % "test"
   val akkaTestkit =         "com.typesafe.akka"             %% "akka-testkit"             % "2.5.4"    % "test"
