@@ -106,7 +106,16 @@ object NewslettersSubscription {
   implicit val format = Json.format[NewslettersSubscription]
 }
 
-case class ExactTargetSubscriber(status: String, newsletters: Option[NewslettersSubscription])
+case class ConsumerEmails(list: List[String])
+
+object ConsumerEmails {
+  implicit val format = Json.format[ConsumerEmails]
+}
+
+case class ExactTargetSubscriber(
+  status: String, newsletters:
+  Option[NewslettersSubscription],
+  consumerEmails: Option[ConsumerEmails])
 
 object ExactTargetSubscriber {
   implicit val format = Json.format[ExactTargetSubscriber]
