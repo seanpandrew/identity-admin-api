@@ -106,7 +106,11 @@ object NewslettersSubscription {
   implicit val format = Json.format[NewslettersSubscription]
 }
 
-case class ConsumerEmail(emailName: String, deliveredDate: String)
+case class ConsumerEmail(
+  emailName: String,
+  deliveredDate: String,
+  openTime: String
+)
 
 object ConsumerEmail {
   implicit val format = Json.format[ConsumerEmail]

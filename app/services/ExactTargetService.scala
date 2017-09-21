@@ -92,8 +92,15 @@ import scala.util.{Failure, Success, Try}
 
     recordsFromDeT.map {
       case Some(rows) =>
-        val consumerEmails = rows.map(row => ConsumerEmail(row.getColumn("EmailName"),  row.getColumn("DeliveredTime")))
-        (Some(ConsumerEmails(consumerEmails)))
+        val consumerEmails = rows.map { row =>
+          ConsumerEmail(
+            row.getColumn("EmailName"),
+            row.getColumn("DeliveredTime"),
+            row.getColumn("OpenTime")
+          )
+        }
+
+        Some(ConsumerEmails(consumerEmails))
 
       case None => None
     }.run
