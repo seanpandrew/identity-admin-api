@@ -79,6 +79,13 @@ import scala.util.{Failure, Success, Try}
     }.run
   }
 
+  /**
+    * In Consumer BU:
+    *   Data Extension:   'All Emails Sent' B2FD61EE-00C2-44A2-B10F-3D7DD308D9CE
+    *   SQL Query:        'All Emails Sent' 5ca82872-97ee-42d9-8764-38a2da937a7b
+    *   Automation:       'All Emails Sent' 4c4ea8e4-f541-5aa7-591e-0bbcd3327ea8
+    *   API Integration:  'All Emails Sent' 82e38185-322d-438b-a9f6-63f2cd37e252
+    */
   def consumerEmailsByEmail(email: String): ApiResponse[Option[ConsumerEmails]] = {
 
     val recordsFromDeT: EitherT[Future, ApiError, Option[List[ETDataExtensionRow]]] =
