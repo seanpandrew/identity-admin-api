@@ -5,7 +5,7 @@ import javax.inject.{Inject, Singleton}
 import com.exacttarget.fuelsdk._
 import com.gu.identity.util.Logging
 import configuration.Config
-import models.{ApiError, ApiResponse, ExactTargetSubscriber, NewslettersSubscription}
+import models._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.std.scalaFuture._
@@ -79,6 +79,40 @@ import scala.util.{Failure, Success, Try}
     }.run
   }
 
+  /**
+    * In Consumer BU:
+    *   Data Extension:   'All Emails Sent' B2FD61EE-00C2-44A2-B10F-3D7DD308D9CE
+    *   SQL Query:        'All Emails Sent' 5ca82872-97ee-42d9-8764-38a2da937a7b
+    *   Automation:       'All Emails Sent' 4c4ea8e4-f541-5aa7-591e-0bbcd3327ea8
+    *   API Integration:  'All Emails Sent' 82e38185-322d-438b-a9f6-63f2cd37e252
+    */
+  def consumerEmailsByEmail(email: String): ApiResponse[Option[ConsumerEmails]] = {
+
+    val recordsFromDeT: EitherT[Future, ApiError, Option[List[ETDataExtensionRow]]] =
+
+      EitherT(retrieveDataExtension("B2FD61EE-00C2-44A2-B10F-3D7DD308D9CE", etClientConsumer)).flatMap {
+        case Some(de) =>
+          EitherT(selectFromDataExtension(s"SubscriberKey=$email", de))
+
+        case None => EitherT.right(Future.successful(None))
+      }
+
+    recordsFromDeT.map {
+      case Some(rows) =>
+        val consumerEmails = rows.map { row =>
+          ConsumerEmail(
+            row.getColumn("EmailName"),
+            row.getColumn("DeliveredTime"),
+            row.getColumn("OpenTime")
+          )
+        }
+
+        Some(ConsumerEmails(consumerEmails))
+
+      case None => None
+    }.run
+  }
+
   def deleteSubscriber(email: String): ApiResponse[Unit] =
     EitherT(retrieveSubscriber(email, etClientAdmin)).flatMap {
       case Some(subscriber) => EitherT(deleteSubscriber(subscriber))
@@ -140,14 +174,16 @@ import scala.util.{Failure, Success, Try}
   def subscriberByEmail(email: String): ApiResponse[Option[ExactTargetSubscriber]] = {
     val statusF = EitherT(status(email))
     val newslettersF = EitherT(newslettersSubscriptionByEmail(email))
+    val consumerEmailsF = EitherT(consumerEmailsByEmail(email))
 
     val subByEmailT =
       for {
         statusOpt <- statusF
         newslettersOpt <- newslettersF
+        consumerEmailsOpt <- consumerEmailsF
       } yield {
         statusOpt match {
-          case Some(status) => Some(ExactTargetSubscriber(status, newslettersOpt))
+          case Some(status) => Some(ExactTargetSubscriber(status, newslettersOpt, consumerEmailsOpt))
           case None => None
         }
       }
@@ -202,6 +238,46 @@ import scala.util.{Failure, Success, Try}
     }
   }
 
+  private def retrieveDataExtension(key: String, client: ETClient): ApiResponse[Option[ETDataExtension]] = Future {
+
+    val retrieveTry = Try {
+      Option(client.retrieve(classOf[ETDataExtension], s"key=$key").getResult) match {
+        case Some(result) => \/-(Some(result.getObject))
+        case None => \/-(Option.empty[ETDataExtension])
+      }
+    }
+
+    retrieveTry match {
+      case Success(result) => result
+
+      case Failure(error) =>
+        val title = s"Failed to retrieve DataExtension $key from ExactTarget"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+    }
+  }
+
+  private def selectFromDataExtension(
+      query: String,
+      de: ETDataExtension): ApiResponse[Option[List[ETDataExtensionRow]]] = Future {
+
+    val retrieveTry = Try {
+      Option(de.select(query).getObjects) match {
+        case Some(results) => \/-(Some(results.toList))
+        case None => \/-(Option.empty[List[ETDataExtensionRow]])
+      }
+    }
+
+    retrieveTry match {
+      case Success(result) => result
+
+      case Failure(error) =>
+        val title = s"Failed to retrieve DataExtension records from ExactTarget"
+        logger.error(title, error)
+        -\/(ApiError(title, error.getMessage))
+    }
+  }
+
   private def deleteSubscriber(subscriber: ETSubscriber): ApiResponse[Unit] = Future {
     val etResponse = etClientAdmin.delete(subscriber)
     handleETResponse(etResponse, "Failed to delete ExactTarget subscriber")
@@ -236,6 +312,13 @@ import scala.util.{Failure, Success, Try}
     val etConf = new ETConfiguration()
     etConf.set("clientId", Config.ExactTarget.Editorial.clientId)
     etConf.set("clientSecret", Config.ExactTarget.Editorial.clientSecret)
+    new ETClient(etConf)
+  }
+
+  private lazy val etClientConsumer = {
+    val etConf = new ETConfiguration()
+    etConf.set("clientId", Config.ExactTarget.Consumer.clientId)
+    etConf.set("clientSecret", Config.ExactTarget.Consumer.clientSecret)
     new ETClient(etConf)
   }
 }
