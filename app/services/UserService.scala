@@ -162,12 +162,14 @@ import scalaz.std.scalaFuture._
     if (isEmail(email)) {
       val subOrphanOptF = EitherT(salesforceService.getSubscriptionByEmail(email))
       val newsOrphanOptF = EitherT(exactTargetService.newslettersSubscriptionByEmail(email))
+      val contributionsListF = EitherT(exactTargetService.contributionsByEmail(email))
 
       (for {
         subOrphanOpt <- subOrphanOptF
         newsOrphanOpt <- newsOrphanOptF
+        contributionsList <- contributionsListF
       } yield {
-        if (subOrphanOpt.isDefined || newsOrphanOpt.isDefined)
+        if (subOrphanOpt.isDefined || newsOrphanOpt.isDefined || !contributionsList.isEmpty)
           orphanSearchResponse
         else
           emptySearchResponse
@@ -257,18 +259,21 @@ import scalaz.std.scalaFuture._
     val membershipF = EitherT(salesforceService.getMembershipByIdentityId(user.id))
     val hasCommentedF = EitherT(discussionService.hasCommented(user.id))
     val exactTargetSubF = EitherT(exactTargetService.subscriberByIdentityId(user.id))
+    val contributionsF = EitherT(exactTargetService.contributionsByIdentityId(user.id))
 
     (for {
       subscription <- subscriptionF
       membership <- membershipF
       hasCommented <- hasCommentedF
       exactTargetSub <- exactTargetSubF
+      contributions <- contributionsF
     } yield {
       user.copy(
         subscriptionDetails = subscription,
         membershipDetails = membership,
         hasCommented = hasCommented,
-        exactTargetSubscriber = exactTargetSub)
+        exactTargetSubscriber = exactTargetSub,
+        contributions = contributions)
     }).run
   }
 }

@@ -197,6 +197,35 @@ import scala.util.{Failure, Success, Try}
       case None => EitherT.right(Future.successful(Option.empty[ExactTargetSubscriber]))
     }.run
 
+  def contributionsByIdentityId(identityId: String): ApiResponse[List[Contribution]] =
+    EitherT(usersReadRepository.find(identityId)).flatMap {
+      case Some(user) => EitherT(contributionsByEmail(user.email))
+      case None => EitherT.right(Future.successful(List.empty[Contribution]))
+    }.run
+
+  def contributionsByEmail(email: String): ApiResponse[List[Contribution]] = {
+    val recordsFromDeT: EitherT[Future, ApiError, Option[List[ETDataExtensionRow]]] =
+
+      EitherT(retrieveDataExtension("2AF90B07-0DE8-42A4-B549-3B808C77F56C", etClientAdmin)).flatMap {
+        case Some(de) => EitherT(selectFromDataExtension(s"SubscriberKey=$email", de))
+
+        case None => EitherT.right(Future.successful(None))
+      }
+
+    recordsFromDeT.map {
+      case Some(rows) =>
+        rows.map { row =>
+          Contribution(
+            row.getColumn("created"),
+            row.getColumn("currency"),
+            row.getColumn("amount")
+          )
+        }
+
+      case None => Nil
+    }.run
+  }
+
   private def updateSubscriptionStatus(
     email: String, status: ETSubscriber.Status, client: ETClient): ApiResponse[Unit] = {
 
