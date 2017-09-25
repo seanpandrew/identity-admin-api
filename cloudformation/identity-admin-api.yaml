@@ -197,6 +197,13 @@ Resources:
       ConnectionDrainingPolicy:
         Enabled: 'true'
         Timeout: '60'
+      Tags:
+      - Key: Stage
+        Value: !Ref 'Stage'
+      - Key: Stack
+        Value: !Ref 'Stack'
+      - Key: App
+        Value: !Ref 'App'
   TopicSendEmail:
     Type: AWS::SNS::Topic
     Properties:
