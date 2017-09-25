@@ -57,16 +57,26 @@ class UserRequest[A](val user: User, request: Request[A]) extends WrappedRequest
     override def refine[A](input: Request[A]): Future[Either[Result, UserRequest[A]]] = {
       val subOrphanOptF = EitherT(salesforce.getSubscriptionByEmail(email))
       val exactTargetOptF = EitherT(exactTargetService.subscriberByEmail(email))
+      val contributionsF = EitherT(exactTargetService.contributionsByEmail(email))
 
       val orphanEitherT =
         for {
           subOrphanOpt <- subOrphanOptF
           exactTargetOpt <- exactTargetOptF
+          contributions <- contributionsF
         } yield {
-          if (subOrphanOpt.isDefined)
-            Some(new UserRequest(User(orphan = true, id = "orphan", email = email, subscriptionDetails = subOrphanOpt), input))
-          else if (exactTargetOpt.isDefined)
-            Some(new UserRequest(User(orphan = true, id = "orphan", email = email, exactTargetSubscriber = exactTargetOpt), input))
+
+          val userRequest = Some(new UserRequest(User(
+            orphan = true,
+            id = "orphan",
+            email = email,
+            subscriptionDetails = subOrphanOpt,
+            exactTargetSubscriber = exactTargetOpt,
+            contributions = contributions
+          ), input))
+
+          if (subOrphanOpt.isDefined || exactTargetOpt.isDefined || !contributions.isEmpty)
+            userRequest
           else
             None
         }

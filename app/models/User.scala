@@ -131,11 +131,16 @@ object ExactTargetSubscriber {
   implicit val format = Json.format[ExactTargetSubscriber]
 }
 
+case class Contribution(date: String, currency: String, amount: String)
+
+object Contribution {
+  implicit val format = Json.format[Contribution]
+}
+
 case class User(id: String,
                 email: String,
                 displayName: Option[String] = None,
                 username: Option[String] = None,
-                vanityUrl: Option[String] = None,
                 personalDetails: PersonalDetails = PersonalDetails(),
                 deliveryAddress: Address = Address(),
                 billingAddress: Address = Address(),
@@ -152,7 +157,8 @@ case class User(id: String,
                 exactTargetSubscriber: Option[ExactTargetSubscriber] = None,
                 hasCommented: Boolean = false,
                 deleted: Boolean = false,
-                orphan: Boolean = false
+                orphan: Boolean = false,
+                contributions: List[Contribution] = Nil
                )
 
 object User {
@@ -164,7 +170,6 @@ object User {
                 email = user.primaryEmailAddress,
                 displayName = user.publicFields.flatMap(_.displayName),
                 username = user.publicFields.flatMap(_.username),
-                vanityUrl = user.publicFields.flatMap(_.vanityUrl),
                 personalDetails = PersonalDetails(
                  firstName = user.privateFields.flatMap(_.firstName),
                  lastName = user.privateFields.flatMap(_.secondName),
