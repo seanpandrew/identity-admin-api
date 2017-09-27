@@ -138,8 +138,8 @@ Resources:
           - Effect: Allow
             Action: s3:GetObject
             Resource:
-            - arn:aws:s3:::identity-artifacts/*
-            - arn:aws:s3:::identity-private-config/*
+            - !Sub arn:aws:s3:::identity-artifacts/${Stage}/${App}/*
+            - !Sub arn:aws:s3:::identity-private-config/${Stage}/${App}/*
           - Effect: Allow
             Action: ec2:Describe*
             Resource: '*'
@@ -268,9 +268,8 @@ Resources:
       UserData:
         Fn::Base64:
           !Sub |
+            #!/bin/bash -ev
 
-            # /etc/gu/install_vars
-            source /set-env.sh
             mkdir /etc/gu
             cat > /etc/gu/install_vars <<__END__
             STAGE=${Stage}
