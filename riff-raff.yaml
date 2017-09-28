@@ -12,10 +12,10 @@ deployments:
       - update-ami
   update-ami:
     type: ami-cloudformation-parameter
+    app: identity-admin-api
     parameters:
-      cloudFormationStackByTags: false
       prependStackToCloudFormationStackName: false
-      cloudFormationStackName: IdentityAdminAPI
+      cloudFormationStackName: IdentityAdminApi
       amiParametersToTags:
         AMI:
           Recipe: identity-base
