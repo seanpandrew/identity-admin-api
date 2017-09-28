@@ -15,7 +15,7 @@ deployments:
     parameters:
       cloudFormationStackByTags: false
       prependStackToCloudFormationStackName: false
-      cloudFormationStackName: IdentityAdminAPI
+      cloudFormationStackName: IdentityAdminApi
       amiParametersToTags:
         AMI:
           Recipe: identity-base
