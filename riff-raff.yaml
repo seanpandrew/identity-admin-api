@@ -6,4 +6,17 @@ deployments:
   identity-admin-api:
     type: autoscaling
     parameters:
-      bucket: gu-identity-admin-api-dist
+      bucket: identity-artifacts
+      prefixStack: false
+    dependencies:
+      - update-ami
+  update-ami:
+    type: ami-cloudformation-parameter
+    parameters:
+      cloudFormationStackByTags: false
+      prependStackToCloudFormationStackName: false
+      cloudFormationStackName: IdentityAdminAPI
+      amiParametersToTags:
+        AMI:
+          Recipe: identity-base
+          AmigoStage: PROD

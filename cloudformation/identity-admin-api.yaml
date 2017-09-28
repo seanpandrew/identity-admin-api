@@ -73,8 +73,8 @@ Parameters:
   LogstashHost:
     Description: Logstash load balancer host
     Type: String
-  AmiId:
-    Description: Custom AMI to use for instances, created using Packer
+  AMI:
+    Description: Custom AMI to use for instances, created Amigo
     Type: String
   AlarmEmailAddress:
     Description: Contact email for alarms
@@ -137,7 +137,9 @@ Resources:
           Statement:
           - Effect: Allow
             Action: s3:GetObject
-            Resource: arn:aws:s3:::gu-identity-*/*
+            Resource:
+            - !Sub arn:aws:s3:::identity-artifacts/${Stage}/${App}/*
+            - !Sub arn:aws:s3:::identity-private-config/${Stage}/${App}/*
           - Effect: Allow
             Action: ec2:Describe*
             Resource: '*'
@@ -255,7 +257,7 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       KeyName: !Ref 'KeyName'
-      ImageId: !Ref 'AmiId'
+      ImageId: !Ref 'AMI'
       SecurityGroups:
       - !Ref 'InstanceSecurityGroup'
       - !Ref 'VulnerabilityScanningSecurityGroup'
@@ -267,28 +269,43 @@ Resources:
         Fn::Base64:
           !Sub |
             #!/bin/bash -ev
-  
-            source /identity-functions.sh
-            source /set-env.sh
-  
-            installScriptFromBucket gu-identity-dist/${Stage} identity-bootstrap.sh
-            installScriptFromBucket gu-identity-dist/${Stage} logstash-setup.sh
-  
-            aws s3 cp s3://gu-${App}-dist/$stacktag/${Stage}/${App}/${App}.zip /${App}
-            aws s3 cp s3://gu-${App}-private/${Stage}/${App}.conf /etc/gu/${App}.conf
-  
+
+            mkdir /etc/gu
+            cat > /etc/gu/install_vars <<__END__
+            STAGE=${Stage}
+            app=${App}
+            region=${AWS::Region}
+            __END__
+
+            #Add User
+            addgroup ${Stack}
+            adduser --home /${App} --disabled-password --gecos \"\" ${App}
+
+            # Download, extract and chown
+            aws s3 cp s3://identity-artifacts/${Stage}/${App}/${App}.zip /${App}
+            aws s3 cp s3://identity-private-config/${Stage}/${App}/${App}.conf /etc/gu/${App}.conf
             unzip -o /${App}/${App}.zip -d /${App}
             cp /${App}/${App}/deploy/${App}.service /etc/systemd/system/${App}.service
             chown -R ${App} /${App}
-  
+
+            # Files limit
+            cat > /etc/security/limits.d/nofile.conf <<__END__
+            * soft nofile 20000
+            * hard nofile 20000
+            __END__
+            chown root:root /etc/security/limits.d/nofile.conf
+
+            # systemd stuff
+            total_mem=$(grep MemTotal /proc/meminfo | awk '{ print $2 }')
+            heap_size_in_mb=$(python -c "print int($total_mem * 0.8 / 1024)")
+
             sed -i "s/<APP>/${App}/g" /etc/systemd/system/${App}.service
             sed -i "s/<STAGE>/${Stage}/g" /etc/systemd/system/${App}.service
             sed -i "s/<PORT>/${Port}/g" /etc/systemd/system/${App}.service
             sed -i "s/<HEAP_SIZE_IN_MB>/$heap_size_in_mb/g" /etc/systemd/system/${App}.service
 
             systemctl start ${App}
-            sleep 20s
-          
+
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
