@@ -370,10 +370,8 @@ Resources:
       Statistic: Average
       Threshold: !Ref 'MinInstances'
       AlarmActions:
-      - !Ref 'TopicSendEmail'
       - !Ref 'TopicPagerDutyAlerts'
       InsufficientDataActions:
-      - !Ref 'TopicSendEmail'
       - !Ref 'TopicPagerDutyAlerts'
       OKActions:
       - !Ref 'TopicPagerDutyAlerts'
@@ -393,7 +391,6 @@ Resources:
       Statistic: Average
       Threshold: '0.9'
       AlarmActions:
-      - !Ref 'TopicSendEmail'
       - !Ref 'TopicPagerDutyAlerts'
       OKActions:
       - !Ref 'TopicPagerDutyAlerts'
