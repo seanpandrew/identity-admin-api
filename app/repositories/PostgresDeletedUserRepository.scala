@@ -1,34 +1,43 @@
 package repositories
 
-import models.{ApiResponse, SearchResponse}
+import com.google.inject.{Inject, Singleton}
+import models.{ApiError, ApiResponse, SearchResponse}
 import play.api.libs.json.Json
 import scalikejdbc._
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.\/-
+import scala.util.control.NonFatal
+import scalaz.{-\/, \/-}
 
-class PostgresDeletedUserRepository(connectionPool: ConnectionPool)(implicit ec: ExecutionContext) {
+@Singleton class PostgresDeletedUserRepository @Inject()(
+  connectionPool: ConnectionPool)(implicit ec: ExecutionContext) {
 
-  def search(query: String): ApiResponse[SearchResponse] = Future {
+  def findBy(query: String): ApiResponse[Option[DeletedUser]] = Future {
     val idMatcher = s"""{"_id":"${query.toLowerCase}"}"""
     val usernameMatcher = s"""{"username":"$query"}"""
     val emailMatcher = s"""{"email":"$query"}"""
     val sqlQuery =
       sql"""
-         | SELECT jdoc FROM reservedemails
-         | WHERE jdoc@>$idMatcher::jsonb
-         | OR jdoc@>$emailMatcher::jsonb
-         | OR jdoc@>$usernameMatcher::jsonb
+           | SELECT jdoc FROM reservedemails
+           | WHERE jdoc@>$idMatcher::jsonb
+           | OR jdoc@>$emailMatcher::jsonb
+           | OR jdoc@>$usernameMatcher::jsonb
        """.stripMargin
+    \/-(
+      using(connectionPool.borrow()) { DB(_).readOnly { implicit session =>
+        sqlQuery.map(_.string(1)).single.apply.map(
+          Json.parse(_).as[DeletedUser]
+        )}
+      }
+    )
+  }.recover {
+    case NonFatal(e) => -\/(ApiError(e.getMessage))
+  }
 
-    val optionalUser = using(connectionPool.borrow()){ DB(_).readOnly { implicit s =>
-      sqlQuery.map(rs => rs.string(1)).single().apply().map(jsonString =>
-        Json.parse(jsonString).as[DeletedUser]
-      )
-    }}
-    optionalUser match {
-      case None => \/-(SearchResponse.create(0, 0, Nil))
-      case Some(user) => \/-(SearchResponse.create(1, 0, List(IdentityUser(user.email, user.id))))
-    }
+  def search(query: String): ApiResponse[SearchResponse] = findBy(query).map {
+    case \/-(Some(user)) =>
+      \/-(SearchResponse.create(1, 0, List(IdentityUser(user.email, user.id))))
+    case _ =>
+      \/-(SearchResponse.create(0, 0, Nil))
   }
 }
