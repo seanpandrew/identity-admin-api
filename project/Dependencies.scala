@@ -28,7 +28,7 @@ object Dependencies {
   val akkaSlf4j =           "com.typesafe.akka"             %% "akka-slf4j"               % "2.5.4"    % "test"
   val akkaTestkit =         "com.typesafe.akka"             %% "akka-testkit"             % "2.5.4"    % "test"
   val scalikeJdbc =         "org.scalikejdbc"               %% "scalikejdbc"              % "3.1.0"
-//  val hikariCp =            "com.zaxxer"                    %  "HikariCP"                 % "2.7.2"
+  val hikariCp =            "com.zaxxer"                    %  "HikariCP"                 % "2.7.2"
   val postgres = Seq(
     "org.postgresql" % "postgresql" % "42.1.4",
     "ru.yandex.qatools.embed" % "postgresql-embedded" % "2.4" % Test
@@ -37,6 +37,6 @@ object Dependencies {
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo,
     specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, akkaSlf4j, akkaTestkit,
-    exactTargetFuel, tip, aws, guice, jodaForms, playJson, playJsonJoda, scalikeJdbc) ++ postgres
+    exactTargetFuel, tip, aws, guice, jodaForms, playJson, playJsonJoda, scalikeJdbc, hikariCp) ++ postgres
 
 }
