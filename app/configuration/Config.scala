@@ -80,4 +80,10 @@ object Config {
   object Madgex {
     val apiUrl = config.getString("madgex.host")
   }
+
+  object Postgres {
+    val jdbcUrl = config.getString("postgres.jdbcUrl")
+    val username = config.getString("postgres.username")
+    val password = config.getString("postgres.password")
+  }
 }

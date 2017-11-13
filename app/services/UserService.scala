@@ -7,7 +7,7 @@ import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
 import util.UserConverter._
 import models._
-import repositories.{DeletedUser, DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import repositories._
 import uk.gov.hmrc.emailaddress.EmailAddress
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,7 +16,7 @@ import configuration.Config.PublishEvents.eventsEnabled
 import scalaz.{-\/, EitherT, \/-}
 import scalaz.std.scalaFuture._
 
-@Singleton class UserService @Inject() (
+@Singleton class UserService @Inject()(
     usersReadRepository: UsersReadRepository,
     usersWriteRepository: UsersWriteRepository,
     reservedUserNameRepository: ReservedUserNameWriteRepository,
@@ -27,7 +27,8 @@ import scalaz.std.scalaFuture._
     salesforceIntegration: SalesforceIntegration,
     madgexService: MadgexService,
     exactTargetService: ExactTargetService,
-    discussionService: DiscussionService)(implicit ec: ExecutionContext) extends Logging {
+    discussionService: DiscussionService,
+    postgresDeletedUserRepository: PostgresDeletedUserRepository)(implicit ec: ExecutionContext) extends Logging {
 
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     val emailValid = isEmailValid(user, userUpdateRequest)
@@ -118,7 +119,7 @@ import scalaz.std.scalaFuture._
   }
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
-   def searchIdentity(activeUsers: SearchResponse, deletedUsers: SearchResponse) = {
+   def combineSearchResults(activeUsers: SearchResponse, deletedUsers: SearchResponse) = {
       val combinedTotal = activeUsers.total + deletedUsers.total
       val combinedResults = activeUsers.results ++ deletedUsers.results
       activeUsers.copy(total = combinedTotal, results = combinedResults)
@@ -130,6 +131,7 @@ import scalaz.std.scalaFuture._
     val usersBySubIdF = EitherT(searchIdentityBySubscriptionId(query))
     val activeUsersF = EitherT(usersReadRepository.search(query, limit, offset))
     val deletedUsersF = EitherT(deletedUsersRepository.search(query))
+    val postgresDeletedUser = EitherT(postgresDeletedUserRepository.search(query))
 
     (for {
       usersByMemNum <- usersByMemNumF
@@ -137,9 +139,13 @@ import scalaz.std.scalaFuture._
       usersBySubId <- usersBySubIdF
       activeUsers <- activeUsersF
       deletedUsers <- deletedUsersF
+      postgresDeletedUsers <- postgresDeletedUser
     } yield {
-      val idUsers = searchIdentity(activeUsers, deletedUsers)
+      val idUsers = combineSearchResults(activeUsers, deletedUsers)
 
+      if (deletedUsers != postgresDeletedUsers) {
+        logger.warn(s"Dual Read Comparison Failed! Expected: $deletedUsers Actual: $postgresDeletedUsers")
+      }
       if (idUsers.results.size > 0)
         idUsers
       else if (usersBySubId.results.size > 0)
