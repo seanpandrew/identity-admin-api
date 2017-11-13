@@ -34,10 +34,11 @@ object Dependencies {
     "org.postgresql" % "postgresql" % "42.1.4",
     "ru.yandex.qatools.embed" % "postgresql-embedded" % "2.4" % Test
   )
+  val cats = "org.typelevel" %% "cats-core" % "0.9.0"
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo,
     specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, akkaSlf4j, akkaTestkit,
-    exactTargetFuel, tip, aws, guice, jodaForms, playJson, playJsonJoda, scalikeJdbc, hikariCp, diff) ++ postgres
+    exactTargetFuel, tip, aws, guice, jodaForms, playJson, playJsonJoda, scalikeJdbc, hikariCp, diff, cats) ++ postgres
 
 }

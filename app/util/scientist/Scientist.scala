@@ -1,0 +1,94 @@
+package util.scientist
+
+import ai.x.diff._
+import cats.{Eq, Id, Monad, MonadError}
+import org.slf4j.LoggerFactory
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
+
+sealed trait Result extends Product with Serializable
+case class ExperimentFailure(e: String) extends Result
+case class Match[A](control: A, candidate: A) extends Result
+case class DisabledExperiment(name: String) extends Result
+case class MisMatch[A](control: A, candidate: A) extends Result
+
+object Defaults {
+  lazy val log = LoggerFactory.getLogger("scientist")
+  def loggingReporter[A](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
+    case ExperimentFailure(e) => log.error("Scientist error", e)
+    case MisMatch(control: A, candidate: A) => log.error(DiffShow.diff[A](control, candidate).string)
+    case _ =>
+  }
+}
+
+case class ExperimentSettings[A](reporter: Experiment.Reporter[A]) {
+  def isEnabled(experimentName: String): Boolean = true
+}
+
+object Experiment {
+
+  type Reporter[A] = A => Result => Unit
+
+  implicit def errorMonadForId(implicit idMonad: Monad[Id]): MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
+    override def flatMap[A, B](fa: Id[A])(f: A => Id[B]) = idMonad.flatMap(fa)(f)
+    override def tailRecM[A, B](a: A)(f: A => Id[Either[A, B]]) = idMonad.tailRecM(a)(f)
+    override def raiseError[A](e: Throwable): Id[A] = throw e
+    override def handleErrorWith[A](fa: Id[A])(f: Throwable => Id[A]) = try {
+      fa
+    } catch {
+      case NonFatal(e) => f(e)
+    }
+    override def pure[A](x: A) = idMonad.pure(x)
+  }
+
+  def async[A](name: String, control: => Future[A], candidate: => Future[A])
+              (implicit ec: ExecutionContext, settings: ExperimentSettings[A],
+               eq: Eq[A], m: MonadError[Future, Throwable]): Experiment[A, Future, Throwable] =
+    apply[A, Future, Throwable](name, control, candidate)
+
+  def sync[A](name: String, control: => A, candidate: => A)
+             (implicit settings: ExperimentSettings[A], eq: Eq[A]): Experiment[A, Id, Throwable] =
+    apply[A, Id, Throwable](name, control, candidate)
+
+  def apply[A, M[_], E](name: String, control: => M[A], candidate: => M[A])
+                       (implicit settings: ExperimentSettings[A], eq: Eq[A], m: MonadError[M, E]): Experiment[A, M, E] =
+    new Experiment[A, M, E] {
+      override def _name: String = name
+      override def _control = () => control
+      override def _candidate = () => candidate
+    }
+}
+
+sealed trait Experiment[A, M[_], E] {
+  def _name: String
+
+  protected def _control: () => M[A]
+
+  protected def _candidate: () => M[A]
+
+  final def run(implicit m: MonadError[M, E], eq: Eq[A], settings: ExperimentSettings[A]): M[A] = {
+    val controlValue = _control()
+    if (settings.isEnabled(_name)) {
+      val experimentResult: M[Result] = try {
+        val candidateValue = _candidate()
+        m.flatMap(controlValue)(cont => {
+          m.handleErrorWith(
+            m.map(candidateValue) { cand =>
+              if (eq.eqv(cont, cand))
+                Match(cont, cand)
+              else
+                MisMatch(cont, cand)
+            }
+          )(e => m.pure(ExperimentFailure(e.toString)))
+        })
+      } catch {
+        case NonFatal(e) => m.pure(ExperimentFailure(s"${e.getMessage} \n ${e.getStackTrace.mkString("\n")}"))
+      }
+      m.map2(controlValue, experimentResult){case (control, result) => settings.reporter(control)(result)}
+    } else {
+      m.map2(controlValue, m.pure(DisabledExperiment(_name))){case (control, result) => settings.reporter(control)(result)}
+    }
+    controlValue
+  }
+}

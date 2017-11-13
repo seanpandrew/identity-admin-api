@@ -1,74 +1,120 @@
 package util.scientist
 
+import cats.instances.all._
+import cats.instances.future
+import cats.{Id, Monad}
+import com.google.common.util.concurrent.MoreExecutors
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-class ScientistTest extends FlatSpec with Matchers {
+import scala.concurrent.{ExecutionContext, Future}
+
+class ScientistTest extends FlatSpec with Matchers with ScalaFutures with MockitoSugar {
+
+  import Experiment._
 
   object Box {
     var lastResult: Result = null
-    val publish: Result => Unit = result => Box.lastResult = result
+    val publish: List[Int] => Result => Unit = list => result => Box.lastResult = result
   }
 
-  case class Test[A](returns: A, expectedResult: Result, experiment: SyncExperiment[A])
+  case class Test[A, M[_], E](returns: A, expectedResult: Result, experiment: Experiment[A, M, E])
 
-  // TODO - add test to ensure sync runs on current thread. As a quick test can
-  // use `println(Thread.currentThread().getName()`.
+  implicit val experimentSettings = ExperimentSettings[List[Int]](Box.publish)
+  implicit val sameThreadExecutor = ExecutionContext.fromExecutor(MoreExecutors.directExecutor())
+  implicit val futureMonad: Monad[Future] = future.catsStdInstancesForFuture(sameThreadExecutor)
 
   "Science" should "run and compare experiments" in {
     val tests = List(
-      Test(
+      Test[List[Int], Id, Throwable](
         List(1, 2, 3),
         MisMatch(List(1, 2, 3), List(2, 3, 4)),
-        SyncExperiment(
+        Experiment.sync(
           name = "a",
-          control = () => List(1, 2, 3),
-          candidate = () => List(2, 3, 4),
-          publish = Box.publish
+          control = List(1, 2, 3),
+          candidate = List(2, 3, 4)
         )
       )
     )
 
     tests.foreach { test =>
-      val returned = Science.run(test.experiment)
+      val returned = test.experiment.run
       returned shouldBe test.returns
       Box.lastResult shouldBe test.expectedResult
     }
   }
 
-  it should "ignore tests if requested" in {
-    def ignoreEvenFirst(list: List[Int]): Boolean = {
-      list.headOption.exists(_ % 2 == 0)
+  it should "not run and report disabled experiments" in {
+    implicit val experimentSettings = new ExperimentSettings[List[Int]](Box.publish) {
+      override def isEnabled(experimentName: String): Boolean = experimentName != "b"
     }
 
     val tests = List(
-      Test(
+      Test[List[Int], Id, Throwable](
         List(1, 2, 3),
         MisMatch(List(1, 2, 3), List(2, 3, 4)),
-        SyncExperiment[List[Int]](
+        Experiment.sync(
           name = "a",
-          control = () => List(1, 2, 3),
-          candidate = () => List(2, 3, 4),
-          publish = Box.publish,
-          shouldIgnore = ignoreEvenFirst
+          control = List(1, 2, 3),
+          candidate = List(2, 3, 4)
         )
       ),
-      Test(
-        List(2, 3),
-        Ignore(List(2, 3), List(2, 3, 4)),
-        SyncExperiment[List[Int]](
-          name = "a",
-          control = () => List(2, 3),
-          candidate = () => List(2, 3, 4),
-          publish = Box.publish,
-          shouldIgnore = ignoreEvenFirst
+      Test[List[Int], Id, Throwable](
+        List(1, 2, 3),
+        DisabledExperiment("b"),
+        Experiment.sync(
+          name = "b",
+          control = List(1, 2, 3),
+          candidate = List(2, 3, 4)
         )
       )
     )
 
     tests.foreach { test =>
-      val returned = Science.run(test.experiment)
+      val returned = test.experiment.run
       returned shouldBe test.returns
       Box.lastResult shouldBe test.expectedResult
+    }
+  }
+
+  it should "support experiments where the candidate raises an error" in {
+    val test = Test[List[Int], Id, Throwable](
+      List(1, 2, 3),
+      MisMatch(List(1, 2, 3), List(2, 3, 4)),
+      Experiment.sync(
+        name = "a",
+        control = List(1, 2, 3),
+        candidate = null
+      )
+    )
+    test.experiment.run shouldBe List(1, 2, 3)
+    Box.lastResult shouldBe an[ExperimentFailure]
+
+  }
+
+  it should "support futures when both sides are successful" in {
+    val experiment = Experiment.async[List[Int]](
+      "async-test",
+      Future.successful(List(1,2,3)),
+      Future.successful(List(1,2,3))
+    )
+    whenReady(experiment.run) { result =>
+      result.shouldBe(List(1,2,3))
+      Box.lastResult shouldBe Match(List(1,2,3), List(1,2,3))
+    }
+  }
+
+  it should "support futures when one side is failed" in {
+    val exception = new IllegalArgumentException("test")
+    val experiment = Experiment.async[List[Int]](
+      "async-test",
+      Future.successful(List(1,2,3)),
+      Future.failed(exception)
+    )
+    whenReady(experiment.run) { result =>
+      result.shouldBe(List(1,2,3))
+      Box.lastResult shouldBe ExperimentFailure(exception.toString)
     }
   }
 }
