@@ -19,6 +19,7 @@ object Dependencies {
   val emailValidation =     "uk.gov.hmrc"                   %% "emailaddress"             % "2.1.0"
   val exactTargetFuel =     "com.exacttarget"               %  "fuelsdk"                  % "1.1.0"
   val tip =                 "com.gu"                        %% "tip"                      % "0.3.2"
+  val diff =                "ai.x"                          %% "diff"                     % "1.2.0"
   val playJson =            "com.typesafe.play"             %% "play-json"                % "2.6.3"
   val playJsonJoda =        "com.typesafe.play"             %% "play-json-joda"           % "2.6.3"
   val scalaTestPlus =       "org.scalatestplus.play"        %% "scalatestplus-play"       % "3.1.1"    % "test"
@@ -37,6 +38,6 @@ object Dependencies {
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo,
     specs2, scalaTest, embeddedMongo, mockWs, scalaTestPlus, akkaSlf4j, akkaTestkit,
-    exactTargetFuel, tip, aws, guice, jodaForms, playJson, playJsonJoda, scalikeJdbc, hikariCp) ++ postgres
+    exactTargetFuel, tip, aws, guice, jodaForms, playJson, playJsonJoda, scalikeJdbc, hikariCp, diff) ++ postgres
 
 }
