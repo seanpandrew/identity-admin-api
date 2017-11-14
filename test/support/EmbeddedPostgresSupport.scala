@@ -21,7 +21,7 @@ trait EmbeddedPostgresSupport extends BeforeAndAfterAll with PostgresJsonFormats
     EmbeddedPostgres.cachedRuntimeConfig(Paths.get(System.getProperty("user.home"), ".embedpostgresql"))
 
   def startPostgres(): String =
-    postgres.start(embeddedPostgresConfig, "localhost", 5431, "identity", "username", "password", List.empty.asJava)
+    postgres.start(embeddedPostgresConfig, "localhost", 5431, "identitydb", "username", "password", List.empty.asJava)
 
   def stopPostgres(): Unit = postgres.stop()
 

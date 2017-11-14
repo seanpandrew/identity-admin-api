@@ -15,7 +15,7 @@ trait PostgresJsonFormats {
 
   implicit lazy val dateTimeRead: Reads[DateTime] = new Reads[DateTime] {
     override def reads(json: JsValue): JsResult[DateTime] = json match {
-      case JsString(v) => Try(DateTime.parse(v)).toOption
+      case JsString(v) => Try(DateTime.parse(v, isoFormatter)).toOption
         .fold[JsResult[DateTime]](JsError(s"Expected ISO DateTime string, got $v"))(d => JsSuccess(d))
       case other => JsError(s"Expected an ISO-8601 DateTime string, got $other")
     }
