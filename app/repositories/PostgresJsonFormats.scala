@@ -1,23 +1,28 @@
 package repositories
 
-import org.joda.time.{DateTime, DateTimeZone}
-import play.api.libs.functional.syntax.unlift
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat
+import play.api.libs.functional.syntax.{unlift, _}
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
+
+import scala.util.Try
 
 trait PostgresJsonFormats {
 
   implicit lazy val objectMapFormat = MongoJsonFormats.objectMapFormat
 
+  private val isoFormatter = ISODateTimeFormat.dateHourMinuteSecondMillis().withZoneUTC()
+
   implicit lazy val dateTimeRead: Reads[DateTime] = new Reads[DateTime] {
     override def reads(json: JsValue): JsResult[DateTime] = json match {
-      case JsNumber(v) => JsSuccess(new DateTime(v.toLongExact, DateTimeZone.UTC))
+      case JsString(v) => Try(isoFormatter.parseDateTime(v)).toOption
+        .fold[JsResult[DateTime]](JsError(s"Expected ISO DateTime string, got $v"))(d => JsSuccess(d))
       case other => JsError(s"Expected a number, got $other")
     }
   }
 
   implicit lazy val dateTimeWrite: Writes[DateTime] = new Writes[DateTime] {
-    def writes(dateTime: DateTime): JsValue = JsNumber(dateTime.getMillis)
+    def writes(dateTime: DateTime): JsValue = JsString(isoFormatter.print(dateTime))
   }
 
   implicit lazy val userDatesFormat = Json.format[UserDates]

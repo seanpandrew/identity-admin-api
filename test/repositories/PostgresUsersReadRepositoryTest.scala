@@ -93,6 +93,7 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
   }
 
   "UserReadRepository#find" should {
+
     "Find a single user" in new TestFixture {
       whenReady(repo.find("identitydev@guardian.co.uk")) {
         case \/-(maybeUser) => maybeUser should not be(empty)
@@ -100,6 +101,13 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
       }
     }
 
+    "Read ISO-8601 formatted date time strings to DateTime objects" in new TestFixture {
+      whenReady(repo.find("identitydev@guardian.co.uk")) {
+        case \/-(Some(user)) =>
+          user.lastActivityDate shouldBe new DateTime(42, DateTimeZone.UTC).some
+        case _ => fail("expected to find a user")
+      }
+    }
   }
 
 }
