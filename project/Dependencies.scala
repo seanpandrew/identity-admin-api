@@ -35,6 +35,7 @@ object Dependencies {
     "ru.yandex.qatools.embed" % "postgresql-embedded" % "2.4" % Test
   )
   val cats = "org.typelevel" %% "cats-core" % "0.9.0"
+  val kittens = "org.typelevel" %% "kittens" % "1.0.0-RC1"
 
   val apiDependencies = Seq(scalaUri, identityCookie, identityPlayAuth, emailValidation,
     playWS, playCache, playFilters, awsWrap, scalaz, reactiveMongo,

@@ -2,6 +2,8 @@ package services
 
 import javax.inject.{Inject, Singleton}
 
+import ai.x.diff._
+import ai.x.diff.conversions._
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import com.gu.identity.util.Logging
@@ -12,8 +14,10 @@ import uk.gov.hmrc.emailaddress.EmailAddress
 
 import scala.concurrent.{ExecutionContext, Future}
 import configuration.Config.PublishEvents.eventsEnabled
+import org.joda.time.DateTime
+import util.scientist.{Defaults, Experiment, ExperimentSettings}
 
-import scalaz.{-\/, EitherT, \/-}
+import scalaz.{-\/, EitherT, \/, \/-}
 import scalaz.std.scalaFuture._
 
 @Singleton class UserService @Inject()(
@@ -28,7 +32,21 @@ import scalaz.std.scalaFuture._
     madgexService: MadgexService,
     exactTargetService: ExactTargetService,
     discussionService: DiscussionService,
-    postgresDeletedUserRepository: PostgresDeletedUserRepository)(implicit ec: ExecutionContext) extends Logging {
+    postgresDeletedUserRepository: PostgresDeletedUserRepository,
+    postgresUsersReadRepository: PostgresUsersReadRepository
+)(implicit ec: ExecutionContext) extends Logging {
+
+  implicit val dateTimeDiffShow: DiffShow[DateTime] = new DiffShow[DateTime] {
+    def show ( d: DateTime ) = "DateTime(" + d.toString + ")"
+    def diff( l: DateTime, r: DateTime ) =
+      if ( l isEqual r ) Identical( l ) else Different( l, r )
+  }
+
+  private implicit def experimentSettings[T](implicit d: DiffShow[T]): ExperimentSettings[T] =
+    ExperimentSettings(Defaults.loggingReporter[T])
+
+  private implicit val futureMonad =
+    cats.instances.future.catsStdInstancesForFuture(ec)
 
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     val emailValid = isEmailValid(user, userUpdateRequest)
@@ -129,9 +147,19 @@ import scalaz.std.scalaFuture._
     val usersByMemNumF = EitherT(searchIdentityByMembership(query))
     val orphansF = EitherT(searchOrphan(query))
     val usersBySubIdF = EitherT(searchIdentityBySubscriptionId(query))
-    val activeUsersF = EitherT(usersReadRepository.search(query, limit, offset))
-    val deletedUsersF = EitherT(deletedUsersRepository.search(query))
-    val postgresDeletedUser = EitherT(postgresDeletedUserRepository.search(query))
+    val activeUsersF = EitherT(
+      Experiment.async(
+        "usersSearch",
+        usersReadRepository.search(query, limit, offset),
+        postgresUsersReadRepository.search(query, limit, offset)
+      ).run
+    )
+    val deletedUsersF = EitherT(
+      Experiment.async("deletedUser",
+        deletedUsersRepository.search(query),
+        postgresDeletedUserRepository.search(query)
+      ).run
+    )
 
     (for {
       usersByMemNum <- usersByMemNumF
@@ -139,13 +167,9 @@ import scalaz.std.scalaFuture._
       usersBySubId <- usersBySubIdF
       activeUsers <- activeUsersF
       deletedUsers <- deletedUsersF
-      postgresDeletedUsers <- postgresDeletedUser
     } yield {
       val idUsers = combineSearchResults(activeUsers, deletedUsers)
 
-      if (deletedUsers != postgresDeletedUsers) {
-        logger.warn(s"Dual Read Comparison Failed! Expected: $deletedUsers Actual: $postgresDeletedUsers")
-      }
       if (idUsers.results.size > 0)
         idUsers
       else if (usersBySubId.results.size > 0)

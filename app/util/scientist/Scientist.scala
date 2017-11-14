@@ -1,10 +1,12 @@
 package util.scientist
 
 import ai.x.diff._
-import cats.{Eq, Id, Monad, MonadError}
+import cats.{Id, Monad, MonadError}
+import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.language.higherKinds
 import scala.util.control.NonFatal
 
 sealed trait Result extends Product with Serializable
@@ -14,9 +16,10 @@ case class DisabledExperiment(name: String) extends Result
 case class MisMatch[A](control: A, candidate: A) extends Result
 
 object Defaults {
+
   lazy val log = LoggerFactory.getLogger("scientist")
   def loggingReporter[A](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
-    case ExperimentFailure(e) => log.error("Scientist error", e)
+    case ExperimentFailure(e) => log.error(s"Scientist error encountered processing for contol: $a", e)
     case MisMatch(control: A, candidate: A) => log.error(DiffShow.diff[A](control, candidate).string)
     case _ =>
   }
@@ -27,7 +30,6 @@ case class ExperimentSettings[A](reporter: Experiment.Reporter[A]) {
 }
 
 object Experiment {
-
   type Reporter[A] = A => Result => Unit
 
   implicit def errorMonadForId(implicit idMonad: Monad[Id]): MonadError[Id, Throwable] = new MonadError[Id, Throwable] {
@@ -44,19 +46,19 @@ object Experiment {
 
   def async[A](name: String, control: => Future[A], candidate: => Future[A])
               (implicit ec: ExecutionContext, settings: ExperimentSettings[A],
-               eq: Eq[A], m: MonadError[Future, Throwable]): Experiment[A, Future, Throwable] =
+               m: MonadError[Future, Throwable]): Experiment[A, Future, Throwable] =
     apply[A, Future, Throwable](name, control, candidate)
 
   def sync[A](name: String, control: => A, candidate: => A)
-             (implicit settings: ExperimentSettings[A], eq: Eq[A]): Experiment[A, Id, Throwable] =
+             (implicit settings: ExperimentSettings[A]): Experiment[A, Id, Throwable] =
     apply[A, Id, Throwable](name, control, candidate)
 
   def apply[A, M[_], E](name: String, control: => M[A], candidate: => M[A])
-                       (implicit settings: ExperimentSettings[A], eq: Eq[A], m: MonadError[M, E]): Experiment[A, M, E] =
+                       (implicit settings: ExperimentSettings[A], m: MonadError[M, E]): Experiment[A, M, E] =
     new Experiment[A, M, E] {
-      override def _name: String = name
-      override def _control = () => control
-      override def _candidate = () => candidate
+      override lazy val _name: String = name
+      override lazy val _control = () => control
+      override lazy val _candidate = () => candidate
     }
 }
 
@@ -67,7 +69,7 @@ sealed trait Experiment[A, M[_], E] {
 
   protected def _candidate: () => M[A]
 
-  final def run(implicit m: MonadError[M, E], eq: Eq[A], settings: ExperimentSettings[A]): M[A] = {
+  final def run(implicit m: MonadError[M, E], settings: ExperimentSettings[A]): M[A] = {
     val controlValue = _control()
     if (settings.isEnabled(_name)) {
       val experimentResult: M[Result] = try {
@@ -75,7 +77,7 @@ sealed trait Experiment[A, M[_], E] {
         m.flatMap(controlValue)(cont => {
           m.handleErrorWith(
             m.map(candidateValue) { cand =>
-              if (eq.eqv(cont, cand))
+              if (cont.equals(cand))
                 Match(cont, cand)
               else
                 MisMatch(cont, cand)

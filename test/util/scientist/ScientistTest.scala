@@ -78,21 +78,6 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
     }
   }
 
-  it should "support experiments where the candidate raises an error" in {
-    val test = Test[List[Int], Id, Throwable](
-      List(1, 2, 3),
-      MisMatch(List(1, 2, 3), List(2, 3, 4)),
-      Experiment.sync(
-        name = "a",
-        control = List(1, 2, 3),
-        candidate = null
-      )
-    )
-    test.experiment.run shouldBe List(1, 2, 3)
-    Box.lastResult shouldBe an[ExperimentFailure]
-
-  }
-
   it should "support futures when both sides are successful" in {
     val experiment = Experiment.async[List[Int]](
       "async-test",

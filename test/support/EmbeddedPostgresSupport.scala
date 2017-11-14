@@ -1,14 +1,17 @@
 package support
 
 import java.nio.file.Paths
+
 import de.flapdoodle.embed.process.config.IRuntimeConfig
 import org.scalatest.{BeforeAndAfterAll, Suite}
+import repositories.PostgresJsonFormats
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres
 import ru.yandex.qatools.embed.postgresql.distribution.Version
 import scalikejdbc._
+
 import scala.collection.JavaConverters._
 
-trait EmbeddedPostgresSupport extends BeforeAndAfterAll {
+trait EmbeddedPostgresSupport extends BeforeAndAfterAll with PostgresJsonFormats {
   self: Suite =>
 
   lazy val postgres = new EmbeddedPostgres(Version.V9_6_3)
@@ -43,6 +46,11 @@ trait EmbeddedPostgresSupport extends BeforeAndAfterAll {
     val url = startPostgres()
     ConnectionPool.add("postgres", url, "username", "password")
     createTables("users", "reservedusernames", "reservedemails")
+    Runtime.getRuntime.addShutdownHook(new Thread() {
+      override def run() = {
+        stopPostgres()
+      }
+    })
   }
 
   override def afterAll: Unit = {

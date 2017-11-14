@@ -138,8 +138,7 @@ object IdentityUser {
   (JsPath \ "userGroups").readNullable[List[GroupMembership]].map(_.getOrElse(Nil)) and
   (JsPath \ "socialLinks").readNullable[List[SocialLink]].map(_.getOrElse(Nil)) and
   (JsPath \ "adData").readNullable[Map[String, Any]].map(_.getOrElse(Map.empty)) and
-  (JsPath \ "searchFields").readNullable[SearchFields]
-)(IdentityUser.apply _)
+  (JsPath \ "searchFields").readNullable[SearchFields])(IdentityUser.apply _)
 
   val identityUserWrites: OWrites[IdentityUser] = (
   (JsPath \ "primaryEmailAddress").write[String] and
