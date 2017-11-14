@@ -42,7 +42,7 @@ import scalaz.std.scalaFuture._
       if ( l isEqual r ) Identical( l ) else Different( l, r )
   }
 
-  private implicit def experimentSettings[T](implicit d: DiffShow[T]): ExperimentSettings[T] =
+  private implicit def experimentSettings[T: Manifest](implicit d: DiffShow[T]): ExperimentSettings[T] =
     ExperimentSettings(Defaults.loggingReporter[T])
 
   private implicit val futureMonad =

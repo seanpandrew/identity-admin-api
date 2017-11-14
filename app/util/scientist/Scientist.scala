@@ -18,7 +18,7 @@ case class MisMatch[A](control: A, candidate: A) extends Result
 object Defaults {
 
   lazy val log = LoggerFactory.getLogger("scientist")
-  def loggingReporter[A](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
+  def loggingReporter[A: Manifest](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
     case ExperimentFailure(e) => log.error(s"Scientist error encountered processing for contol: $a", e)
     case MisMatch(control: A, candidate: A) => log.error(DiffShow.diff[A](control, candidate).string)
     case _ =>
