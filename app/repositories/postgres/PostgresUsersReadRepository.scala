@@ -53,9 +53,7 @@ class PostgresUsersReadRepository @Inject()(implicit ec: ExecutionContext) exten
            |LIMIT 1
              """.stripMargin
     readOnly { implicit session =>
-      val user = DB.readOnly { implicit session =>
-        sql.map(rs => Json.parse(rs.string(1)).as[IdentityUser]).single.apply
-      }
+      val user = sql.map(rs => Json.parse(rs.string(1)).as[IdentityUser]).single.apply
       user.map(User.fromIdentityUser)
     }(logFailure("Failed to search users table"))
   }
