@@ -34,10 +34,12 @@ class UserServiceTest extends WordSpec with MockitoSugar with Matchers with Befo
   val discussionService = mock[DiscussionService]
   val pgDeletedUserRepo = mock[PostgresDeletedUserRepository]
   val pgUserReadRepo = mock[PostgresUsersReadRepository]
+  val pgReservedUsernameRepo = mock[PostgresReservedUsernameRepository]
+
   val service =
     spy(new UserService(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient,
       eventPublishingActorProvider, deletedUsersRepository, salesforceService, salesforceIntegration, madgexService, exactTargetService,
-      discussionService, pgDeletedUserRepo, pgUserReadRepo))
+      discussionService, pgDeletedUserRepo, pgUserReadRepo, pgReservedUsernameRepo))
 
   before {
     Mockito.reset(userReadRepo, userWriteRepo, reservedUsernameRepo, identityApiClient, eventPublishingActorProvider, service, madgexService)

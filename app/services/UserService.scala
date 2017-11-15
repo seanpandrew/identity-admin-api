@@ -33,7 +33,8 @@ import scalaz.std.scalaFuture._
     exactTargetService: ExactTargetService,
     discussionService: DiscussionService,
     postgresDeletedUserRepository: PostgresDeletedUserRepository,
-    postgresUsersReadRepository: PostgresUsersReadRepository
+    postgresUsersReadRepository: PostgresUsersReadRepository,
+    postgresReservedUsernameRepository: PostgresReservedUsernameRepository
 )(implicit ec: ExecutionContext) extends Logging {
 
   implicit val dateTimeDiffShow: DiffShow[DateTime] = new DiffShow[DateTime] {
@@ -264,11 +265,17 @@ import scalaz.std.scalaFuture._
     }).run
   }
 
-  def delete(user: User): ApiResponse[ReservedUsernameList] =
+  def delete(user: User): ApiResponse[ReservedUsernameList] = {
+    val reservedUsernameExperiment = Experiment.async(
+      "loadReservedUsernames",
+      reservedUserNameRepository.loadReservedUsernames,
+      postgresReservedUsernameRepository.loadReservedUsernames
+    )
     (for {
       _ <- EitherT(usersWriteRepository.delete(user))
-      reservedUsernameList <- EitherT(user.username.fold(reservedUserNameRepository.loadReservedUsernames)(reservedUserNameRepository.addReservedUsername(_)))
-    } yield(reservedUsernameList)).run
+      reservedUsernameList <- EitherT(user.username.fold(reservedUsernameExperiment.run)(reservedUserNameRepository.addReservedUsername(_)))
+    } yield (reservedUsernameList)).run
+  }
 
   def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Unit] =
     EitherT(usersWriteRepository.updateEmailValidationStatus(user, emailValidated)).map { _ =>

@@ -19,7 +19,7 @@ import scalaz.std.scalaFuture._
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
-  def findBy(key: String): ApiResponse[IdentityUser] =
+  private def findBy(key: String): ApiResponse[IdentityUser] =
     OptionT(usersF.flatMap(_.find(selector(key)).one[IdentityUser])).fold(
       user => \/-(user),
       -\/(ApiError("User not found"))

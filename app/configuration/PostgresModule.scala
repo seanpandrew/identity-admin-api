@@ -16,10 +16,7 @@ class PostgresModule extends Module {
       config.setJdbcUrl(Postgres.jdbcUrl)
       config.setUsername(Postgres.username)
       config.setPassword(Postgres.password)
-      val ds = new HikariDataSource(
-        config
-      )
-      ds
+      new HikariDataSource(config)
     }
     ConnectionPool.add("postgres", new DataSourceConnectionPool(dataSource))
     val pool = ConnectionPool.get("postgres")
