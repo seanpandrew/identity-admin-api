@@ -1,21 +1,24 @@
 package repositories.postgres
 
 import com.google.inject.{Inject, Singleton}
-import models.{ApiError, ApiResponse, SearchResponse}
+import com.gu.identity.util.Logging
+import models.{ApiResponse, SearchResponse}
 import play.api.libs.json.Json
 import repositories.{DeletedUser, IdentityUser}
 import scalikejdbc._
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.control.NonFatal
-import scalaz.{-\/, \/-}
+import scala.concurrent.ExecutionContext
+import scalaz.\/-
 
-@Singleton class PostgresDeletedUserRepository @Inject()(implicit ec: ExecutionContext) {
+@Singleton class PostgresDeletedUserRepository @Inject()(implicit ec: ExecutionContext) extends Logging
+  with PostgresJsonFormats
+  with PostgresUtils {
 
-  def findBy(query: String): ApiResponse[Option[DeletedUser]] = Future {
-    val idMatcher = s"""{"_id":"${query.toLowerCase}"}"""
-    val usernameMatcher = s"""{"username":"$query"}"""
-    val emailMatcher = s"""{"email":"$query"}"""
+  def findBy(query: String): ApiResponse[Option[DeletedUser]] = readOnly { implicit session =>
+    val _query = query.toLowerCase
+    val idMatcher = s"""{"_id":"${_query}"}"""
+    val usernameMatcher = s"""{"username":"${_query}"}"""
+    val emailMatcher = s"""{"email":"${_query}"}"""
     val sqlQuery =
       sql"""
            | SELECT jdoc FROM reservedemails
@@ -23,16 +26,10 @@ import scalaz.{-\/, \/-}
            | OR jdoc@>$emailMatcher::jsonb
            | OR jdoc@>$usernameMatcher::jsonb
        """.stripMargin
-    \/-(
-      DB.readOnly { implicit session =>
-        sqlQuery.map(_.string(1)).single.apply.map(
-          Json.parse(_).as[DeletedUser]
-        )
-      }
+    sqlQuery.map(_.string(1)).single.apply.map(
+      Json.parse(_).as[DeletedUser]
     )
-  }.recover {
-    case NonFatal(e) => -\/(ApiError(e.getMessage))
-  }
+  }(logFailure(s"Failed to find deleted users for query: $query"))
 
   def search(query: String): ApiResponse[SearchResponse] = findBy(query).map {
     case \/-(Some(user)) =>

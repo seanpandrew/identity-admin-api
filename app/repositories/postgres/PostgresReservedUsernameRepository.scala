@@ -9,20 +9,14 @@ import scalikejdbc._
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 
-class PostgresReservedUsernameRepository @Inject()(implicit ec: ExecutionContext) extends Logging with PostgresJsonFormats {
+class PostgresReservedUsernameRepository @Inject()(implicit ec: ExecutionContext) extends Logging
+  with PostgresJsonFormats
+  with PostgresUtils {
 
-  def loadReservedUsernames: ApiResponse[ReservedUsernameList] = Future {
-    \/.fromTryCatchNonFatal {
-      val sql = sql"SELECT jdoc from reservedusernames"
-      val results = DB.readOnly { implicit session =>
-        sql.map(rs => Json.parse(rs.string(1)).as[ReservedUsername]).list().apply()
-      }
-      ReservedUsernameList(results.map(_.username))
-    }.leftMap { e =>
-      val msg = "Failed to load reserved usernames"
-      logger.error(msg, e)
-      ApiError(msg, e.getMessage)
-    }
-  }
+  def loadReservedUsernames: ApiResponse[ReservedUsernameList] = readOnly { implicit session =>
+    val sql = sql"SELECT jdoc from reservedusernames"
+    val results = sql.map(rs => Json.parse(rs.string(1)).as[ReservedUsername]).list().apply()
+    ReservedUsernameList(results.map(_.username))
+  }(logFailure("Failed to load reserved usernames"))
 
 }
