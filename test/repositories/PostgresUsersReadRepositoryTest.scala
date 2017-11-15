@@ -34,7 +34,6 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
       ).some
     )
     val userJson = Json.stringify(Json.toJson(testUser))
-    println(userJson)
     execSql(
       sql"""
          | INSERT INTO users (id, jdoc) values
@@ -93,14 +92,12 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
   }
 
   "UserReadRepository#find" should {
-
     "Find a single user" in new TestFixture {
       whenReady(repo.find("identitydev@guardian.co.uk")) {
         case \/-(maybeUser) => maybeUser should not be(empty)
         case _ => fail("expected to find a user")
       }
     }
-
     "Read ISO-8601 formatted date time strings to DateTime objects" in new TestFixture {
       whenReady(repo.find("identitydev@guardian.co.uk")) {
         case \/-(Some(user)) =>

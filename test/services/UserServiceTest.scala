@@ -10,12 +10,12 @@ import repositories._
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import org.mockito.Mockito._
-import org.scalatestplus.play.guice.GuiceOneServerPerSuite
+import support.OneServerPerSuite
 
 import scala.concurrent.duration._
 import scalaz.{-\/, \/-}
 
-class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter with GuiceOneServerPerSuite {
+class UserServiceTest extends WordSpec with MockitoSugar with Matchers with BeforeAndAfter with OneServerPerSuite {
 
   implicit val ec = app.injector.instanceOf[ExecutionContext]
 

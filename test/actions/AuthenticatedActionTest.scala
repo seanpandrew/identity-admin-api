@@ -3,20 +3,20 @@ package actions
 import models.ApiError
 import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Mockito
+import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
 import play.api.http.HeaderNames
+import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
+import play.api.test.Helpers._
+import support.OneServerPerSuite
 import util.Formats
 
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-import org.mockito.Mockito._
-import org.scalatestplus.play.guice.GuiceOneServerPerSuite
-import play.api.test.Helpers._
-import play.api.libs.json.Json
+import scala.concurrent.{Await, ExecutionContext, Future}
 
-class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter with GuiceOneServerPerSuite {
+class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter with OneServerPerSuite {
 
   implicit val ec = app.injector.instanceOf[ExecutionContext]
   val parser = app.injector.instanceOf[BodyParsers.Default]

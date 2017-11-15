@@ -15,12 +15,13 @@ import play.api.test.FakeRequest
 import repositories.IdentityUser
 import play.api.test.Helpers._
 import services.{DiscussionService, ExactTargetService, SalesforceService, UserService}
+import support.OneServerPerSuite
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scalaz.{-\/, \/-}
 
-class UsersControllerTest extends WordSpec with Matchers with MockitoSugar with GuiceOneServerPerSuite {
+class UsersControllerTest extends WordSpec with Matchers with MockitoSugar with OneServerPerSuite {
 
   implicit val ec = app.injector.instanceOf[ExecutionContext]
   val parser = app.injector.instanceOf[BodyParsers.Default]

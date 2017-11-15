@@ -2,14 +2,14 @@ package configuration
 
 import javax.sql.DataSource
 
-import com.google.inject.AbstractModule
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import scalikejdbc.{ConnectionPool, DataSourceConnectionPool}
-
 import Config.Postgres
+import play.api.{Configuration, Environment}
+import play.api.inject.Module
 
-class PostgresModule extends AbstractModule {
-  override def configure(): Unit = {
+class PostgresModule extends Module {
+  override def bindings(environment: Environment, configuration: Configuration) = {
     val dataSource: DataSource = {
       val config = new HikariConfig()
       config.setConnectionTestQuery("SELECT 1")
@@ -23,6 +23,9 @@ class PostgresModule extends AbstractModule {
     }
     ConnectionPool.add("postgres", new DataSourceConnectionPool(dataSource))
     val pool = ConnectionPool.get("postgres")
-    bind(classOf[ConnectionPool]).toInstance(pool)
+    Seq(
+      bind(classOf[DataSource]).toInstance(dataSource),
+      bind(classOf[ConnectionPool]).toInstance(pool)
+    )
   }
 }
