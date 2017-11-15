@@ -1,4 +1,4 @@
-package repositories
+package repositories.postgres
 
 import com.google.common.util.concurrent.MoreExecutors
 import models.{ApiResponse, SearchResponse}
@@ -6,8 +6,9 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpecLike}
 import play.api.libs.json.Json
-import support.EmbeddedPostgresSupport
+import repositories.{IdentityUser, PrivateFields, SearchFields, UserDates}
 import scalikejdbc._
+import support.EmbeddedPostgresSupport
 
 import scala.concurrent.ExecutionContext
 import scalaz.\/-
@@ -20,7 +21,7 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
 
   trait TestFixture {
     private val executor = ExecutionContext.fromExecutor(MoreExecutors.directExecutor())
-    val repo = new PostgresUsersReadRepository(connectionPool)(executor)
+    val repo = new PostgresUsersReadRepository()(executor)
     val testUser = IdentityUser(
       "identitydev@guardian.co.uk", "1000001",
       searchFields = SearchFields(

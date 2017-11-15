@@ -1,6 +1,4 @@
-package repositories
-
-package repositories
+package repositories.postgres
 
 import java.util.UUID
 
@@ -22,7 +20,7 @@ class PostgresReservedUsernameRepositoryTest extends WordSpecLike
 
   trait TestFixture {
     private val executor = ExecutionContext.fromExecutor(MoreExecutors.directExecutor())
-    val repo = new PostgresReservedUsernameRepository(connectionPool)(executor)
+    val repo = new PostgresReservedUsernameRepository()(executor)
     val usernames = List.fill(25)(ReservedUsername(UUID.randomUUID().toString))
     usernames.foreach { username =>
       execSql(

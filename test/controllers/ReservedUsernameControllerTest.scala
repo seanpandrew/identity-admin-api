@@ -5,17 +5,17 @@ import models.{ApiError, ReservedUsernameList}
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.json.Json
 import play.api.mvc.{BodyParsers, ControllerComponents, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories.ReservedUserNameWriteRepository
-import support.OneServerPerSuite
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, \/-}
 
-class ReservedUsernameControllerTest extends WordSpec with Matchers with MockitoSugar with OneServerPerSuite {
+class ReservedUsernameControllerTest extends WordSpec with Matchers with MockitoSugar with GuiceOneServerPerSuite {
 
   implicit val ec = app.injector.instanceOf[ExecutionContext]
   val parser = app.injector.instanceOf[BodyParsers.Default]

@@ -2,23 +2,22 @@ package services
 
 import javax.inject.{Inject, Singleton}
 
-import ai.x.diff._
-import ai.x.diff.conversions._
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
+import ai.x.diff._
 import com.gu.identity.util.Logging
-import util.UserConverter._
-import models._
-import repositories._
-import uk.gov.hmrc.emailaddress.EmailAddress
-
-import scala.concurrent.{ExecutionContext, Future}
 import configuration.Config.PublishEvents.eventsEnabled
+import models._
 import org.joda.time.DateTime
+import repositories._
+import repositories.postgres._
+import uk.gov.hmrc.emailaddress.EmailAddress
+import util.UserConverter._
 import util.scientist.{Defaults, Experiment, ExperimentSettings}
 
-import scalaz.{-\/, EitherT, \/, \/-}
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.std.scalaFuture._
+import scalaz.{-\/, EitherT, \/-}
 
 @Singleton class UserService @Inject()(
     usersReadRepository: UsersReadRepository,

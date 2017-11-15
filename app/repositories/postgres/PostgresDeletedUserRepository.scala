@@ -1,16 +1,16 @@
-package repositories
+package repositories.postgres
 
 import com.google.inject.{Inject, Singleton}
 import models.{ApiError, ApiResponse, SearchResponse}
 import play.api.libs.json.Json
+import repositories.{DeletedUser, IdentityUser}
 import scalikejdbc._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import scalaz.{-\/, \/-}
 
-@Singleton class PostgresDeletedUserRepository @Inject()(
-  connectionPool: ConnectionPool)(implicit ec: ExecutionContext) {
+@Singleton class PostgresDeletedUserRepository @Inject()(implicit ec: ExecutionContext) {
 
   def findBy(query: String): ApiResponse[Option[DeletedUser]] = Future {
     val idMatcher = s"""{"_id":"${query.toLowerCase}"}"""
@@ -24,10 +24,10 @@ import scalaz.{-\/, \/-}
            | OR jdoc@>$usernameMatcher::jsonb
        """.stripMargin
     \/-(
-      using(connectionPool.borrow()) { DB(_).readOnly { implicit session =>
+      DB.readOnly { implicit session =>
         sqlQuery.map(_.string(1)).single.apply.map(
           Json.parse(_).as[DeletedUser]
-        )}
+        )
       }
     )
   }.recover {

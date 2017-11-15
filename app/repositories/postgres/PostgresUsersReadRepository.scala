@@ -1,17 +1,17 @@
-package repositories
+package repositories.postgres
 
 import com.google.inject.Inject
 import com.gu.identity.util.Logging
 import configuration.Config.SearchValidation
 import models.{ApiError, ApiResponse, SearchResponse, User}
 import play.api.libs.json.Json
+import repositories.IdentityUser
 import scalikejdbc._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.\/
 
-class PostgresUsersReadRepository @Inject() (connectionPool: ConnectionPool)
-                                            (implicit ec: ExecutionContext) extends Logging with PostgresJsonFormats {
+class PostgresUsersReadRepository @Inject()(implicit ec: ExecutionContext) extends Logging with PostgresJsonFormats {
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] =
     Future {
@@ -32,10 +32,8 @@ class PostgresUsersReadRepository @Inject() (connectionPool: ConnectionPool)
              |OFFSET ${_offset}
              """.stripMargin
       val result = \/.fromTryCatchNonFatal {
-        val results = using(connectionPool.borrow()) {
-          DB(_).readOnly { implicit session =>
-            sql.map(rs => Json.parse(rs.string(1)).as[IdentityUser] -> rs.int(2)).list().apply()
-          }
+        val results = DB.readOnly { implicit session =>
+          sql.map(rs => Json.parse(rs.string(1)).as[IdentityUser] -> rs.int(2)).list().apply()
         }
         val count = results.headOption.map(_._2).getOrElse(0)
         SearchResponse.create(count, _offset, results.map(_._1))
@@ -62,9 +60,9 @@ class PostgresUsersReadRepository @Inject() (connectionPool: ConnectionPool)
            |LIMIT 1
              """.stripMargin
     val result = \/.fromTryCatchNonFatal {
-      val user = using(connectionPool.borrow()){ DB(_).readOnly { implicit session =>
+      val user = DB.readOnly { implicit session =>
         sql.map(rs => Json.parse(rs.string(1)).as[IdentityUser]).single.apply
-      }}
+      }
       user.map(User.fromIdentityUser)
     }
     result.leftMap{ e =>

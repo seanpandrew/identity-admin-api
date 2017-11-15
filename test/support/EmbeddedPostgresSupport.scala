@@ -4,7 +4,7 @@ import java.nio.file.Paths
 
 import de.flapdoodle.embed.process.config.IRuntimeConfig
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import repositories.PostgresJsonFormats
+import repositories.postgres.PostgresJsonFormats
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres
 import ru.yandex.qatools.embed.postgresql.distribution.Version
 import scalikejdbc._
@@ -15,7 +15,6 @@ trait EmbeddedPostgresSupport extends BeforeAndAfterAll with PostgresJsonFormats
   self: Suite =>
 
   lazy val postgres = new EmbeddedPostgres(Version.V9_6_3)
-  lazy val connectionPool = ConnectionPool.get("postgres")
 
   private lazy val embeddedPostgresConfig: IRuntimeConfig =
     EmbeddedPostgres.cachedRuntimeConfig(Paths.get(System.getProperty("user.home"), ".embedpostgresql"))
@@ -25,7 +24,7 @@ trait EmbeddedPostgresSupport extends BeforeAndAfterAll with PostgresJsonFormats
 
   def stopPostgres(): Unit = postgres.stop()
 
-  def createTables(tableNames: String*): Unit = using(ConnectionPool.borrow("postgres")) {DB(_).localTx { implicit s =>
+  def createTables(tableNames: String*): Unit = DB.localTx { implicit s =>
     tableNames.foreach { tableToCreate =>
       val create =
       s"""
@@ -39,12 +38,12 @@ trait EmbeddedPostgresSupport extends BeforeAndAfterAll with PostgresJsonFormats
          """.stripMargin
       SQL(create).update().apply()
     }
-  }}
+  }
 
   override def beforeAll: Unit = {
     super.beforeAll()
     val url = startPostgres()
-    ConnectionPool.add("postgres", url, "username", "password")
+    ConnectionPool.singleton(url, "username", "password")
     createTables("users", "reservedusernames", "reservedemails")
     Runtime.getRuntime.addShutdownHook(new Thread() {
       override def run() = {
@@ -59,13 +58,13 @@ trait EmbeddedPostgresSupport extends BeforeAndAfterAll with PostgresJsonFormats
   }
 
   def execSql(sql: SQL[Nothing, NoExtractor]): Int =
-    using(connectionPool.borrow()) { DB(_).localTx { implicit session =>
+    DB.localTx { implicit session =>
       sql.update().apply()
-    }}
+    }
 
   def select[T](sql: SQL[T, HasExtractor]): Option[T] =
-    using(connectionPool.borrow()) { DB(_).localTx { implicit session =>
+    DB.localTx { implicit session =>
       sql.single().apply()
-    }}
+    }
 
 }

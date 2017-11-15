@@ -6,13 +6,13 @@ import org.scalatest.{FunSuite, Matchers}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.mockito.MockitoSugar
 import org.mockito.Mockito._
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import repositories.UsersReadRepository
 import play.api.Environment
-import support.OneServerPerSuite
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class MongoDBHealthCheckTest extends FunSuite with MockitoSugar with Eventually with Matchers with OneServerPerSuite {
+class MongoDBHealthCheckTest extends FunSuite with MockitoSugar with Eventually with Matchers with GuiceOneServerPerSuite {
 
   implicit val ec = app.injector.instanceOf[ExecutionContext]
 

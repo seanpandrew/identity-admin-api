@@ -18,11 +18,7 @@ class PostgresModule extends Module {
       config.setPassword(Postgres.password)
       new HikariDataSource(config)
     }
-    ConnectionPool.add("postgres", new DataSourceConnectionPool(dataSource))
-    val pool = ConnectionPool.get("postgres")
-    Seq(
-      bind(classOf[DataSource]).toInstance(dataSource),
-      bind(classOf[ConnectionPool]).toInstance(pool)
-    )
+    ConnectionPool.singleton(new DataSourceConnectionPool(dataSource))
+    Nil
   }
 }

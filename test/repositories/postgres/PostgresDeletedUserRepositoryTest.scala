@@ -1,4 +1,4 @@
-package repositories
+package repositories.postgres
 
 import com.google.common.util.concurrent.MoreExecutors
 import org.scalatest.concurrent.ScalaFutures
@@ -16,7 +16,7 @@ class PostgresDeletedUserRepositoryTest extends WordSpecLike
 
   trait TestFixture {
     private val executor = ExecutionContext.fromExecutor(MoreExecutors.directExecutor())
-    val repo = new PostgresDeletedUserRepository(connectionPool)(executor)
+    val repo = new PostgresDeletedUserRepository()(executor)
     execSql(sql"""
                  | INSERT INTO reservedemails (id, jdoc) values
                  | ('1234', '{"_id": "1234", "email": "foo@example.com", "username": "admin"}'::jsonb)

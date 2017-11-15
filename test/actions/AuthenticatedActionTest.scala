@@ -5,18 +5,18 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfter, Matchers, WordSpec}
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.http.HeaderNames
 import play.api.libs.json.Json
 import play.api.mvc._
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import support.OneServerPerSuite
 import util.Formats
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter with OneServerPerSuite {
+class AuthenticatedActionTest extends WordSpec with Matchers with BeforeAndAfter with GuiceOneServerPerSuite {
 
   implicit val ec = app.injector.instanceOf[ExecutionContext]
   val parser = app.injector.instanceOf[BodyParsers.Default]
