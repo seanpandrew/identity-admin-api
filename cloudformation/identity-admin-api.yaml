@@ -94,6 +94,9 @@ Parameters:
     Description: Port that the app listens on
     Type: Number
     Default: 9500
+  RDSSecurityGroup:
+    Description: Security group contains the RDS instance to connect to
+    Type: AWS::EC2::SecurityGroup::Id
 Mappings:
   StageVariables:
     PROD:
@@ -398,6 +401,12 @@ Resources:
         FromPort: !Ref Port
         ToPort: !Ref Port
         CidrIp: !Ref 'VpcSubNetCIDR'
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 5432
+        ToPort: 5432
+        DestinationSecurityGroupId: !Ref 'RDSSecurityGroup'
+
   HighLatencyAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
