@@ -31,7 +31,7 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
         registrationIp = "1.2.3.4".some, lastActiveIpAddress = "4.5.6.7".some
       ).some,
       dates = UserDates(
-        lastActivityDate = new DateTime(42l, DateTimeZone.UTC).some
+        lastActivityDate = new DateTime(42000l, DateTimeZone.UTC).some
       ).some
     )
     val userJson = Json.stringify(Json.toJson(testUser))
@@ -102,7 +102,7 @@ class PostgresUsersReadRepositoryTest extends WordSpecLike
     "Read ISO-8601 formatted date time strings to DateTime objects" in new TestFixture {
       whenReady(repo.find("identitydev@guardian.co.uk")) {
         case \/-(Some(user)) =>
-          user.lastActivityDate shouldBe new DateTime(42, DateTimeZone.UTC).some
+          user.lastActivityDate shouldBe new DateTime(42000l, DateTimeZone.UTC).some
         case _ => fail("expected to find a user")
       }
     }

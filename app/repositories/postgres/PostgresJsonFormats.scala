@@ -1,7 +1,7 @@
 package repositories.postgres
 
 import org.joda.time.DateTime
-import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter, ISODateTimeFormat}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import repositories._
@@ -12,12 +12,18 @@ trait PostgresJsonFormats {
 
   implicit lazy val objectMapFormat = MongoJsonFormats.objectMapFormat
 
-  private val isoFormatter = ISODateTimeFormat.dateHourMinuteSecondMillis().withZoneUTC()
+  private val isoFormatter =
+    DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZoneUTC()
+
+  private val dateFormats = List(
+    DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss").withZoneUTC(), isoFormatter
+  )
 
   implicit lazy val dateTimeRead: Reads[DateTime] = new Reads[DateTime] {
     override def reads(json: JsValue): JsResult[DateTime] = json match {
-      case JsString(v) => Try(DateTime.parse(v, isoFormatter)).toOption
-        .fold[JsResult[DateTime]](JsError(s"Expected ISO DateTime string, got $v"))(d => JsSuccess(d))
+      case JsString(v) =>
+        dateFormats.flatMap(f => Try(f.parseDateTime(v)).toOption).headOption
+          .fold[JsResult[DateTime]](JsError(s"Expected ISO-8601 string, got $v"))(d => JsSuccess(d))
       case other => JsError(s"Expected an ISO-8601 DateTime string, got $other")
     }
   }
