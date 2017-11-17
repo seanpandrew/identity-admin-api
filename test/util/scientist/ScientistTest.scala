@@ -1,17 +1,15 @@
 package util.scientist
 
-import ai.x.diff.DiffShow
+import ai.x.diff._
 import cats.instances.all._
 import cats.instances.future
 import cats.{Id, Monad}
 import com.google.common.util.concurrent.MoreExecutors
-import models.UserSummary
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 
 class ScientistTest extends FlatSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -104,5 +102,18 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
       result.shouldBe(List(1,2,3))
       Box.lastResult shouldBe ExperimentFailure(exception.toString)
     }
+  }
+
+  it should "Workd" in {
+    val experiment = Experiment.async[List[Int]](
+      "async-test",
+      Future.successful(List(1,2,3)),
+      Future.successful(List(1,2,3,4))
+    ).run
+
+    whenReady(experiment) { foo =>
+      Thread.sleep(1000)
+    }
+
   }
 }
