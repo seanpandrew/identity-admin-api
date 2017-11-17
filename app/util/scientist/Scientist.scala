@@ -1,7 +1,6 @@
 package util.scientist
 
 import ai.x.diff._
-import ai.x.diff.DiffShow._
 import ai.x.diff.conversions._
 import cats.{Id, Monad, MonadError}
 import org.slf4j.LoggerFactory
@@ -9,26 +8,21 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.higherKinds
 import scala.util.control.NonFatal
+import scalaz._, Scalaz._
 
 sealed trait Result extends Product with Serializable
 case class ExperimentFailure(e: String) extends Result
 case class Match[A](control: A, candidate: A) extends Result
 case class DisabledExperiment(name: String) extends Result
-case class MisMatch[A](control: A, candidate: A, diffShow: DiffShow[A]) extends Result {
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case MisMatch(control, candidate, _) =>
-      this.control.equals(control) && this.candidate.equals(candidate)
-    case _ => false
-  }
-}
+case class MisMatch[A](control: A, candidate: A) extends Result
 
 object Defaults {
   lazy val log = LoggerFactory.getLogger("scientist")
-  def loggingReporter[A: Manifest]: Experiment.Reporter[A] = (a: A) => {
+  def loggingReporter[A: Manifest : DiffShow]: Experiment.Reporter[A] = (a: A) => {
     case ExperimentFailure(e) =>
       log.error(s"Scientist error encountered processing for contol: $a", e)
-    case MisMatch(control: A, candidate: A, ds: DiffShow[A]) =>
-      log.error(ds.diff(control, candidate).string)
+    case MisMatch(control: A, candidate: A) =>
+      log.error(DiffShow.diff(control, candidate).string)
     case Match(_, _) =>
       log.info(s"Successful comparison for ${implicitly[Manifest[A]].runtimeClass.getSimpleName}")
     case _ =>
@@ -97,7 +91,7 @@ sealed trait Experiment[A, M[_], E] {
               if (cont.equals(cand))
                 Match(cont, cand)
               else
-                MisMatch(cont, cand, _diffShow)
+                MisMatch(cont, cand)
             }
           )(e => m.pure(ExperimentFailure(e.toString)))
         })

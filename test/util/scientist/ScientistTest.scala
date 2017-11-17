@@ -5,11 +5,13 @@ import cats.instances.all._
 import cats.instances.future
 import cats.{Id, Monad}
 import com.google.common.util.concurrent.MoreExecutors
+import models.{ApiError, UserSummary}
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scalaz.{\/, \/-}
 
 class ScientistTest extends FlatSpec with Matchers with ScalaFutures with MockitoSugar {
 
@@ -30,7 +32,7 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
     val tests = List(
       Test[List[Int], Id, Throwable](
         List(1, 2, 3),
-        MisMatch(List(1, 2, 3), List(2, 3, 4), implicitly[DiffShow[List[Int]]]),
+        MisMatch(List(1, 2, 3), List(2, 3, 4)),
         Experiment.sync(
           name = "a",
           control = List(1, 2, 3),
@@ -54,7 +56,7 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
     val tests = List(
       Test[List[Int], Id, Throwable](
         List(1, 2, 3),
-        MisMatch(List(1, 2, 3), List(2, 3, 4), implicitly[DiffShow[List[Int]]]),
+        MisMatch(List(1, 2, 3), List(2, 3, 4)),
         Experiment.sync(
           name = "a",
           control = List(1, 2, 3),
@@ -105,10 +107,11 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
   }
 
   it should "Workd" in {
-    val experiment = Experiment.async[List[Int]](
+    implicit val s = implicitly[DiffShow[\/[ApiError, UserSummary]]]
+    val experiment = Experiment.async[\/[ApiError, UserSummary]](
       "async-test",
-      Future.successful(List(1,2,3)),
-      Future.successful(List(1,2,3,4))
+      Future.successful(\/-(UserSummary("1234", "foo@bar.com", orphan = false))),
+      Future.successful(\/-(UserSummary("123", "foo@bar.com", orphan = false)))
     ).run
 
     whenReady(experiment) { foo =>
