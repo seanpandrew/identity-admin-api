@@ -12,14 +12,20 @@ sealed trait Result extends Product with Serializable
 case class ExperimentFailure(e: String) extends Result
 case class Match[A](control: A, candidate: A) extends Result
 case class DisabledExperiment(name: String) extends Result
-case class MisMatch[A](control: A, candidate: A) extends Result
+case class MisMatch[A](control: A, candidate: A, diffShow: DiffShow[A]) extends Result {
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case MisMatch(control, candidate, _) =>
+      this.control.equals(control) && this.candidate.equals(candidate)
+    case _ => false
+  }
+}
 
 object Defaults {
   lazy val log = LoggerFactory.getLogger("scientist")
-  def loggingReporter[A: Manifest](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
+  def loggingReporter[A: Manifest]: Experiment.Reporter[A] = (a: A) => {
     case ExperimentFailure(e) => log.error(s"Scientist error encountered processing for contol: $a", e)
-    case MisMatch(control: A, candidate: A) =>
-      log.error(d.diff(control, candidate).string)
+    case MisMatch(control: A, candidate: A, ds: DiffShow[A]) =>
+      log.error(ds.diff(control, candidate).string)
     case Match(_, _) => log.info(s"Successful comparison for ${implicitly[Manifest[A]].runtimeClass.getSimpleName}")
     case _ =>
   }
@@ -49,30 +55,32 @@ object Experiment {
     override def pure[A](x: A) = idMonad.pure(x)
   }
 
-  def async[A](name: String, control: => Future[A], candidate: => Future[A])
+  def async[A: Manifest](name: String, control: => Future[A], candidate: => Future[A])
               (implicit ec: ExecutionContext, settings: ExperimentSettings[A],
-               m: MonadError[Future, Throwable]): Experiment[A, Future, Throwable] =
+               m: MonadError[Future, Throwable], diffShow: DiffShow[A]): Experiment[A, Future, Throwable] =
     apply[A, Future, Throwable](name, control, candidate)
 
-  def sync[A](name: String, control: => A, candidate: => A)
-             (implicit settings: ExperimentSettings[A]): Experiment[A, Id, Throwable] =
+  def sync[A: Manifest](name: String, control: => A, candidate: => A)
+             (implicit settings: ExperimentSettings[A], diffShow: DiffShow[A]): Experiment[A, Id, Throwable] =
     apply[A, Id, Throwable](name, control, candidate)
 
-  def apply[A, M[_], E](name: String, control: => M[A], candidate: => M[A])
-                       (implicit settings: ExperimentSettings[A], m: MonadError[M, E]): Experiment[A, M, E] =
+  def apply[A: Manifest, M[_], E](name: String, control: => M[A], candidate: => M[A])
+                       (implicit settings: ExperimentSettings[A],
+                        m: MonadError[M, E],
+                        diffShow: DiffShow[A]): Experiment[A, M, E] =
     new Experiment[A, M, E] {
       override lazy val _name: String = name
       override lazy val _control = () => control
       override lazy val _candidate = () => candidate
+      override lazy val _diffShow = diffShow
     }
 }
 
 sealed trait Experiment[A, M[_], E] {
   def _name: String
-
   protected def _control: () => M[A]
-
   protected def _candidate: () => M[A]
+  protected def _diffShow: DiffShow[A]
 
   final def run(implicit m: MonadError[M, E], settings: ExperimentSettings[A]): M[A] = {
     val controlValue = _control()
@@ -85,7 +93,7 @@ sealed trait Experiment[A, M[_], E] {
               if (cont.equals(cand))
                 Match(cont, cand)
               else
-                MisMatch(cont, cand)
+                MisMatch(cont, cand, _diffShow)
             }
           )(e => m.pure(ExperimentFailure(e.toString)))
         })

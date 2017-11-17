@@ -1,5 +1,6 @@
 package util.scientist
 
+import ai.x.diff.DiffShow
 import cats.instances.all._
 import cats.instances.future
 import cats.{Id, Monad}
@@ -31,7 +32,7 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
     val tests = List(
       Test[List[Int], Id, Throwable](
         List(1, 2, 3),
-        MisMatch(List(1, 2, 3), List(2, 3, 4)),
+        MisMatch(List(1, 2, 3), List(2, 3, 4), implicitly[DiffShow[List[Int]]]),
         Experiment.sync(
           name = "a",
           control = List(1, 2, 3),
@@ -55,7 +56,7 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
     val tests = List(
       Test[List[Int], Id, Throwable](
         List(1, 2, 3),
-        MisMatch(List(1, 2, 3), List(2, 3, 4)),
+        MisMatch(List(1, 2, 3), List(2, 3, 4), implicitly[DiffShow[List[Int]]]),
         Experiment.sync(
           name = "a",
           control = List(1, 2, 3),
@@ -103,11 +104,5 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
       result.shouldBe(List(1,2,3))
       Box.lastResult shouldBe ExperimentFailure(exception.toString)
     }
-  }
-
-  "The Default Reporter" should "Support Seqs" in {
-    val value = Seq(1, 2, 3)
-    val reporter = Defaults.loggingReporter[Seq[Int]]
-    reporter(value)(MisMatch(value, Seq(1)))
   }
 }
