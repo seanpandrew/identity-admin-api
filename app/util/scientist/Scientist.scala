@@ -1,8 +1,10 @@
 package util.scientist
 
 import ai.x.diff._
+import ai.x.diff.DiffShow._
+import ai.x.diff.conversions._
+
 import cats.{Id, Monad, MonadError}
-import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,7 +22,7 @@ object Defaults {
   lazy val log = LoggerFactory.getLogger("scientist")
   def loggingReporter[A: Manifest](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
     case ExperimentFailure(e) => log.error(s"Scientist error encountered processing for contol: $a", e)
-    case MisMatch(control: A, candidate: A) => log.error(DiffShow.diff[A](control, candidate).string)
+    case MisMatch(control: A, candidate: A) => log.error(diff[A](control, candidate).string)
     case _ =>
   }
 }

@@ -102,4 +102,10 @@ class ScientistTest extends FlatSpec with Matchers with ScalaFutures with Mockit
       Box.lastResult shouldBe ExperimentFailure(exception.toString)
     }
   }
+
+  "The Default Reporter" should "Support Seqs" in {
+    val value = Seq(1, 2, 3)
+    val reporter = Defaults.loggingReporter[Seq[Int]]
+    reporter(value)(MisMatch(value, Seq(1)))
+  }
 }
