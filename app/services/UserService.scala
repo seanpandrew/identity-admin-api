@@ -5,6 +5,7 @@ import javax.inject.{Inject, Singleton}
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
 import ai.x.diff._
+import ai.x.diff.conversions._
 import com.gu.identity.util.Logging
 import configuration.Config.PublishEvents.eventsEnabled
 import models._
