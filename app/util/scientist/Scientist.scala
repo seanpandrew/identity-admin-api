@@ -1,9 +1,6 @@
 package util.scientist
 
 import ai.x.diff._
-import ai.x.diff.DiffShow._
-import ai.x.diff.conversions._
-
 import cats.{Id, Monad, MonadError}
 import org.slf4j.LoggerFactory
 
@@ -18,17 +15,23 @@ case class DisabledExperiment(name: String) extends Result
 case class MisMatch[A](control: A, candidate: A) extends Result
 
 object Defaults {
-
   lazy val log = LoggerFactory.getLogger("scientist")
   def loggingReporter[A: Manifest](implicit d: DiffShow[A]): Experiment.Reporter[A] = (a: A) => {
     case ExperimentFailure(e) => log.error(s"Scientist error encountered processing for contol: $a", e)
-    case MisMatch(control: A, candidate: A) => log.error(diff[A](control, candidate).string)
+    case MisMatch(control: A, candidate: A) =>
+      log.error(d.diff(control, candidate).string)
+    case Match(_, _) => log.info(s"Successful comparison for ${implicitly[Manifest[A]].runtimeClass.getSimpleName}")
     case _ =>
   }
 }
 
 case class ExperimentSettings[A](reporter: Experiment.Reporter[A]) {
   def isEnabled(experimentName: String): Boolean = true
+}
+
+object ExperimentSettings {
+  implicit def experimentSettings[T: Manifest](implicit d: DiffShow[T]): ExperimentSettings[T] =
+    ExperimentSettings(Defaults.loggingReporter[T])
 }
 
 object Experiment {
