@@ -11,15 +11,14 @@ class PostgresJsonFormatsTest extends WordSpecLike
 
   "Postgres Json Formats" should {
 
-    "Support reading ISO-8601 date time strings produced by python's datetime#isoformat()" in new TestFixture {
-      // Python does not put the `Z` for zulu time so produces invalid ISO-8601 strings.
-      // https://stackoverflow.com/a/23705687/2823715
-      dateTimeRead.reads(JsString("2017-11-16T09:54:21")) shouldBe JsSuccess(DateTime.parse("2017-11-16T09:54:21Z"))
-      dateTimeRead.reads(JsString("2017-11-16T09:54:21Z")) shouldBe JsSuccess(DateTime.parse("2017-11-16T09:54:21Z"))
+    "Support reading ISO-8601 date time strings" in new TestFixture {
+      val JsSuccess(actual, _) = dateTimeRead.reads(JsString("2017-11-16T09:54:21.123Z"))
+      val expected = DateTime.parse("2017-11-16T09:54:21.123Z")
+      actual.compareTo(expected) shouldBe 0
     }
 
     "Write dates adhering to the ISO Spec" in new TestFixture {
-      dateTimeWrite.writes(new DateTime(42000l, DateTimeZone.UTC)) shouldBe JsString("1970-01-01T00:00:42Z")
+      dateTimeWrite.writes(new DateTime(42000l, DateTimeZone.UTC)) shouldBe JsString("1970-01-01T00:00:42.000Z")
     }
 
     "Read written dates" in new TestFixture {
