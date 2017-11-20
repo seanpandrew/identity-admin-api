@@ -94,9 +94,6 @@ Parameters:
     Description: Port that the app listens on
     Type: Number
     Default: 9500
-  RDSSecurityGroup:
-    Description: Security group contains the RDS instance to connect to
-    Type: AWS::EC2::SecurityGroup::Id
 Mappings:
   StageVariables:
     PROD:
@@ -104,11 +101,13 @@ Mappings:
       LatencyAlarmThreshold: 0.5
       LatencyAlarmPeriod: 60
       NotificationAlarmPeriod: 1200
+      RDSClientsSecurityGroupId: sg-f433b78f
     CODE:
       AutoscalingNotificationsARN: arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsCODE
       LatencyAlarmThreshold: 5
       LatencyAlarmPeriod: 1200
       NotificationAlarmPeriod: 1200
+      RDSClientsSecurityGroupId: sg-ce0783b5
   CertsMap:
     CODE:
       ssl: certificate/4a66464e-3a22-41e8-b1d2-85279cd290d3
@@ -269,6 +268,7 @@ Resources:
       - !Ref 'InstanceSecurityGroup'
       - !Ref 'VulnerabilityScanningSecurityGroup'
       - !Ref 'SshAccessSecurityGroup'
+      - !FindInMap [StageVariables, !Ref 'Stage', RDSClientsSecurityGroupId]
       InstanceType: !Ref 'InstanceType'
       AssociatePublicIpAddress: 'False'
       IamInstanceProfile: !Ref 'InstanceProfile'
@@ -401,11 +401,6 @@ Resources:
         FromPort: !Ref Port
         ToPort: !Ref Port
         CidrIp: !Ref 'VpcSubNetCIDR'
-      - IpProtocol: tcp
-        FromPort: 5432
-        ToPort: 5432
-        DestinationSecurityGroupId: !Ref 'RDSSecurityGroup'
-
   HighLatencyAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
