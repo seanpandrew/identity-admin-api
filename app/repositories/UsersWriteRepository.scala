@@ -19,7 +19,7 @@ import scalaz.std.scalaFuture._
 
   private lazy val usersF = reactiveMongoApi.database.map(_.collection("users"))
 
-  def findBy(key: String): ApiResponse[IdentityUser] =
+  private def findBy(key: String): ApiResponse[IdentityUser] =
     OptionT(usersF.flatMap(_.find(selector(key)).one[IdentityUser])).fold(
       user => \/-(user),
       -\/(ApiError("User not found"))
@@ -99,7 +99,7 @@ import scalaz.std.scalaFuture._
         -\/(ApiError(title, error.getMessage))
       }
 
-  def unsubscribeFromMarketingEmails(email: String) =
+  def unsubscribeFromMarketingEmails(email: String): ApiResponse[User] =
     (for {
       persistedUser <- EitherT(findBy(email))
       statusFields = persistedUser.statusFields.getOrElse(StatusFields()).copy(receive3rdPartyMarketing = Some(false), receiveGnmMarketing = Some(false))

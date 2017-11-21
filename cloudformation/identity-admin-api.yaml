@@ -101,11 +101,13 @@ Mappings:
       LatencyAlarmThreshold: 0.5
       LatencyAlarmPeriod: 60
       NotificationAlarmPeriod: 1200
+      RDSClientsSecurityGroupId: sg-f433b78f
     CODE:
       AutoscalingNotificationsARN: arn:aws:sns:eu-west-1:942464564246:AutoscalingNotificationsCODE
       LatencyAlarmThreshold: 5
       LatencyAlarmPeriod: 1200
       NotificationAlarmPeriod: 1200
+      RDSClientsSecurityGroupId: sg-ce0783b5
   CertsMap:
     CODE:
       ssl: certificate/4a66464e-3a22-41e8-b1d2-85279cd290d3
@@ -266,6 +268,7 @@ Resources:
       - !Ref 'InstanceSecurityGroup'
       - !Ref 'VulnerabilityScanningSecurityGroup'
       - !Ref 'SshAccessSecurityGroup'
+      - !FindInMap [StageVariables, !Ref 'Stage', RDSClientsSecurityGroupId]
       InstanceType: !Ref 'InstanceType'
       AssociatePublicIpAddress: 'False'
       IamInstanceProfile: !Ref 'InstanceProfile'

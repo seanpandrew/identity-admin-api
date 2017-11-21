@@ -2,15 +2,15 @@ package controllers
 
 import actions.AuthenticatedAction
 import models.{ApiError, ReservedUsernameList}
+import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{Matchers, WordSpec}
+import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.libs.json.Json
 import play.api.mvc.{BodyParsers, ControllerComponents, Request, Result}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import repositories.ReservedUserNameWriteRepository
-import org.mockito.Mockito._
-import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 
 import scala.concurrent.{ExecutionContext, Future}
 import scalaz.{-\/, \/-}

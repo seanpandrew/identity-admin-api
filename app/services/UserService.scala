@@ -4,19 +4,23 @@ import javax.inject.{Inject, Singleton}
 
 import actors.EventPublishingActor.{DisplayNameChanged, EmailValidationChanged}
 import actors.EventPublishingActorProvider
+import ai.x.diff._
+import ai.x.diff.conversions._
 import com.gu.identity.util.Logging
-import util.UserConverter._
+import configuration.Config.PublishEvents.eventsEnabled
 import models._
-import repositories.{DeletedUser, DeletedUsersRepository, IdentityUser, IdentityUserUpdate, Orphan, ReservedUserNameWriteRepository, UsersReadRepository, UsersWriteRepository}
+import org.joda.time.DateTime
+import repositories._
+import repositories.postgres._
 import uk.gov.hmrc.emailaddress.EmailAddress
+import util.UserConverter._
+import util.scientist.{Defaults, Experiment, ExperimentSettings}
 
 import scala.concurrent.{ExecutionContext, Future}
-import configuration.Config.PublishEvents.eventsEnabled
-
-import scalaz.{-\/, EitherT, \/-}
 import scalaz.std.scalaFuture._
+import scalaz.{-\/, EitherT, \/-}
 
-@Singleton class UserService @Inject() (
+@Singleton class UserService @Inject()(
     usersReadRepository: UsersReadRepository,
     usersWriteRepository: UsersWriteRepository,
     reservedUserNameRepository: ReservedUserNameWriteRepository,
@@ -27,7 +31,20 @@ import scalaz.std.scalaFuture._
     salesforceIntegration: SalesforceIntegration,
     madgexService: MadgexService,
     exactTargetService: ExactTargetService,
-    discussionService: DiscussionService)(implicit ec: ExecutionContext) extends Logging {
+    discussionService: DiscussionService,
+    postgresDeletedUserRepository: PostgresDeletedUserRepository,
+    postgresUsersReadRepository: PostgresUsersReadRepository,
+    postgresReservedUsernameRepository: PostgresReservedUsernameRepository
+)(implicit ec: ExecutionContext) extends Logging {
+
+  implicit val dateTimeDiffShow: DiffShow[DateTime] = new DiffShow[DateTime] {
+    def show ( d: DateTime ) = "DateTime(" + d.toString + ")"
+    def diff( l: DateTime, r: DateTime ) =
+      if ( l isEqual r ) Identical( l ) else Different( l, r )
+  }
+
+  private implicit val futureMonad =
+    cats.instances.future.catsStdInstancesForFuture(ec)
 
   def update(user: User, userUpdateRequest: UserUpdateRequest): ApiResponse[User] = {
     val emailValid = isEmailValid(user, userUpdateRequest)
@@ -118,7 +135,7 @@ import scalaz.std.scalaFuture._
   }
 
   def search(query: String, limit: Option[Int] = None, offset: Option[Int] = None): ApiResponse[SearchResponse] = {
-   def searchIdentity(activeUsers: SearchResponse, deletedUsers: SearchResponse) = {
+   def combineSearchResults(activeUsers: SearchResponse, deletedUsers: SearchResponse) = {
       val combinedTotal = activeUsers.total + deletedUsers.total
       val combinedResults = activeUsers.results ++ deletedUsers.results
       activeUsers.copy(total = combinedTotal, results = combinedResults)
@@ -128,8 +145,19 @@ import scalaz.std.scalaFuture._
     val usersByMemNumF = EitherT(searchIdentityByMembership(query))
     val orphansF = EitherT(searchOrphan(query))
     val usersBySubIdF = EitherT(searchIdentityBySubscriptionId(query))
-    val activeUsersF = EitherT(usersReadRepository.search(query, limit, offset))
-    val deletedUsersF = EitherT(deletedUsersRepository.search(query))
+    val activeUsersF = EitherT(
+      Experiment.async(
+        "usersSearch",
+        usersReadRepository.search(query, limit, offset),
+        postgresUsersReadRepository.search(query, limit, offset)
+      ).run
+    )
+    val deletedUsersF = EitherT(
+      Experiment.async("deletedUser",
+        deletedUsersRepository.search(query),
+        postgresDeletedUserRepository.search(query)
+      ).run
+    )
 
     (for {
       usersByMemNum <- usersByMemNumF
@@ -138,7 +166,7 @@ import scalaz.std.scalaFuture._
       activeUsers <- activeUsersF
       deletedUsers <- deletedUsersF
     } yield {
-      val idUsers = searchIdentity(activeUsers, deletedUsers)
+      val idUsers = combineSearchResults(activeUsers, deletedUsers)
 
       if (idUsers.results.size > 0)
         idUsers
@@ -234,11 +262,17 @@ import scalaz.std.scalaFuture._
     }).run
   }
 
-  def delete(user: User): ApiResponse[ReservedUsernameList] =
+  def delete(user: User): ApiResponse[ReservedUsernameList] = {
+    val reservedUsernameExperiment = Experiment.async(
+      "loadReservedUsernames",
+      reservedUserNameRepository.loadReservedUsernames,
+      postgresReservedUsernameRepository.loadReservedUsernames
+    )
     (for {
       _ <- EitherT(usersWriteRepository.delete(user))
-      reservedUsernameList <- EitherT(user.username.fold(reservedUserNameRepository.loadReservedUsernames)(reservedUserNameRepository.addReservedUsername(_)))
-    } yield(reservedUsernameList)).run
+      reservedUsernameList <- EitherT(user.username.fold(reservedUsernameExperiment.run)(reservedUserNameRepository.addReservedUsername(_)))
+    } yield (reservedUsernameList)).run
+  }
 
   def validateEmail(user: User, emailValidated: Boolean = true): ApiResponse[Unit] =
     EitherT(usersWriteRepository.updateEmailValidationStatus(user, emailValidated)).map { _ =>

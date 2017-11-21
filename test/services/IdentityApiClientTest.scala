@@ -1,14 +1,14 @@
 package services
 
+import mockws.MockWS
 import models.ApiError
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Matchers, WordSpec}
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import mockws.MockWS
 import org.scalatestplus.play.guice.GuiceOneServerPerSuite
 import play.api.mvc.Action
 import play.api.mvc.Results._
 import play.api.test.Helpers._
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class IdentityApiClientTest
   extends WordSpec with Matchers with BeforeAndAfterEach with GuiceOneServerPerSuite with BeforeAndAfterAll{
