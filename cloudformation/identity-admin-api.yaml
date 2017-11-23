@@ -120,6 +120,8 @@ Mappings:
     PROD:
       emailValidationChangedTopic: arn:aws:sns:eu-west-1:942464564246:PROD-TopicEmailValidationChanged
       displayNameChangedTopic: arn:aws:sns:eu-west-1:942464564246:PROD-TopicDisplayNameChanged
+Conditions:
+  IsProd: !Equals [!Ref Stage, PROD]
 Resources:
   IdentityRole:
     Type: AWS::IAM::Role
@@ -423,6 +425,7 @@ Resources:
       - !Ref 'ScaleDownPolicy'
   InsufficientHealthyHostsAlarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: IsProd
     Properties:
       ActionsEnabled: 'true'
       AlarmDescription: There are insufficient healthy hosts
@@ -444,6 +447,7 @@ Resources:
         Value: !Ref 'LoadBalancer'
   MongoDBConnectionUnhealthyAlarm:
     Type: AWS::CloudWatch::Alarm
+    Condition: IsProd
     Properties:
       ActionsEnabled: 'true'
       AlarmDescription: identity-admin-api cannot communicate with mongo
